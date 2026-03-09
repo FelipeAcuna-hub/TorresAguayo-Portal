@@ -1,0 +1,142 @@
+/* Estilos Base */
+body {
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+    background-color: #f3f4f6;
+}
+
+.dashboard-container {
+    display: flex;
+    height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 260px;
+    background-color: #000;
+    color: white;
+    display: flex;
+    flex-direction: column;
+}
+
+.logo {
+    padding: 24px;
+    font-size: 24px;
+    font-weight: bold;
+    border-bottom: 1px solid #333;
+    letter-spacing: -1px;
+}
+
+.logo span {
+    color: #e11d48; /* Rojo Torres Aguayo */
+}
+
+.nav-list {
+    list-style: none;
+    padding: 20px;
+    margin: 0;
+}
+
+.nav-item {
+    padding: 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #9ca3af;
+    margin-bottom: 4px;
+    transition: 0.3s;
+}
+
+.nav-item.active {
+    background-color: #e11d48;
+    color: white;
+}
+
+/* Main Content */
+.main-content {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.top-header {
+    background: white;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.status-badge {
+    background: #e11d48;
+    color: white;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: bold;
+    border-radius: 2px;
+}
+
+/* Banner */
+.hero-banner {
+    background: black;
+    height: 240px;
+    margin: 32px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    padding: 48px;
+    color: white;
+    position: relative;
+}
+
+.hero-banner h1 {
+    font-size: 40px;
+    text-transform: uppercase;
+    margin: 0;
+}
+
+/* Cards */
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px;
+    padding: 0 32px 32px 32px;
+}
+
+.card {
+    background: white;
+    padding: 40px;
+    text-align: center;
+    border-bottom: 4px solid #eee;
+    transition: 0.3s;
+}
+
+.card:hover {
+    border-color: #e11d48;
+}
+
+.card button {
+    background: #e11d48;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 20px;
+}
+
+/* src/index.css */
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow-x: hidden; /* Evita que la página se mueva hacia los lados */
+    background-color: #000; /* Para que si algo carga, sea negro y no blanco */
+  }
+  
+  #root {
+    width: 100%;
+    height: 100%;
+  }
