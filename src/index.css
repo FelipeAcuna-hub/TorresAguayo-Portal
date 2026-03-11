@@ -1,3 +1,31 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Efecto para que las letras crezcan suavemente */
+/* 1. Mantén tu base igual */
+.nav-item {
+  transition: all 0.2s ease-in-out !important; /* Bajamos a 0.2s para que sea más reactivo */
+}
+
+/* 2. REEMPLAZA TU HOVER POR ESTE */
+.nav-item:hover {
+  /* En lugar de font-size, usamos scale (1.05 es un 5% más grande) */
+  transform: scale(1.05) translateX(5px); 
+  
+  color: #ffffff !important;
+  letter-spacing: 0.5px; /* Bajamos a 0.5px para que no se estire tanto */
+  filter: brightness(1.2);
+}
+/* Recuadro de Administración */
+.admin-container {
+  margin: 10px 15px;
+  border: 1px solid #e11d48;
+  border-radius: 4px;
+  background-color: rgba(225, 29, 72, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.admin-container:hover {
+  transform: scale(1.05);
+}

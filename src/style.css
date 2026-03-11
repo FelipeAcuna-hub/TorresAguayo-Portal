@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* Estilos Base */
 body {
     margin: 0;
@@ -139,4 +143,31 @@ html, body {
   #root {
     width: 100%;
     height: 100%;
+  }
+
+ /* Esto hace que todas las letras del menú crezcan suavemente */
+ .nav-item {
+    /* Cambia ease-important por ease !important */
+    transition: all 0.3s ease !important; 
+  }
+  
+  .nav-item:hover {
+    /* Asegúrate de que tenga el !important separado */
+    font-size: 17px !important; 
+    color: #ffffff !important;
+    letter-spacing: 1px;
+  }
+  
+  /* El recuadro para resaltar Administración */
+  .admin-container {
+    margin: 10px 15px;
+    border: 1px solid #e11d48;
+    border-radius: 4px;
+    background-color: rgba(225, 29, 72, 0.1); /* Fondo rojo muy suave */
+    transition: transform 0.3s ease;
+  }
+  
+  .admin-container:hover {
+    transform: scale(1.05); /* El recuadro crece un poquito */
+    border-color: #ff4d6d;
   }

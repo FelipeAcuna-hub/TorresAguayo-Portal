@@ -6,18 +6,35 @@ const Login = () => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  // Nuevos estados para el registro extendido
+  const [nombre, setNombre] = useState('');
+  const [apellido, setApellido] = useState('');
+  const [telefono, setTelefono] = useState('');
+  const [compania, setCompania] = useState('');
+  
   const navigate = useNavigate();
 
   const handleAuth = async (e) => {
     e.preventDefault();
     try {
       if (isRegistering) {
-        // Registro
-        const { error } = await supabase.auth.signUp({ email, password });
+        // REGISTRO EXTENDIDO: Enviamos metadatos a Supabase Auth
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: `${nombre} ${apellido}`,
+              phone: telefono,
+              company: compania,
+              role: 'user' // Por defecto todos entran como usuarios
+            }
+          }
+        });
         if (error) throw error;
-        alert('Registro exitoso. Revisa tu email para confirmar.');
+        alert('Registro exitoso. Revisa tu email para confirmar tu cuenta.');
       } else {
-        // Login (Aquí faltaba el .auth)
+        // LOGIN NORMAL
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         navigate('/'); 
@@ -28,79 +45,29 @@ const Login = () => {
   };
 
   const styles = {
-    // ESTE BLOQUE ARREGLA LOS BORDES Y LA POSICIÓN
     container: {
-      height: '100vh',
-      width: '100vw',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: '#0a0a0a',
-      fontFamily: 'sans-serif', // Mantiene la letra de tu Dashboard
-      margin: 0,
-      padding: 0,
-      boxSizing: 'border-box',
-      position: 'absolute',
-      top: 0,
-      left: 0
+      height: '100vh', width: '100vw', display: 'flex', justifyContent: 'center',
+      alignItems: 'center', backgroundColor: '#0a0a0a', fontFamily: 'sans-serif',
+      margin: 0, padding: 0, position: 'absolute', top: 0, left: 0
     },
     loginBox: {
-      backgroundColor: '#111',
-      padding: '50px',
-      borderRadius: '8px',
-      width: '100%',
-      maxWidth: '400px',
-      border: '1px solid #222',
-      boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
-      fontFamily: 'sans-serif' // Reforzamos la letra aquí también
+      backgroundColor: '#111', padding: '40px', borderRadius: '8px', width: '100%',
+      maxWidth: '450px', border: '1px solid #222', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)'
     },
-    logo: {
-      fontSize: '28px',
-      fontWeight: 'bold',
-      textAlign: 'center',
-      marginBottom: '10px',
-      letterSpacing: '1px',
-      color: 'white'
-    },
-    subtitle: {
-      fontSize: '12px',
-      color: '#666',
-      textAlign: 'center',
-      marginBottom: '30px',
-      textTransform: 'uppercase',
-      letterSpacing: '2px'
-    },
-    inputGroup: { marginBottom: '20px' },
-    label: { display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#888', marginBottom: '8px', textTransform: 'uppercase' },
+    logo: { fontSize: '28px', fontWeight: 'bold', textAlign: 'center', marginBottom: '5px', color: 'white' },
+    subtitle: { fontSize: '11px', color: '#666', textAlign: 'center', marginBottom: '25px', textTransform: 'uppercase', letterSpacing: '2px' },
+    inputGroup: { marginBottom: '15px' },
+    row: { display: 'flex', gap: '10px', marginBottom: '15px' }, // Para Nombre y Apellido juntos
+    label: { display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#888', marginBottom: '5px', textTransform: 'uppercase' },
     input: {
-      width: '100%',
-      padding: '12px',
-      backgroundColor: '#1a1a1a',
-      border: '1px solid #333',
-      borderRadius: '4px',
-      color: 'white',
-      outline: 'none',
-      boxSizing: 'border-box',
-      fontFamily: 'sans-serif' // Asegura que lo que escribes tenga la misma letra
+      width: '100%', padding: '12px', backgroundColor: '#1a1a1a', border: '1px solid #333',
+      borderRadius: '4px', color: 'white', outline: 'none', boxSizing: 'border-box', fontSize: '14px'
     },
     button: {
-      width: '100%',
-      backgroundColor: '#e11d48',
-      color: 'white',
-      padding: '14px',
-      border: 'none',
-      fontWeight: 'bold',
-      cursor: 'pointer',
-      borderRadius: '2px',
-      marginTop: '10px',
-      fontFamily: 'sans-serif'
+      width: '100%', backgroundColor: '#e11d48', color: 'white', padding: '14px',
+      border: 'none', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px', marginTop: '10px'
     },
-    toggleText: {
-      textAlign: 'center',
-      marginTop: '20px',
-      fontSize: '13px',
-      color: '#888'
-    },
+    toggleText: { textAlign: 'center', marginTop: '20px', fontSize: '13px', color: '#888' },
     link: { color: '#e11d48', cursor: 'pointer', fontWeight: 'bold', marginLeft: '5px' }
   };
 
@@ -110,31 +77,44 @@ const Login = () => {
         <div style={styles.logo}>
           TORRES<span style={{ color: '#e11d48' }}>AGUAYO</span>
         </div>
-        <div style={styles.subtitle}>Portal Distribuidores</div>
+        <div style={styles.subtitle}>{isRegistering ? 'Crea tu cuenta de Distribuidor' : 'Portal Distribuidores'}</div>
 
         <form onSubmit={handleAuth}>
+          {isRegistering && (
+            <>
+              <div style={styles.row}>
+                <div style={{ flex: 1 }}>
+                  <label style={styles.label}>Nombre</label>
+                  <input style={styles.input} type="text" placeholder="Ej: Juan" onChange={(e) => setNombre(e.target.value)} required />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={styles.label}>Apellido</label>
+                  <input style={styles.input} type="text" placeholder="Ej: Navarro" onChange={(e) => setApellido(e.target.value)} required />
+                </div>
+              </div>
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>Compañía / Taller</label>
+                <input style={styles.input} type="text" placeholder="Nombre de tu empresa" onChange={(e) => setCompania(e.target.value)} required />
+              </div>
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>WhatsApp / Teléfono</label>
+                <input style={styles.input} type="tel" placeholder="+569..." onChange={(e) => setTelefono(e.target.value)} required />
+              </div>
+            </>
+          )}
+
           <div style={styles.inputGroup}>
             <label style={styles.label}>Email</label>
-            <input 
-              style={styles.input} 
-              type="email" 
-              placeholder="tu@email.com"
-              onChange={(e) => setEmail(e.target.value)}
-              required 
-            />
+            <input style={styles.input} type="email" placeholder="tu@email.com" onChange={(e) => setEmail(e.target.value)} required />
           </div>
+          
           <div style={styles.inputGroup}>
             <label style={styles.label}>Contraseña</label>
-            <input 
-              style={styles.input} 
-              type="password" 
-              placeholder="••••••••"
-              onChange={(e) => setPassword(e.target.value)}
-              required 
-            />
+            <input style={styles.input} type="password" placeholder="••••••••" onChange={(e) => setPassword(e.target.value)} required />
           </div>
+
           <button type="submit" style={styles.button}>
-            {isRegistering ? 'CREAR CUENTA' : 'INICIAR SESIÓN'}
+            {isRegistering ? 'REGISTRARSE' : 'INICIAR SESIÓN'}
           </button>
         </form>
 
