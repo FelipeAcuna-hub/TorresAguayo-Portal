@@ -2,108 +2,119 @@ import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 
+// --- FUNCIÓN DE CÁLCULO DE HORARIO CHILENO ---
+const checkAutoOnline = () => {
+  const chileTime = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Santiago",
+    hour: "numeric", hour12: false, weekday: "long",
+  }).formatToParts(new Date());
+
+  const hour = parseInt(chileTime.find(p => p.type === 'hour').value);
+  const day = chileTime.find(p => p.type === 'weekday').value;
+  const isWorkDay = !['Saturday', 'Sunday'].includes(day);
+  const morningShift = hour >= 9 && hour < 13;
+  const afternoonShift = hour >= 15 && hour < 19;
+
+  return isWorkDay && (morningShift || afternoonShift);
+};
+
 const Layout = ({ session }) => {
   const [dbCredits, setDbCredits] = useState(0);
   const [displayName, setDisplayName] = useState("USUARIO");
   const [status, setStatus] = useState({ is_online: true, mensaje: 'Cargando estado...' });
   const location = useLocation();
 
+  // Lógica de Administrador basada en los metadatos de la sesión
+  const isAdmin = session?.user?.app_metadata?.role === 'admin';
+
   useEffect(() => {
     if (!session?.user?.id) return;
 
-    const fetchAllData = async () => {
-      // Perfil
+    const updateBanner = (dbStatus) => {
+      const isScheduleOnline = checkAutoOnline();
+      if (!dbStatus.is_online) {
+        setStatus({ is_online: false, mensaje: dbStatus.mensaje_offline });
+      } else {
+        if (isScheduleOnline) {
+          setStatus({ is_online: true, mensaje: dbStatus.mensaje_online });
+        } else {
+          const now = new Date();
+          const hour = new Date(now.toLocaleString("en-US", {timeZone: "America/Santiago"})).getHours();
+          let msg = "SISTEMA CERRADO: Los archivos se procesarán el siguiente día hábil.";
+          if (hour >= 13 && hour < 15) msg = "HORARIO DE COLACIÓN: Volvemos a las 15:00 hrs.";
+          setStatus({ is_online: false, mensaje: msg });
+        }
+      }
+    };
+
+    const initLayout = async () => {
       const { data: prof } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
       if (prof) {
         setDbCredits(prof.credits || 0);
         setDisplayName(`${prof.full_name || ''} ${prof.apellido || ''}`.trim().toUpperCase() || "USUARIO");
       }
-      // Config Global
       const { data: conf } = await supabase.from('configuracion_global').select('*').eq('id', 'atencion_cliente').single();
-      if (conf) setStatus({ is_online: conf.is_online, mensaje: conf.is_online ? conf.mensaje_online : conf.mensaje_offline });
+      if (conf) updateBanner(conf);
     };
 
-    fetchAllData();
+    initLayout();
 
-    // Suscripción Realtime para que el nombre cambie en todas las pestañas al mismo tiempo
-    const channel = supabase.channel('layout_realtime_sync')
+    const channel = supabase.channel('layout_sync_global')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'configuracion_global' }, payload => {
+        updateBanner(payload.new);
+      })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${session.user.id}` }, payload => {
         setDbCredits(payload.new.credits);
         setDisplayName(`${payload.new.full_name || ''} ${payload.new.apellido || ''}`.trim().toUpperCase());
       })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'configuracion_global' }, payload => {
-        setStatus({ is_online: payload.new.is_online, mensaje: payload.new.is_online ? payload.new.mensaje_online : payload.new.mensaje_offline });
-      })
       .subscribe();
 
-    return () => supabase.removeChannel(channel);
+    const timer = setInterval(() => {
+      supabase.from('configuracion_global').select('*').eq('id', 'atencion_cliente').single().then(({ data }) => {
+        if (data) updateBanner(data);
+      });
+    }, 60000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(timer);
+    };
   }, [session]);
 
-  // COPIADOS EXACTAMENTE DE TU PERFIL.JSX
   const styles = {
     container: { display: 'flex', height: '100vh', width: '100vw', backgroundColor: '#f3f4f6', fontFamily: 'sans-serif', margin: 0, padding: 0, position: 'fixed', top: 0, left: 0, overflow: 'hidden' },
     sidebar: { width: '260px', backgroundColor: '#000', color: 'white', display: 'flex', flexDirection: 'column', shrink: 0 },
     logo: { padding: '24px', fontSize: '24px', fontWeight: 'bold', borderBottom: '1px solid #333', textDecoration: 'none', color: 'white', display: 'block' },
     navItem: { padding: '15px 24px', cursor: 'pointer', color: '#9ca3af', listStyle: 'none', textDecoration: 'none', display: 'flex', alignItems: 'center' },
     navItemActive: { padding: '15px 24px', color: 'white', backgroundColor: '#e11d48', listStyle: 'none', fontWeight: 'bold', display: 'flex', alignItems: 'center' },
-    main: { flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', backgroundColor: '#f3f4f6' },
+    main: { flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' },
     header: { backgroundColor: 'white', padding: '15px 30px', borderBottom: '1px solid #ddd', display: 'flex', justifyContent: 'space-between', alignItems: 'center', shrink: 0 },
     topBarStatus: { backgroundColor: status.is_online ? '#228b22' : '#e11d48', color: 'white', padding: '12px 20px', fontWeight: 'bold', fontSize: '13px', textAlign: 'center', transition: '0.5s' }
   };
-
-  const isAdmin = session?.user?.app_metadata?.role === 'admin';
 
   return (
     <div style={styles.container}>
       <aside style={styles.sidebar}>
         <Link to="/" style={styles.logo}>TORRES<span style={{color: '#e11d48'}}>AGUAYO</span></Link>
         <ul style={{ padding: 0, margin: 0, listStyle: 'none', flex: 1 }}>
-          <Link to="/" style={{ textDecoration: 'none' }}>
-            <li className="nav-item" style={location.pathname === "/" ? styles.navItemActive : styles.navItem}>
-              <span style={{ marginRight: '12px' }}>💠</span> DASHBOARD
-            </li>
-          </Link>
-          <Link to="/perfil" style={{ textDecoration: 'none' }}>
-            <li className="nav-item" style={location.pathname === "/perfil" ? styles.navItemActive : styles.navItem}>
-              <span style={{ marginRight: '12px' }}>👤</span> PERFIL
-            </li>
-          </Link>
-          <Link to="/historial" style={{ textDecoration: 'none' }}>
-            <li className="nav-item" style={location.pathname === "/historial" ? styles.navItemActive : styles.navItem}>
-              <span style={{ marginRight: '12px' }}>💳</span> CRÉDITOS
-            </li>
-          </Link>
-          <Link to="/tickets" style={{ textDecoration: 'none' }}>
-            <li className="nav-item" style={location.pathname === "/tickets" ? styles.navItemActive : styles.navItem}>
-              <span style={{ marginRight: '12px' }}>💬</span> TICKETS
-            </li>
-          </Link>
-          <Link to="/archivos" style={{ textDecoration: 'none' }}>
-            <li className="nav-item" style={location.pathname === "/archivos" ? styles.navItemActive : styles.navItem}>
-              <span style={{ marginRight: '12px' }}>📄</span> ARCHIVOS
-            </li>
-          </Link>
-          <Link to="/simulador" style={{ textDecoration: 'none', marginTop: '20px', display: 'block' }}>
-            <li className="nav-item" style={{ ...styles.navItem, fontSize: '13px', color: '#666' }}>
-               SIMULA EL PRECIO DE UN ARCHIVO
-            </li>
-           </Link>
-
-           {isAdmin && (
+          <Link to="/" style={{ textDecoration: 'none' }}><li className="nav-item" style={location.pathname === "/" ? styles.navItemActive : styles.navItem}><span style={{ marginRight: '12px' }}>💠</span> DASHBOARD</li></Link>
+          <Link to="/perfil" style={{ textDecoration: 'none' }}><li className="nav-item" style={location.pathname === "/perfil" ? styles.navItemActive : styles.navItem}><span style={{ marginRight: '12px' }}>👤</span> PERFIL</li></Link>
+          <Link to="/historial" style={{ textDecoration: 'none' }}><li className="nav-item" style={location.pathname === "/historial" ? styles.navItemActive : styles.navItem}><span style={{ marginRight: '12px' }}>💳</span> CRÉDITOS</li></Link>
+          <Link to="/tickets" style={{ textDecoration: 'none' }}><li className="nav-item" style={location.pathname === "/tickets" ? styles.navItemActive : styles.navItem}><span style={{ marginRight: '12px' }}>💬</span> TICKETS</li></Link>
+          <Link to="/archivos" style={{ textDecoration: 'none' }}><li className="nav-item" style={location.pathname === "/archivos" ? styles.navItemActive : styles.navItem}><span style={{ marginRight: '12px' }}>📄</span> ARCHIVOS</li></Link>
+          <Link to="/simulador" style={{ textDecoration: 'none', marginTop: '20px', display: 'block' }}><li className="nav-item" style={{ ...styles.navItem, fontSize: '13px', color: '#666' }}>SIMULA EL PRECIO DE UN ARCHIVO</li></Link>
+          
+          {/* AQUÍ VOLVÍ A PONER EL BOTÓN DE ADMINISTRACIÓN */}
+          {isAdmin && (
             <Link to="/admin" style={{ textDecoration: 'none', marginTop: '10px', display: 'block' }}>
-              <li className="nav-item" style={location.pathname === "/admin" ? styles.navItemActive : styles.navItem}>
-                ⚙️ ADMINISTRACIÓN
-              </li>
+              <li className="nav-item" style={location.pathname === "/admin" ? styles.navItemActive : styles.navItem}>⚙️ ADMINISTRACIÓN</li>
             </Link>
-           )}
+          )}
         </ul>
         <div style={{ borderTop: '1px solid #333', padding: '20px' }}>
-          <button onClick={() => supabase.auth.signOut()} style={{ width: '100%', backgroundColor: 'transparent', color: '#e11d48', border: '1px solid #e11d48', padding: '12px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px', fontSize: '11px', textTransform: 'uppercase' }}>
-            SALIR DE LA CUENTA
-          </button>
+          <button onClick={() => supabase.auth.signOut()} style={{ width: '100%', backgroundColor: 'transparent', color: '#e11d48', border: '1px solid #e11d48', padding: '12px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px', fontSize: '11px', textTransform: 'uppercase' }}>SALIR</button>
         </div>
       </aside>
-
       <main style={styles.main}>
         <div style={styles.topBarStatus}>{status.mensaje}</div>
         <header style={styles.header}>
@@ -112,8 +123,6 @@ const Layout = ({ session }) => {
             💳 {dbCredits.toLocaleString('es-CL')} CREDITS &nbsp;&nbsp; 👤 {displayName}
           </div>
         </header>
-
-        {/* CONTENIDO DINÁMICO DE CADA PÁGINA */}
         <Outlet /> 
       </main>
     </div>

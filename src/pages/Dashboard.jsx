@@ -150,12 +150,12 @@ const DashboardTorresAguayo = ({ session }) => {
         <div>
           <h4 style={{ fontSize: '12px', color: '#e11d48', marginBottom: '15px', textTransform: 'uppercase' }}>🕒 Horarios de Atención</h4>
           <p style={{ fontSize: '13px', color: '#555', margin: '5px 0' }}><strong>Lunes a Viernes:</strong> 09:00 - 13:00 / 15:00 - 19:00</p>
-          <p style={{ fontSize: '13px', color: '#555', margin: '5px 0' }}><strong>Sábados:</strong> 10:00 - 14:00 hrs</p>
+          <p style={{ fontSize: '13px', color: '#555', margin: '5px 0' }}><strong>Sábados:</strong> 09:00 - 13:00 hrs</p>
         </div>
         <div>
           <h4 style={{ fontSize: '12px', color: '#e11d48', marginBottom: '15px', textTransform: 'uppercase' }}>📞 Contacto Técnico</h4>
-          <p style={{ fontSize: '13px', color: '#555', margin: '5px 0' }}><strong>WhatsApp:</strong> +56 9 XXXX XXXX</p>
-          <p style={{ fontSize: '13px', color: '#555', margin: '5px 0' }}><strong>Email:</strong> soporte@torresaguayo.cl</p>
+          <p style={{ fontSize: '13px', color: '#555', margin: '5px 0' }}><strong>WhatsApp:</strong> +56 9 9516 1488 || +56 9 8499 6539</p>
+          <p style={{ fontSize: '13px', color: '#555', margin: '5px 0' }}><strong>Email:</strong> scannerstorresaguayo@gmail.com</p>
         </div>
         <div style={{ textAlign: 'right' }}>
           <h4 style={{ fontSize: '12px', color: '#000', marginBottom: '15px', textTransform: 'uppercase' }}>Torres Aguayo Motorsport</h4>
