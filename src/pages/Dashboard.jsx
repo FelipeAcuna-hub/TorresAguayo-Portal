@@ -136,7 +136,7 @@ const DashboardTorresAguayo = ({ session }) => {
           <div style={{fontSize: '40px', marginBottom: '10px'}}>💰</div>
           <h3 style={{margin: '0', fontSize: '16px', textTransform: 'uppercase'}}>CARGAR CRÉDITOS</h3>
           <p style={{fontSize: '11px', color: '#888', margin: '10px 0'}}>Carga fondos mediante transferencia o Webpay.</p>
-          <Link to="/cargar-fondos"><button style={styles.button}>COMPRAR CRÉDITOS</button></Link>
+          <Link to="/creditos"><button style={styles.button}>COMPRAR CRÉDITOS</button></Link>
         </div>
         <div style={styles.card}>
           <div style={{fontSize: '40px', marginBottom: '10px'}}>🔧</div>

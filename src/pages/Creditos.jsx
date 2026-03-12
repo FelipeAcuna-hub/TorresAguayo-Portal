@@ -1,111 +1,122 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../supabaseClient';
 
 const Creditos = () => {
+  const [customAmount, setCustomAmount] = useState('');
+
   const styles = {
-    // Contenedor full-screen con tipografía forzada
-    container: { 
-      display: 'flex', 
-      height: '100vh', 
-      width: '100vw',
-      backgroundColor: '#f3f4f6', 
-      fontFamily: 'sans-serif', 
-      margin: 0,
-      padding: 0,
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      overflow: 'hidden'
+    mainContent: { flex: 1, padding: '30px', backgroundColor: '#f3f4f6' },
+    btnBack: { color: '#666', textDecoration: 'none', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', fontWeight: 'bold' },
+    titleSection: { marginBottom: '30px' },
+    grid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' },
+    card: { backgroundColor: 'white', padding: '40px 20px', textAlign: 'center', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', border: '1px solid #eee' },
+    packageTitle: { fontSize: '18px', fontWeight: 'bold', color: '#333', marginBottom: '15px' },
+    price: { fontSize: '32px', fontWeight: 'bold', color: '#e11d48', marginBottom: '25px' },
+    btnComprar: { backgroundColor: '#000', color: 'white', border: 'none', padding: '12px 0', width: '100%', fontWeight: 'bold', cursor: 'pointer', textTransform: 'uppercase', fontSize: '12px' },
+
+    // ESTILOS DEL CALCULADOR (NUEVO)
+    calculatorCard: {
+      backgroundColor: 'white',
+      marginTop: '40px',
+      padding: '40px',
+      borderRadius: '4px',
+      boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+      textAlign: 'center',
+      borderTop: '4px solid #e11d48'
     },
-    sidebar: { 
-      width: '260px', 
-      backgroundColor: '#000', 
-      color: 'white', 
-      display: 'flex', 
-      flexDirection: 'column', 
-      shrink: 0,
-      fontFamily: 'sans-serif'
+    inputAmount: {
+      padding: '15px',
+      fontSize: '18px',
+      textAlign: 'center',
+      border: '1px solid #ddd',
+      borderRadius: '4px',
+      width: '250px',
+      marginBottom: '20px',
+      outline: 'none'
     },
-    logo: { padding: '24px', fontSize: '24px', fontWeight: 'bold', borderBottom: '1px solid #333', textDecoration: 'none', color: 'white', display: 'block', fontFamily: 'sans-serif' },
-    navItem: { padding: '15px 24px', cursor: 'pointer', color: '#9ca3af', listStyle: 'none', textDecoration: 'none', fontFamily: 'sans-serif' },
-    navItemActive: { padding: '15px 24px', cursor: 'pointer', color: 'white', backgroundColor: '#e11d48', listStyle: 'none', fontWeight: 'bold', fontFamily: 'sans-serif' },
-    main: { flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', backgroundColor: '#f3f4f6' },
-    header: { backgroundColor: 'white', padding: '15px 30px', borderBottom: '1px solid #ddd', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'sans-serif' },
-    
-    // Diseño de tarjetas de precios
-    cardGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', padding: '30px' },
-    priceCard: { backgroundColor: 'white', padding: '40px 30px', textAlign: 'center', borderRadius: '4px', borderBottom: '4px solid #eee', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', fontFamily: 'sans-serif' },
-    price: { fontSize: '32px', fontWeight: 'bold', color: '#e11d48', margin: '15px 0', fontFamily: 'sans-serif' },
-    buyBtn: { backgroundColor: '#000', color: 'white', border: 'none', padding: '12px 20px', fontWeight: 'bold', cursor: 'pointer', width: '100%', borderRadius: '2px', textTransform: 'uppercase', fontSize: '12px', fontFamily: 'sans-serif' }
+    conversionText: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '20px',
+      fontSize: '40px',
+      fontWeight: 'bold',
+      color: '#333'
+    }
   };
 
   return (
-    <div style={styles.container}>
-      <aside style={styles.sidebar}>
-        <Link to="/" style={styles.logo}>TORRES<span style={{color: '#e11d48'}}>AGUAYO</span></Link>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between' }}>
-          <ul style={{padding: 0, margin: 0, listStyle: 'none'}}>
-            <Link to="/" style={{textDecoration: 'none'}}><li style={window.location.pathname === "/" ? styles.navItemActive : styles.navItem}>DASHBOARD</li></Link>
-            <Link to="/perfil" style={{textDecoration: 'none'}}><li style={window.location.pathname === "/perfil" ? styles.navItemActive : styles.navItem}>PERFIL</li></Link>
-            <Link to="/creditos" style={{textDecoration: 'none'}}><li style={window.location.pathname === "/creditos" ? styles.navItemActive : styles.navItem}>CRÉDITOS</li></Link>
-            <Link to="/tickets" style={{textDecoration: 'none'}}><li style={window.location.pathname === "/tickets" ? styles.navItemActive : styles.navItem}>TICKETS</li></Link>
-            <Link to="/archivos" style={{textDecoration: 'none'}}><li style={window.location.pathname === "/archivos" ? styles.navItemActive : styles.navItem}>ARCHIVOS</li></Link>
-          </ul>
+    <div style={styles.mainContent}>
+      <Link to="/" style={styles.btnBack}><span>←</span> VOLVER AL DASHBOARD</Link>
 
-          {/* Botón Salir conectado a Supabase */}
-          <div style={{ borderTop: '1px solid #333', padding: '20px' }}>
-            <button 
-              onClick={async () => {
-                try { await supabase.auth.signOut(); } 
-                catch (error) { console.error("Error al salir:", error.message); }
-              }}
-              style={{
-                width: '100%',
-                backgroundColor: 'transparent',
-                color: '#e11d48',
-                border: '1px solid #e11d48',
-                padding: '12px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                borderRadius: '4px',
-                fontSize: '12px',
-                textTransform: 'uppercase',
-                fontFamily: 'sans-serif'
-              }}
-            >
-              Salir de la cuenta
-            </button>
+      <div style={styles.titleSection}>
+        <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: '0' }}>CARGAR CRÉDITOS</h1>
+        <p style={{ color: '#666', fontSize: '14px' }}>Selecciona un paquete o ingresa una cantidad personalizada.</p>
+      </div>
+
+      {/* PAQUETES FIJOS */}
+      <div style={styles.grid}>
+        {[100, 300, 500].map(qty => (
+          <div key={qty} style={styles.card}>
+            <div style={styles.packageTitle}>{qty} CRÉDITOS</div>
+            <div style={styles.price}>${(qty * 1000).toLocaleString('es-CL')}</div>
+            <button style={styles.btnComprar}>COMPRAR AHORA</button>
+          </div>
+        ))}
+      </div>
+
+      {/* --- CALCULADOR PERSONALIZADO (LO QUE PEDISTE) --- */}
+      <div style={styles.calculatorCard}>
+        <h3 style={{ fontSize: '14px', color: '#888', marginBottom: '20px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+          Cantidad personalizada
+        </h3>
+
+        <input
+          style={styles.inputAmount}
+          type="number"
+          min="1" // Esto evita las flechitas hacia abajo del navegador
+          placeholder="Ingresa créditos..."
+          value={customAmount}
+          onChange={(e) => {
+            const val = e.target.value;
+            // Lógica: Si el valor es negativo o menor a 0, lo dejamos vacío o en 0
+            if (val < 0) {
+              setCustomAmount(0);
+            } else {
+              setCustomAmount(val);
+            }
+          }}
+          // Esto evita que el usuario escriba el símbolo "-" manualmente
+          onKeyDown={(e) => {
+            if (e.key === '-' || e.key === 'e') {
+              e.preventDefault();
+            }
+          }}
+        />
+
+        <div style={styles.conversionText}>
+          <div>
+            <div style={{ fontSize: '12px', color: '#999', textTransform: 'uppercase' }}>Créditos</div>
+            {customAmount || 0}
+          </div>
+          <div style={{ color: '#e11d48' }}>=</div>
+          <div>
+            <div style={{ fontSize: '12px', color: '#999', textTransform: 'uppercase' }}>Pesos CLP</div>
+            ${(customAmount * 1000).toLocaleString('es-CL')}
           </div>
         </div>
-      </aside>
 
-      <main style={styles.main}>
-        <header style={styles.header}>
-          <div style={{backgroundColor: '#e11d48', color: 'white', padding: '5px 12px', fontSize: '11px', fontWeight: 'bold', fontFamily: 'sans-serif'}}>FUERA DE HORARIO: 45 min a 24 hrs.</div>
-          <div style={{fontSize: '12px', fontWeight: 'bold', color: '#555', fontFamily: 'sans-serif'}}>💳 0 CREDITS &nbsp;&nbsp;&nbsp; 👤 FELIPE ACUÑA</div>
-        </header>
+        <button
+          style={{ ...styles.btnComprar, width: '300px', marginTop: '30px', backgroundColor: '#e11d48', height: '50px', fontSize: '16px' }}
+          disabled={!customAmount || customAmount <= 0}
+        >
+          CONTINUAR CON EL PAGO
+        </button>
+      </div>
 
-        <div style={{padding: '30px 30px 0'}}>
-          <h2 style={{textTransform: 'uppercase', fontFamily: 'sans-serif', margin: 0}}>Cargar Créditos</h2>
-          <p style={{color: '#666', fontSize: '14px', marginTop: '10px', fontFamily: 'sans-serif'}}>Selecciona un paquete de créditos para continuar con tus reprogramaciones.</p>
-        </div>
-
-        <div style={styles.cardGrid}>
-          {[
-            { qty: 100, price: "$100.000" },
-            { qty: 300, price: "$300.000" },
-            { qty: 500, price: "$500.000" }
-          ].map((pkg, i) => (
-            <div key={i} style={styles.priceCard}>
-              <h3 style={{margin: 0, fontSize: '18px', textTransform: 'uppercase', fontFamily: 'sans-serif'}}>{pkg.qty} CRÉDITOS</h3>
-              <div style={styles.price}>{pkg.price}</div>
-              <button style={styles.buyBtn}>COMPRAR AHORA</button>
-            </div>
-          ))}
-        </div>
-      </main>
+      <p style={{ marginTop: '30px', fontSize: '12px', color: '#999', textAlign: 'center' }}>
+        * 1 Crédito = $1.000 CLP (IVA Incluido)
+      </p>
     </div>
   );
 };
