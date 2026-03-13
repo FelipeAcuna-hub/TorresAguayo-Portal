@@ -4,6 +4,9 @@ import { supabase } from '../supabaseClient';
 const Archivos = ({ session }) => {
   const [archivos, setArchivos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [archivoDetalle, setArchivoDetalle] = useState(null);
+  // --- NUEVO ESTADO PARA EL FILTRO ---
+  const [searchTerm, setSearchTerm] = useState('');
 
   const ADMIN_EMAILS = [
     'scannerstorresaguayo@gmail.com',
@@ -21,7 +24,6 @@ const Archivos = ({ session }) => {
         setLoading(true);
         if (!session?.user?.id) return;
     
-        // 1. Iniciamos la query
         let query = supabase
           .from('archivos')
           .select(`
@@ -32,14 +34,8 @@ const Archivos = ({ session }) => {
             )
           `);
         
-          
-        // 2. REVISIÓN CRÍTICA: 
-        // Si NO es admin, filtramos estrictamente por su propio ID
         if (!isAdmin) {
-          console.log("Filtrando para usuario normal:", session.user.id);
           query = query.eq('user_id', session.user.id);
-        } else {
-          console.log("Cargando todo para Administrador");
         }
     
         const { data, error } = await query.order('created_at', { ascending: false });
@@ -56,7 +52,6 @@ const Archivos = ({ session }) => {
     fetchArchivos();
   }, [session, isAdmin]);
 
-  // --- NUEVA FUNCIÓN PARA SUBIR ARCHIVO MODIFICADO (SOLO ADMIN) ---
   const handleUploadModificado = async (archivoId, file, patente, clienteEmail) => {
     try {
       if (!file) return;
@@ -73,7 +68,6 @@ const Archivos = ({ session }) => {
         .from('archivos-vehiculos')
         .getPublicUrl(`procesados/${fileName}`);
 
-      // Actualizamos la columna mod_file_url y el estado a completado
       const { error: dbError } = await supabase
         .from('archivos')
         .update({ 
@@ -84,9 +78,7 @@ const Archivos = ({ session }) => {
 
       if (dbError) throw dbError;
 
-      // Gatillamos el aviso automático por correo que ya tienes
       await handleStatusChange(archivoId, 'completado', clienteEmail, patente);
-
       alert("Archivo MODIFICADO cargado con éxito.");
       
     } catch (error) {
@@ -99,7 +91,6 @@ const Archivos = ({ session }) => {
 
   const handleStatusChange = async (archivoId, nuevoEstado, clienteEmail, patente) => {
     try {
-      // 1. Actualización en la Base de Datos
       const { error } = await supabase
         .from('archivos')
         .update({ estado: nuevoEstado })
@@ -107,111 +98,48 @@ const Archivos = ({ session }) => {
   
       if (error) throw error;
   
-      // 2. Envío de Correo mediante Supabase Edge Function (swift-function)
       if (clienteEmail) {
         const subjectText = nuevoEstado === 'completado' 
           ? `✅ Archivo Listo - Patente ${patente}` 
           : `🔍 Archivo en Revisión - Patente ${patente}`;
   
-        // Invocamos la función de servidor para evitar errores de CORS y proteger la API Key
-        const { data: funcData, error: funcError } = await supabase.functions.invoke('swift-function', {
+        await supabase.functions.invoke('swift-function', {
           body: {
             to: clienteEmail,
             subject: subjectText,
-            html: `
-              <div style="font-family: 'Helvetica', Arial, sans-serif; background-color: #f9f9f9; padding: 40px 0;">
-                <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
-                  <div style="background-color: #000000; padding: 20px; text-align: center;">
-                    <h1 style="color: #e11d48; margin: 0; font-size: 24px; letter-spacing: 2px;">TORRES AGUAYO MMS</h1>
-                  </div>
-                  <div style="padding: 30px; line-height: 1.6; color: #333;">
-                    <h2 style="color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px;">Actualización de Requerimiento</h2>
-                    <p>Hola,</p>
-                    <p>Te informamos que el archivo para el vehículo con patente <strong>${patente}</strong> ha cambiado su estado a:</p>
-                    <div style="background-color: #f3f4f6; padding: 15px; border-left: 4px solid #e11d48; margin: 20px 0; font-weight: bold; font-size: 18px; text-align: center; text-transform: uppercase;">
-                      ${nuevoEstado}
-                    </div>
-                    <p>Si el estado es <strong>COMPLETADO</strong>, ya puedes descargar tu archivo modificado desde el portal oficial.</p>
-                    <div style="text-align: center; margin-top: 30px;">
-                      <a href="https://torresaguayomms.cl/archivos" style="background-color: #e11d48; color: white; padding: 12px 25px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">IR AL PORTAL DE USUARIO</a>
-                    </div>
-                  </div>
-                  <div style="background-color: #f3f4f6; padding: 20px; text-align: center; font-size: 12px; color: #999;">
-                    <p>© 2026 Torres Aguayo MMS - Ingeniería en Reprogramación Automotriz</p>
-                    <p>Este es un correo automático, por favor no respondas a este mensaje.</p>
-                  </div>
-                </div>
-              </div>
-            `
+            html: `<h3>Actualización Torres Aguayo MMS</h3><p>El estado de la patente ${patente} es: ${nuevoEstado.toUpperCase()}</p>`
           },
         });
-
-        if (funcError) {
-          console.error("Error en Edge Function:", funcError);
-        } else {
-          console.log("Correo enviado exitosamente:", funcData);
-        }
       }
   
       setArchivos(prev => prev.map(a => a.id === archivoId ? { ...a, estado: nuevoEstado } : a));
-      alert("Estado actualizado y cliente notificado vía email.");
+      alert("Estado actualizado y cliente notificado.");
     } catch (error) {
       console.error("Error:", error.message);
     }
   };
 
-  // ESTILOS ACTUALIZADOS PARA MÓVIL (Responsivos)
   const styles = {
-    mainContent: { 
-      flex: 1, 
-      display: 'flex', 
-      flexDirection: 'column', 
-      backgroundColor: '#f3f4f6',
-      width: '100%',
-      minHeight: '100vh'
-    },
-    tableCard: { 
-      backgroundColor: 'white', 
-      margin: '10px',      // Reducido de 30px a 10px para móviles
-      padding: '15px',     // Reducido de 30px a 15px
-      borderRadius: '4px', 
-      boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
-      overflow: 'hidden'   // Evita que el contenido se salga
-    },
-    // Contenedor con scroll horizontal para la tabla
-    responsiveContainer: {
-      width: '100%',
-      overflowX: 'auto',   // Esto permite deslizar la tabla en celulares
-      WebkitOverflowScrolling: 'touch'
-    },
-    table: { 
-      width: '100%', 
-      borderCollapse: 'collapse', 
-      marginTop: '20px',
-      minWidth: '600px'    // Asegura que la tabla no se aplaste tanto
-    },
+    mainContent: { flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#f3f4f6', width: '100%', minHeight: '100vh' },
+    tableCard: { backgroundColor: 'white', margin: '10px', padding: '15px', borderRadius: '4px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', overflow: 'hidden' },
+    responsiveContainer: { width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' },
+    table: { width: '100%', borderCollapse: 'collapse', marginTop: '20px', minWidth: '600px' },
     th: { textAlign: 'left', padding: '12px', borderBottom: '2px solid #eee', fontSize: '10px', color: '#666', textTransform: 'uppercase', fontWeight: 'bold' },
     td: { padding: '12px', borderBottom: '1px solid #eee', fontSize: '12px' },
-    statusBadge: {
-      padding: '4px 8px',
-      borderRadius: '4px',
-      fontSize: '10px',
-      fontWeight: 'bold',
-      color: 'white',
-      textTransform: 'uppercase',
-      whiteSpace: 'nowrap'
-    },
-    selectAdmin: {
-      padding: '5px',
-      fontSize: '10px',
-      fontWeight: 'bold',
-      borderRadius: '4px',
-      border: '1px solid #ddd',
-      cursor: 'pointer',
-      textTransform: 'uppercase',
-      outline: 'none',
-      backgroundColor: 'white'
-    }
+    statusBadge: { padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', color: 'white', textTransform: 'uppercase', whiteSpace: 'nowrap' },
+    selectAdmin: { padding: '5px', fontSize: '10px', fontWeight: 'bold', borderRadius: '4px', border: '1px solid #ddd', cursor: 'pointer', textTransform: 'uppercase', outline: 'none', backgroundColor: 'white' },
+    
+    // BARRA DE BÚSQUEDA
+    searchBar: { display: 'flex', alignItems: 'center', backgroundColor: '#f3f4f6', padding: '6px 12px', borderRadius: '4px', border: '1px solid #ddd' },
+    
+    // MODAL
+    modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' },
+    modalContent: { backgroundColor: 'white', width: '100%', maxWidth: '500px', borderRadius: '4px', overflow: 'hidden', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' },
+    modalHeader: { backgroundColor: '#000', color: '#e11d48', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #e11d48' },
+    modalBody: { padding: '25px', maxHeight: '75vh', overflowY: 'auto' },
+    infoTable: { width: '100%', borderCollapse: 'collapse', marginBottom: '20px' },
+    infoLabel: { padding: '8px 0', fontWeight: 'bold', fontSize: '11px', color: '#000', borderBottom: '1px solid #eee', textTransform: 'uppercase', width: '40%' },
+    infoValue: { padding: '8px 0', fontSize: '12px', color: '#444', borderBottom: '1px solid #eee' }
   };
 
   const getBadgeColor = (estado) => {
@@ -222,38 +150,61 @@ const Archivos = ({ session }) => {
     return '#e11d48';
   };
 
+  // --- FILTRADO DINÁMICO ---
+  const filteredArchivos = archivos.filter(a => {
+    if (!searchTerm) return true; // Si no hay nada escrito, muestra todo
+    
+    const matchNumero = a.numero_orden?.toString() === searchTerm; // Exacto
+    const matchPatente = a.patente?.toLowerCase().includes(searchTerm.toLowerCase()); // Parcial
+    
+    return matchNumero || matchPatente;
+  });
+
   return (
     <div style={styles.mainContent}>
       <div style={styles.tableCard}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
           <div style={{ backgroundColor: '#e11d48', color: 'white', padding: '5px 12px', fontSize: '10px', fontWeight: 'bold' }}>
             {isAdmin ? "MODO ADMINISTRADOR" : "PORTAL OFICIAL"}
           </div>
+
+          {/* BARRA DE BÚSQUEDA POR N° O PATENTE */}
+          <div style={styles.searchBar}>
+            <span style={{ fontSize: '12px', marginRight: '8px' }}>🔍</span>
+            <input 
+              type="text" 
+              placeholder="Buscar N° o Patente..." 
+              style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', width: '150px' }}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
         </div>
 
-        <h2 style={{ fontSize: '16px', borderBottom: '1px solid #eee', paddingBottom: '10px', textTransform: 'uppercase', color: '#333' }}>
+        <h2 style={{ fontSize: '16px', borderBottom: '1px solid #eee', paddingBottom: '10px', marginTop: '15px', textTransform: 'uppercase', color: '#333' }}>
           {isAdmin ? "Gestión Global" : "Mis Archivos"}
         </h2>
 
-        {/* CONTENEDOR RESPONSIVO AGREGADO AQUÍ */}
         <div style={styles.responsiveContainer}>
           <table style={styles.table}>
             <thead>
               <tr>
-                <th style={styles.th}>Fecha</th>
+                <th style={styles.th}>N° Orden / Fecha</th>
                 {isAdmin && <th style={styles.th}>Empresa</th>}
                 <th style={styles.th}>Patente</th>
                 <th style={styles.th}>Marca / Modelo</th>
+                {isAdmin && <th style={styles.th}>Ficha</th>}
                 <th style={styles.th}>Estado</th>
                 <th style={styles.th}>Acción</th>
               </tr>
             </thead>
             <tbody>
-              {archivos.length > 0 ? (
-                archivos.map((archivo) => (
+              {filteredArchivos.length > 0 ? (
+                filteredArchivos.map((archivo) => (
                   <tr key={archivo.id}>
                     <td style={styles.td}>
-                      {new Date(archivo.created_at).toLocaleDateString('es-CL')}
+                      <div style={{ fontWeight: 'bold', color: '#e11d48', fontSize: '14px' }}>#{archivo.numero_orden || '---'}</div>
+                      <div style={{ fontSize: '10px', color: '#999' }}>{new Date(archivo.created_at).toLocaleDateString('es-CL')}</div>
                     </td>
                     {isAdmin && (
                       <td style={{ ...styles.td, fontWeight: 'bold', color: '#e11d48' }}>
@@ -262,21 +213,24 @@ const Archivos = ({ session }) => {
                     )}
                     <td style={styles.td}>{archivo.patente}</td>
                     <td style={styles.td}>{archivo.marca_modelo}</td>
+                    
+                    {isAdmin && (
+                      <td style={styles.td}>
+                        <button 
+                          onClick={() => setArchivoDetalle(archivo)}
+                          style={{ backgroundColor: '#000', color: '#fff', border: 'none', padding: '4px 8px', fontSize: '9px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px' }}
+                        >
+                          DETALLES
+                        </button>
+                      </td>
+                    )}
+
                     <td style={styles.td}>
                       {isAdmin ? (
                         <select
-                          style={{
-                            ...styles.selectAdmin,
-                            color: getBadgeColor(archivo.estado),
-                            borderColor: getBadgeColor(archivo.estado)
-                          }}
+                          style={{ ...styles.selectAdmin, color: getBadgeColor(archivo.estado), borderColor: getBadgeColor(archivo.estado) }}
                           value={archivo.estado}
-                          onChange={(e) => handleStatusChange(
-                            archivo.id,
-                            e.target.value,
-                            archivo.profiles?.email,
-                            archivo.patente
-                          )}
+                          onChange={(e) => handleStatusChange(archivo.id, e.target.value, archivo.profiles?.email, archivo.patente)}
                         >
                           <option value="pendiente">Pendiente</option>
                           <option value="en revision">En Revisión</option>
@@ -284,58 +238,31 @@ const Archivos = ({ session }) => {
                           <option value="cancelado">Cancelado</option>
                         </select>
                       ) : (
-                        <span style={{ ...styles.statusBadge, backgroundColor: getBadgeColor(archivo.estado) }}>
-                          {archivo.estado}
-                        </span>
+                        <span style={{ ...styles.statusBadge, backgroundColor: getBadgeColor(archivo.estado) }}>{archivo.estado}</span>
                       )}
                     </td>
                     <td style={styles.td}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                        {/* BOTÓN ORIGINAL (Siempre visible si existe file_url) */}
                         {archivo.file_url && (
                           <button
                             onClick={() => window.open(archivo.file_url, '_blank')}
-                            style={{ 
-                              color: '#666', border: '1px solid #ddd', background: '#fff', 
-                              cursor: 'pointer', fontWeight: 'bold', fontSize: '9px', 
-                              padding: '5px', textTransform: 'uppercase', borderRadius: '4px' 
-                            }}
+                            style={{ color: '#666', border: '1px solid #ddd', background: '#fff', cursor: 'pointer', fontWeight: 'bold', fontSize: '9px', padding: '5px', textTransform: 'uppercase', borderRadius: '4px' }}
                           >
                             📄 ORIGINAL
                           </button>
                         )}
-
-                        {/* BOTÓN MODIFICADO (Visible si existe mod_file_url) */}
                         {archivo.mod_file_url ? (
                           <button
                             onClick={() => window.open(archivo.mod_file_url, '_blank')}
-                            style={{ 
-                              color: 'white', border: 'none', background: '#22c55e', 
-                              cursor: 'pointer', fontWeight: 'bold', fontSize: '9px', 
-                              padding: '5px', textTransform: 'uppercase', borderRadius: '4px' 
-                            }}
+                            style={{ color: 'white', border: 'none', background: '#22c55e', cursor: 'pointer', fontWeight: 'bold', fontSize: '9px', padding: '5px', textTransform: 'uppercase', borderRadius: '4px' }}
                           >
                             🚀 MODIFICADO
                           </button>
                         ) : (
-                          /* Si soy Admin y NO hay archivo modificado aún, muestro el SUBIR */
                           isAdmin && (
-                            <label style={{
-                              backgroundColor: '#000', color: '#e11d48', padding: '5px',
-                              fontSize: '9px', cursor: 'pointer', borderRadius: '4px',
-                              border: '1px solid #e11d48', textAlign: 'center', fontWeight: 'bold'
-                            }}>
+                            <label style={{ backgroundColor: '#000', color: '#e11d48', padding: '5px', fontSize: '9px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #e11d48', textAlign: 'center', fontWeight: 'bold' }}>
                               {loading ? '...' : '📤 SUBIR MOD'}
-                              <input 
-                                type="file" 
-                                style={{ display: 'none' }} 
-                                onChange={(e) => handleUploadModificado(
-                                  archivo.id, 
-                                  e.target.files[0], 
-                                  archivo.patente, 
-                                  archivo.profiles?.email
-                                )}
-                              />
+                              <input type="file" style={{ display: 'none' }} onChange={(e) => handleUploadModificado(archivo.id, e.target.files[0], archivo.patente, archivo.profiles?.email)} />
                             </label>
                           )
                         )}
@@ -345,19 +272,62 @@ const Archivos = ({ session }) => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={isAdmin ? "6" : "5"} style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                    {loading ? 'Cargando archivos...' : 'No hay registros disponibles.'}
+                  <td colSpan={isAdmin ? "7" : "6"} style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                    {loading ? 'Cargando archivos...' : 'No se encontraron registros.'}
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-
-        <p style={{ marginTop: '20px', fontSize: '10px', color: '#999', fontStyle: 'italic' }}>
-          * {isAdmin ? "Desliza lateralmente si no ves todas las columnas." : "Procesados disponibles por 30 días."}
-        </p>
       </div>
+
+      {/* MODAL DE DETALLES TÉCNICOS */}
+      {archivoDetalle && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalHeader}>
+              <h3 style={{ margin: 0, fontSize: '13px', letterSpacing: '1px' }}>
+                ORDEN DE TRABAJO N° {archivoDetalle.numero_orden} - {archivoDetalle.patente}
+              </h3>
+              <button onClick={() => setArchivoDetalle(null)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '16px' }}>✕</button>
+            </div>
+            <div style={styles.modalBody}>
+              <div style={{ marginBottom: '15px', fontWeight: 'bold', fontSize: '11px', color: '#666', borderBottom: '1px solid #eee', paddingBottom: '5px' }}>VEHICLE INFORMATION</div>
+              <table style={styles.infoTable}>
+                <tbody>
+                  {[
+                    ['N° Orden Correlativo', archivoDetalle.numero_orden],
+                    ['License Plate', archivoDetalle.patente],
+                    ['Brand / Model', archivoDetalle.marca_modelo],
+                    ['Year', archivoDetalle.detalles_tecnicos?.anio],
+                    ['Motor', archivoDetalle.detalles_tecnicos?.motor],
+                    ['HP', archivoDetalle.detalles_tecnicos?.hp],
+                    ['Fuel', archivoDetalle.detalles_tecnicos?.combustible],
+                    ['ECU', archivoDetalle.detalles_tecnicos?.ecu],
+                    ['Services', archivoDetalle.detalles_tecnicos?.servicios_solicitados],
+                    ['Credits', archivoDetalle.detalles_tecnicos?.costo_creditos]
+                  ].map(([label, value]) => (
+                    <tr key={label}>
+                      <td style={styles.infoLabel}>{label}</td>
+                      <td style={styles.infoValue}>{value || '---'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div style={{ marginTop: '20px', backgroundColor: '#f9f9f9', padding: '15px', borderRadius: '4px', borderLeft: '4px solid #e11d48' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#e11d48', marginBottom: '5px' }}>COMMENTS:</div>
+                <p style={{ margin: 0, fontSize: '12px', color: '#333', fontStyle: 'italic', lineHeight: '1.4' }}>
+                  {archivoDetalle.detalles_tecnicos?.comentarios || 'No comments provided.'}
+                </p>
+              </div>
+            </div>
+            <div style={{ padding: '15px', textAlign: 'right', borderTop: '1px solid #eee' }}>
+              <button onClick={() => setArchivoDetalle(null)} style={{ backgroundColor: '#000', color: 'white', border: 'none', padding: '8px 25px', borderRadius: '2px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>CLOSE</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
