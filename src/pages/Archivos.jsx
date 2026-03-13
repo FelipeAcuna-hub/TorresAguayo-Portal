@@ -8,7 +8,7 @@ const Archivos = ({ session }) => {
   const ADMIN_EMAILS = [
     'scannerstorresaguayo@gmail.com',
     'felipe.acuna2@mail.udp.cl',
-    'stockcarscl@gmail.com' // Agrega los que necesites
+    'stockcarscl@gmail.com'
   ];
 
   const isAdmin =
@@ -20,8 +20,8 @@ const Archivos = ({ session }) => {
       try {
         setLoading(true);
         if (!session?.user?.id) return;
-
-        // Traemos archivos y unimos con profiles para obtener empresa y email
+    
+        // 1. Iniciamos la query
         let query = supabase
           .from('archivos')
           .select(`
@@ -31,16 +31,20 @@ const Archivos = ({ session }) => {
               email
             )
           `);
-
+        
+          
+        // 2. REVISIÓN CRÍTICA: 
+        // Si NO es admin, filtramos estrictamente por su propio ID
         if (!isAdmin) {
+          console.log("Filtrando para usuario normal:", session.user.id);
           query = query.eq('user_id', session.user.id);
+        } else {
+          console.log("Cargando todo para Administrador");
         }
-
+    
         const { data, error } = await query.order('created_at', { ascending: false });
-
+        
         if (error) throw error;
-
-        console.log("Datos recibidos:", data);
         setArchivos(data || []);
       } catch (error) {
         console.error("Error al cargar archivos:", error.message);
@@ -52,10 +56,9 @@ const Archivos = ({ session }) => {
     fetchArchivos();
   }, [session, isAdmin]);
 
-  // FUNCIÓN ACTUALIZADA: Cambia estado y envía correo por Resend
   const handleStatusChange = async (archivoId, nuevoEstado, clienteEmail, patente) => {
     try {
-      // 1. Actualización en Base de Datos
+      // 1. Actualización en la Base de Datos
       const { error } = await supabase
         .from('archivos')
         .update({ estado: nuevoEstado })
@@ -63,21 +66,16 @@ const Archivos = ({ session }) => {
   
       if (error) throw error;
   
-      // 2. Envío de Correo si el estado es 'completado' o 'en revision'
-      if (import.meta.env.VITE_RESEND_API_KEY && clienteEmail) {
+      // 2. Envío de Correo mediante Supabase Edge Function (swift-function)
+      if (clienteEmail) {
         const subjectText = nuevoEstado === 'completado' 
           ? `✅ Archivo Listo - Patente ${patente}` 
           : `🔍 Archivo en Revisión - Patente ${patente}`;
   
-        await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_RESEND_API_KEY}`,
-          },
-          body: JSON.stringify({
-            from: 'Torres Aguayo MMS <noreply@torresaguayomms.cl>',
-            to: [clienteEmail],
+        // Invocamos la función de servidor para evitar errores de CORS y proteger la API Key
+        const { data: funcData, error: funcError } = await supabase.functions.invoke('swift-function', {
+          body: {
+            to: clienteEmail,
             subject: subjectText,
             html: `
               <div style="font-family: 'Helvetica', Arial, sans-serif; background-color: #f9f9f9; padding: 40px 0;">
@@ -104,8 +102,14 @@ const Archivos = ({ session }) => {
                 </div>
               </div>
             `
-          }),
+          },
         });
+
+        if (funcError) {
+          console.error("Error en Edge Function:", funcError);
+        } else {
+          console.log("Correo enviado exitosamente:", funcData);
+        }
       }
   
       setArchivos(prev => prev.map(a => a.id === archivoId ? { ...a, estado: nuevoEstado } : a));
@@ -115,29 +119,57 @@ const Archivos = ({ session }) => {
     }
   };
 
+  // ESTILOS ACTUALIZADOS PARA MÓVIL (Responsivos)
   const styles = {
-    mainContent: { flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#f3f4f6' },
-    tableCard: { backgroundColor: 'white', margin: '30px', padding: '30px', borderRadius: '4px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' },
-    table: { width: '100%', borderCollapse: 'collapse', marginTop: '20px' },
-    th: { textAlign: 'left', padding: '12px', borderBottom: '2px solid #eee', fontSize: '11px', color: '#666', textTransform: 'uppercase', fontWeight: 'bold' },
-    td: { padding: '12px', borderBottom: '1px solid #eee', fontSize: '13px' },
+    mainContent: { 
+      flex: 1, 
+      display: 'flex', 
+      flexDirection: 'column', 
+      backgroundColor: '#f3f4f6',
+      width: '100%',
+      minHeight: '100vh'
+    },
+    tableCard: { 
+      backgroundColor: 'white', 
+      margin: '10px',      // Reducido de 30px a 10px para móviles
+      padding: '15px',     // Reducido de 30px a 15px
+      borderRadius: '4px', 
+      boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+      overflow: 'hidden'   // Evita que el contenido se salga
+    },
+    // Contenedor con scroll horizontal para la tabla
+    responsiveContainer: {
+      width: '100%',
+      overflowX: 'auto',   // Esto permite deslizar la tabla en celulares
+      WebkitOverflowScrolling: 'touch'
+    },
+    table: { 
+      width: '100%', 
+      borderCollapse: 'collapse', 
+      marginTop: '20px',
+      minWidth: '600px'    // Asegura que la tabla no se aplaste tanto
+    },
+    th: { textAlign: 'left', padding: '12px', borderBottom: '2px solid #eee', fontSize: '10px', color: '#666', textTransform: 'uppercase', fontWeight: 'bold' },
+    td: { padding: '12px', borderBottom: '1px solid #eee', fontSize: '12px' },
     statusBadge: {
       padding: '4px 8px',
       borderRadius: '4px',
       fontSize: '10px',
       fontWeight: 'bold',
       color: 'white',
-      textTransform: 'uppercase'
+      textTransform: 'uppercase',
+      whiteSpace: 'nowrap'
     },
     selectAdmin: {
       padding: '5px',
-      fontSize: '11px',
+      fontSize: '10px',
       fontWeight: 'bold',
       borderRadius: '4px',
       border: '1px solid #ddd',
       cursor: 'pointer',
       textTransform: 'uppercase',
-      outline: 'none'
+      outline: 'none',
+      backgroundColor: 'white'
     }
   };
 
@@ -153,91 +185,94 @@ const Archivos = ({ session }) => {
     <div style={styles.mainContent}>
       <div style={styles.tableCard}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-          <div style={{ backgroundColor: '#e11d48', color: 'white', padding: '5px 12px', fontSize: '11px', fontWeight: 'bold' }}>
+          <div style={{ backgroundColor: '#e11d48', color: 'white', padding: '5px 12px', fontSize: '10px', fontWeight: 'bold' }}>
             {isAdmin ? "MODO ADMINISTRADOR" : "PORTAL OFICIAL"}
           </div>
         </div>
 
-        <h2 style={{ fontSize: '18px', borderBottom: '1px solid #eee', paddingBottom: '10px', textTransform: 'uppercase', color: '#333' }}>
-          {isAdmin ? "Gestión Global de Archivos" : "Historial de Archivos"}
+        <h2 style={{ fontSize: '16px', borderBottom: '1px solid #eee', paddingBottom: '10px', textTransform: 'uppercase', color: '#333' }}>
+          {isAdmin ? "Gestión Global" : "Mis Archivos"}
         </h2>
 
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={styles.th}>Fecha</th>
-              {isAdmin && <th style={styles.th}>Empresa</th>}
-              <th style={styles.th}>Patente</th>
-              <th style={styles.th}>Marca / Modelo</th>
-              <th style={styles.th}>Estado</th>
-              <th style={styles.th}>Acción</th>
-            </tr>
-          </thead>
-          <tbody>
-            {archivos.length > 0 ? (
-              archivos.map((archivo) => (
-                <tr key={archivo.id}>
-                  <td style={styles.td}>
-                    {new Date(archivo.created_at).toLocaleDateString('es-CL')}
-                  </td>
-                  {isAdmin && (
-                    <td style={{ ...styles.td, fontWeight: 'bold', color: '#e11d48' }}>
-                      {archivo.profiles?.company || 'PARTICULAR'}
+        {/* CONTENEDOR RESPONSIVO AGREGADO AQUÍ */}
+        <div style={styles.responsiveContainer}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.th}>Fecha</th>
+                {isAdmin && <th style={styles.th}>Empresa</th>}
+                <th style={styles.th}>Patente</th>
+                <th style={styles.th}>Marca / Modelo</th>
+                <th style={styles.th}>Estado</th>
+                <th style={styles.th}>Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              {archivos.length > 0 ? (
+                archivos.map((archivo) => (
+                  <tr key={archivo.id}>
+                    <td style={styles.td}>
+                      {new Date(archivo.created_at).toLocaleDateString('es-CL')}
                     </td>
-                  )}
-                  <td style={styles.td}>{archivo.patente}</td>
-                  <td style={styles.td}>{archivo.marca_modelo}</td>
-                  <td style={styles.td}>
-                    {isAdmin ? (
-                      <select
-                        style={{
-                          ...styles.selectAdmin,
-                          color: getBadgeColor(archivo.estado),
-                          borderColor: getBadgeColor(archivo.estado)
-                        }}
-                        value={archivo.estado}
-                        onChange={(e) => handleStatusChange(
-                          archivo.id,
-                          e.target.value,
-                          archivo.profiles?.email,
-                          archivo.patente
-                        )}
-                      >
-                        <option value="pendiente">Pendiente</option>
-                        <option value="en revision">En Revisión</option>
-                        <option value="completado">Completado</option>
-                        <option value="cancelado">Cancelado</option>
-                      </select>
-                    ) : (
-                      <span style={{ ...styles.statusBadge, backgroundColor: getBadgeColor(archivo.estado) }}>
-                        {archivo.estado}
-                      </span>
+                    {isAdmin && (
+                      <td style={{ ...styles.td, fontWeight: 'bold', color: '#e11d48' }}>
+                        {archivo.profiles?.company || 'PARTICULAR'}
+                      </td>
                     )}
-                  </td>
-                  <td style={styles.td}>
-                    {archivo.file_url && (
-                      <button
-                        onClick={() => window.open(archivo.file_url, '_blank')}
-                        style={{ color: '#e11d48', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px', textTransform: 'uppercase' }}
-                      >
-                        {isAdmin ? "Ver Archivo" : "Descargar"}
-                      </button>
-                    )}
+                    <td style={styles.td}>{archivo.patente}</td>
+                    <td style={styles.td}>{archivo.marca_modelo}</td>
+                    <td style={styles.td}>
+                      {isAdmin ? (
+                        <select
+                          style={{
+                            ...styles.selectAdmin,
+                            color: getBadgeColor(archivo.estado),
+                            borderColor: getBadgeColor(archivo.estado)
+                          }}
+                          value={archivo.estado}
+                          onChange={(e) => handleStatusChange(
+                            archivo.id,
+                            e.target.value,
+                            archivo.profiles?.email,
+                            archivo.patente
+                          )}
+                        >
+                          <option value="pendiente">Pendiente</option>
+                          <option value="en revision">En Revisión</option>
+                          <option value="completado">Completado</option>
+                          <option value="cancelado">Cancelado</option>
+                        </select>
+                      ) : (
+                        <span style={{ ...styles.statusBadge, backgroundColor: getBadgeColor(archivo.estado) }}>
+                          {archivo.estado}
+                        </span>
+                      )}
+                    </td>
+                    <td style={styles.td}>
+                      {archivo.file_url && (
+                        <button
+                          onClick={() => window.open(archivo.file_url, '_blank')}
+                          style={{ color: '#e11d48', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px', textTransform: 'uppercase' }}
+                        >
+                          {isAdmin ? "Ver" : "Descargar"}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={isAdmin ? "6" : "5"} style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                    {loading ? 'Cargando archivos...' : 'No hay registros disponibles.'}
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={isAdmin ? "6" : "5"} style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                  {loading ? 'Cargando archivos...' : 'No hay registros disponibles.'}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
+        </div>
 
-        <p style={{ marginTop: '20px', fontSize: '11px', color: '#999', fontStyle: 'italic' }}>
-          * {isAdmin ? "Como administrador puedes gestionar el flujo de trabajo." : "Los archivos procesados estarán disponibles para descarga por 30 días."}
+        <p style={{ marginTop: '20px', fontSize: '10px', color: '#999', fontStyle: 'italic' }}>
+          * {isAdmin ? "Desliza lateralmente si no ves todas las columnas." : "Procesados disponibles por 30 días."}
         </p>
       </div>
     </div>

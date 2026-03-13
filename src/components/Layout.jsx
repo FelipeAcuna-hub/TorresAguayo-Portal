@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 
-// --- FUNCIÓN DE CÁLCULO DE HORARIO CHILENO ---
+// --- FUNCIÓN DE CÁLCULO DE HORARIO CHILENO (INTACTA) ---
 const checkAutoOnline = () => {
   const chileTime = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/Santiago",
@@ -22,10 +22,15 @@ const Layout = ({ session }) => {
   const [dbCredits, setDbCredits] = useState(0);
   const [displayName, setDisplayName] = useState("USUARIO");
   const [status, setStatus] = useState({ is_online: true, mensaje: 'Cargando estado...' });
+  
+  // --- NUEVO: ESTADO PARA EL MENÚ MÓVIL ---
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  
   const location = useLocation();
-
-  // Lógica de Administrador basada en los metadatos de la sesión
   const isAdmin = session?.user?.app_metadata?.role === 'admin';
+  
+  // Detección de móvil para lógica de estilos
+  const isMobile = window.innerWidth < 768;
 
   useEffect(() => {
     if (!session?.user?.id) return;
@@ -81,33 +86,90 @@ const Layout = ({ session }) => {
     };
   }, [session]);
 
+  // --- ESTILOS ADAPTADOS PARA MÓVIL ---
   const styles = {
     container: { display: 'flex', height: '100vh', width: '100vw', backgroundColor: '#f3f4f6', fontFamily: 'sans-serif', margin: 0, padding: 0, position: 'fixed', top: 0, left: 0, overflow: 'hidden' },
-    sidebar: { width: '260px', backgroundColor: '#000', color: 'white', display: 'flex', flexDirection: 'column', shrink: 0 },
+    sidebar: { 
+      width: '260px', 
+      backgroundColor: '#000', 
+      color: 'white', 
+      display: 'flex', 
+      flexDirection: 'column', 
+      shrink: 0,
+      // Lógica responsiva para el Sidebar
+      position: isMobile ? 'fixed' : 'relative',
+      zIndex: 1000,
+      height: '100vh',
+      transition: 'transform 0.3s ease-in-out',
+      transform: isMobile && !isMenuOpen ? 'translateX(-100%)' : 'translateX(0)'
+    },
     logo: { padding: '24px', fontSize: '24px', fontWeight: 'bold', borderBottom: '1px solid #333', textDecoration: 'none', color: 'white', display: 'block' },
     navItem: { padding: '15px 24px', cursor: 'pointer', color: '#9ca3af', listStyle: 'none', textDecoration: 'none', display: 'flex', alignItems: 'center' },
     navItemActive: { padding: '15px 24px', color: 'white', backgroundColor: '#e11d48', listStyle: 'none', fontWeight: 'bold', display: 'flex', alignItems: 'center' },
-    main: { flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' },
-    header: { backgroundColor: 'white', padding: '15px 30px', borderBottom: '1px solid #ddd', display: 'flex', justifyContent: 'space-between', alignItems: 'center', shrink: 0 },
-    topBarStatus: { backgroundColor: status.is_online ? '#228b22' : '#e11d48', color: 'white', padding: '12px 20px', fontWeight: 'bold', fontSize: '13px', textAlign: 'center', transition: '0.5s' }
+    main: { flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%' },
+    header: { 
+      backgroundColor: 'white', 
+      padding: isMobile ? '10px 15px' : '15px 30px', 
+      borderBottom: '1px solid #ddd', 
+      display: 'flex', 
+      justifyContent: 'space-between', 
+      alignItems: 'center', 
+      shrink: 0,
+      minHeight: '60px'
+    },
+    topBarStatus: { backgroundColor: status.is_online ? '#228b22' : '#e11d48', color: 'white', padding: isMobile ? '8px' : '12px 20px', fontWeight: 'bold', fontSize: isMobile ? '11px' : '13px', textAlign: 'center', transition: '0.5s' },
+    // Botón de hamburguesa
+    menuButton: {
+      display: isMobile ? 'block' : 'none',
+      backgroundColor: 'transparent',
+      color: '#e11d48',
+      border: 'none',
+      fontSize: '24px',
+      cursor: 'pointer',
+      padding: '0',
+      marginRight: '10px'
+    }
   };
 
   return (
     <div style={styles.container}>
+      {/* SIDEBAR */}
       <aside style={styles.sidebar}>
-        <Link to="/" style={styles.logo}>TORRES<span style={{color: '#e11d48'}}>AGUAYO</span></Link>
+        <Link to="/" style={styles.logo} onClick={() => setIsMenuOpen(false)}>
+          TORRES<span style={{color: '#e11d48'}}>AGUAYO</span>
+        </Link>
         <ul style={{ padding: 0, margin: 0, listStyle: 'none', flex: 1 }}>
-          <Link to="/" style={{ textDecoration: 'none' }}><li className="nav-item" style={location.pathname === "/" ? styles.navItemActive : styles.navItem}><span style={{ marginRight: '12px' }}>💠</span> DASHBOARD</li></Link>
-          <Link to="/perfil" style={{ textDecoration: 'none' }}><li className="nav-item" style={location.pathname === "/perfil" ? styles.navItemActive : styles.navItem}><span style={{ marginRight: '12px' }}>👤</span> PERFIL</li></Link>
-          <Link to="/historial" style={{ textDecoration: 'none' }}><li className="nav-item" style={location.pathname === "/historial" ? styles.navItemActive : styles.navItem}><span style={{ marginRight: '12px' }}>💳</span> CRÉDITOS</li></Link>
-          <Link to="/tickets" style={{ textDecoration: 'none' }}><li className="nav-item" style={location.pathname === "/tickets" ? styles.navItemActive : styles.navItem}><span style={{ marginRight: '12px' }}>💬</span> TICKETS</li></Link>
-          <Link to="/archivos" style={{ textDecoration: 'none' }}><li className="nav-item" style={location.pathname === "/archivos" ? styles.navItemActive : styles.navItem}><span style={{ marginRight: '12px' }}>📄</span> ARCHIVOS</li></Link>
-          <Link to="/simulador" style={{ textDecoration: 'none', marginTop: '20px', display: 'block' }}><li className="nav-item" style={{ ...styles.navItem, fontSize: '13px', color: '#666' }}>SIMULA EL PRECIO DE UN ARCHIVO</li></Link>
+          <Link to="/" style={{ textDecoration: 'none' }} onClick={() => setIsMenuOpen(false)}>
+            <li style={location.pathname === "/" ? styles.navItemActive : styles.navItem}>
+              <span style={{ marginRight: '12px' }}>💠</span> DASHBOARD
+            </li>
+          </Link>
+          <Link to="/perfil" style={{ textDecoration: 'none' }} onClick={() => setIsMenuOpen(false)}>
+            <li style={location.pathname === "/perfil" ? styles.navItemActive : styles.navItem}>
+              <span style={{ marginRight: '12px' }}>👤</span> PERFIL
+            </li>
+          </Link>
+          <Link to="/historial" style={{ textDecoration: 'none' }} onClick={() => setIsMenuOpen(false)}>
+            <li style={location.pathname === "/historial" ? styles.navItemActive : styles.navItem}>
+              <span style={{ marginRight: '12px' }}>💳</span> CRÉDITOS</li>
+          </Link>
+          <Link to="/tickets" style={{ textDecoration: 'none' }} onClick={() => setIsMenuOpen(false)}>
+            <li style={location.pathname === "/tickets" ? styles.navItemActive : styles.navItem}>
+              <span style={{ marginRight: '12px' }}>💬</span> TICKETS
+            </li>
+          </Link>
+          <Link to="/archivos" style={{ textDecoration: 'none' }} onClick={() => setIsMenuOpen(false)}>
+            <li style={location.pathname === "/archivos" ? styles.navItemActive : styles.navItem}>
+              <span style={{ marginRight: '12px' }}>📄</span> ARCHIVOS
+            </li>
+          </Link>
+          <Link to="/simulador" style={{ textDecoration: 'none', marginTop: '20px', display: 'block' }} onClick={() => setIsMenuOpen(false)}>
+            <li style={{ ...styles.navItem, fontSize: '13px', color: '#666' }}>SIMULA EL PRECIO DE UN ARCHIVO</li>
+          </Link>
           
-          {/* AQUÍ VOLVÍ A PONER EL BOTÓN DE ADMINISTRACIÓN */}
           {isAdmin && (
-            <Link to="/admin" style={{ textDecoration: 'none', marginTop: '10px', display: 'block' }}>
-              <li className="nav-item" style={location.pathname === "/admin" ? styles.navItemActive : styles.navItem}>⚙️ ADMINISTRACIÓN</li>
+            <Link to="/admin" style={{ textDecoration: 'none', marginTop: '10px', display: 'block' }} onClick={() => setIsMenuOpen(false)}>
+              <li style={location.pathname === "/admin" ? styles.navItemActive : styles.navItem}>⚙️ ADMINISTRACIÓN</li>
             </Link>
           )}
         </ul>
@@ -115,16 +177,34 @@ const Layout = ({ session }) => {
           <button onClick={() => supabase.auth.signOut()} style={{ width: '100%', backgroundColor: 'transparent', color: '#e11d48', border: '1px solid #e11d48', padding: '12px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px', fontSize: '11px', textTransform: 'uppercase' }}>SALIR</button>
         </div>
       </aside>
+
+      {/* MAIN CONTENT */}
       <main style={styles.main}>
         <div style={styles.topBarStatus}>{status.mensaje}</div>
         <header style={styles.header}>
-          <div style={{fontSize: '14px', fontWeight: 'bold', color: '#e11d48'}}>MI PORTAL DE USUARIO</div>
-          <div style={{fontSize: '12px', fontWeight: 'bold', color: '#555'}}>
-            💳 {dbCredits.toLocaleString('es-CL')} CREDITS &nbsp;&nbsp; 👤 {displayName}
+          <div style={{display: 'flex', alignItems: 'center'}}>
+            {/* BOTÓN HAMBURGUESA INTEGRADO */}
+            <button onClick={() => setIsMenuOpen(!isMenuOpen)} style={styles.menuButton}>
+              {isMenuOpen ? '✕' : '☰'}
+            </button>
+            <div style={{fontSize: isMobile ? '12px' : '14px', fontWeight: 'bold', color: '#e11d48'}}>
+              {isMobile ? 'MMS PORTAL' : 'MI PORTAL DE USUARIO'}
+            </div>
+          </div>
+          <div style={{fontSize: isMobile ? '10px' : '12px', fontWeight: 'bold', color: '#555', textAlign: 'right'}}>
+            💳 {dbCredits.toLocaleString('es-CL')} <span style={{display: isMobile ? 'none' : 'inline'}}>CREDITS</span> &nbsp;&nbsp; 👤 {displayName.split(' ')[0]}
           </div>
         </header>
         <Outlet /> 
       </main>
+
+      {/* CAPA PARA CERRAR MENÚ AL TOCAR FUERA */}
+      {isMobile && isMenuOpen && (
+        <div 
+          onClick={() => setIsMenuOpen(false)}
+          style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 999 }}
+        />
+      )}
     </div>
   );
 };
