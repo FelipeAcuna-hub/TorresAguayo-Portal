@@ -23,13 +23,11 @@ const checkAutoOnline = () => {
 };
 
 const DashboardTorresAguayo = ({ session }) => {
-  // ESTADOS (TODOS LOS QUE TENÍAS)
   const [status, setStatus] = useState({ is_online: true, mensaje: 'Cargando estado...' });
   const [dbCredits, setDbCredits] = useState(0); 
   const [displayName, setDisplayName] = useState("USUARIO");
 
   useEffect(() => {
-    // A. Función para obtener datos reales del perfil
     const fetchProfileData = async () => {
       if (!session?.user?.id) return;
       
@@ -66,27 +64,16 @@ const DashboardTorresAguayo = ({ session }) => {
       }
     };
 
-    // Suscripción Real-time (MANTENIDA)
     const channel = supabase.channel('dashboard_realtime_sync')
-      .on('postgres_changes', { 
-        event: 'UPDATE', 
-        schema: 'public', 
-        table: 'configuracion_global' 
-      }, payload => {
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'configuracion_global' }, payload => {
         updateBanner(payload.new);
       })
-      .on('postgres_changes', { 
-        event: 'UPDATE', 
-        schema: 'public', 
-        table: 'profiles', 
-        filter: `id=eq.${session?.user?.id}` 
-      }, payload => {
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${session?.user?.id}` }, payload => {
         setDbCredits(payload.new.credits);
         setDisplayName(`${payload.new.full_name} ${payload.new.apellido || ''}`.trim().toUpperCase());
       })
       .subscribe();
 
-    // Carga inicial y timer
     fetchProfileData();
     supabase.from('configuracion_global').select('*').eq('id', 'atencion_cliente').single().then(({ data }) => {
       if (data) updateBanner(data);
@@ -105,9 +92,23 @@ const DashboardTorresAguayo = ({ session }) => {
   }, [session]);
 
   const styles = {
-    // Solo quitamos la estructura del sidebar, pero el contenido queda igual
     main: { flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', backgroundColor: '#f3f4f6' },
-    banner: { backgroundColor: 'black', margin: '30px', padding: '50px', borderRadius: '4px', color: 'white', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' },
+    // Banner actualizado para ser un contenedor Flex
+    banner: { 
+      backgroundColor: 'black', 
+      margin: '30px', 
+      padding: '40px 50px', 
+      borderRadius: '4px', 
+      color: 'white', 
+      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '40px',
+      flexWrap: 'wrap',
+      position: 'relative',
+      overflow: 'hidden',
+      borderLeft: '5px solid #e11d48'
+    },
     grid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', padding: '0 30px', marginBottom: '30px' },
     card: { backgroundColor: 'white', padding: '30px', textAlign: 'center', borderRadius: '4px', borderBottom: '4px solid #eee', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' },
     button: { backgroundColor: '#e11d48', color: 'white', border: 'none', padding: '12px 24px', fontWeight: 'bold', cursor: 'pointer', marginTop: '15px', borderRadius: '2px', textTransform: 'uppercase', fontSize: '12px' }
@@ -115,16 +116,46 @@ const DashboardTorresAguayo = ({ session }) => {
 
   return (
     <div style={styles.main}>
-      {/* ELIMINADO: <aside> y <header> 
-        RAZÓN: Ya están en Layout.jsx 
-      */}
+      {/* ANIMACIONES CSS */}
+      <style>{`
+        @keyframes fadeInLogo {
+          from { opacity: 0; transform: translateX(-20px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+      `}</style>
 
       <section style={styles.banner}>
-        <h1 style={{fontSize: '40px', margin: 0, textTransform: 'uppercase', letterSpacing: '-1px'}}>Plataforma Reseller</h1>
-        <h2 style={{fontSize: '28px', color: '#e11d48', margin: '5px 0 0 0', fontStyle: 'italic'}}>Dealer Online</h2>
-        <p style={{color: '#9ca3af', fontSize: '12px', marginTop: '15px', letterSpacing: '2px'}}>TORRES AGUAYO MOTORSPORT — CHILE</p>
+        {/* --- 1. LOGO DE SCANNER AUTOMOTRIZ --- */}
+        <div style={{ animation: 'fadeInLogo 1s ease-out' }}>
+          <img 
+            src="/MAGIC TORRESAGUAYO.svg" 
+            alt="Torres Aguayo Logo" 
+            style={{ 
+              height: '100px', 
+              width: 'auto', 
+              filter: 'drop-shadow(0px 0px 12px rgba(225, 29, 72, 0.5))',
+              transition: 'transform 0.3s ease'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          />
+        </div>
+
+        {/* --- 2. CONTENEDOR DE TEXTO --- */}
+        <div style={{ flex: 1 }}>
+          <h1 style={{fontSize: '36px', margin: 0, textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '900'}}>
+            Plataforma <span style={{color: '#e11d48'}}>Reseller</span>
+          </h1>
+          <h2 style={{fontSize: '24px', color: '#e11d48', margin: '2px 0 0 0', fontStyle: 'italic', fontWeight: 'bold'}}>
+            Dealer Online
+          </h2>
+          <p style={{color: '#9ca3af', fontSize: '11px', marginTop: '15px', letterSpacing: '2px', fontWeight: 'bold'}}>
+            TORRES AGUAYO MOTORSPORT — CHILE
+          </p>
+        </div>
       </section>
 
+      {/* RESTO DE LAS CARDS (INTACTAS) */}
       <div style={styles.grid}>
         <div style={styles.card}>
           <div style={{fontSize: '40px', marginBottom: '10px'}}>📄</div>
