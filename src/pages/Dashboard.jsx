@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import logoTorres from '../magic_torresaguayo.svg';
 
 // --- PARTE 1: FUNCIÓN DE CÁLCULO DE HORARIO CHILENO (INTACTA) ---
 const checkAutoOnline = () => {
@@ -128,7 +129,7 @@ const DashboardTorresAguayo = ({ session }) => {
         {/* --- 1. LOGO DE SCANNER AUTOMOTRIZ --- */}
         <div style={{ animation: 'fadeInLogo 1s ease-out' }}>
           <img 
-            src="/magic_torresaguayo.svg" 
+            src={logoTorres}
             alt="Torres Aguayo Logo" 
             style={{ 
               height: '100px', 
