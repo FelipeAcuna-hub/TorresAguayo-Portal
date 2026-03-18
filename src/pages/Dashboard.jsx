@@ -128,7 +128,7 @@ const DashboardTorresAguayo = ({ session }) => {
         {/* --- 1. LOGO DE SCANNER AUTOMOTRIZ --- */}
         <div style={{ animation: 'fadeInLogo 1s ease-out' }}>
           <img 
-            src="/MAGIC TORRESAGUAYO.svg" 
+            src="/MAGIC_TORRESAGUAYO.svg" 
             alt="Torres Aguayo Logo" 
             style={{ 
               height: '100px', 
