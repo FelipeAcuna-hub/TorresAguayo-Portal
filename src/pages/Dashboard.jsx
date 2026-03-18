@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import logoTorres from '../magic_torresaguayo.svg';
+import logoStageX from '../magicstagex.svg';
+import logoFlex from '../magicflex.svg';
+import logoMagic from '../magicmotors.svg';
 
 // --- PARTE 1: FUNCIÓN DE CÁLCULO DE HORARIO CHILENO (INTACTA) ---
 const checkAutoOnline = () => {
@@ -25,19 +28,19 @@ const checkAutoOnline = () => {
 
 const DashboardTorresAguayo = ({ session }) => {
   const [status, setStatus] = useState({ is_online: true, mensaje: 'Cargando estado...' });
-  const [dbCredits, setDbCredits] = useState(0); 
+  const [dbCredits, setDbCredits] = useState(0);
   const [displayName, setDisplayName] = useState("USUARIO");
 
   useEffect(() => {
     const fetchProfileData = async () => {
       if (!session?.user?.id) return;
-      
+
       const { data } = await supabase
         .from('profiles')
         .select('full_name, apellido, credits')
         .eq('id', session.user.id)
         .single();
-      
+
       if (data) {
         setDbCredits(data.credits || 0);
         const name = data.full_name || "USUARIO";
@@ -55,7 +58,7 @@ const DashboardTorresAguayo = ({ session }) => {
           setStatus({ is_online: true, mensaje: dbStatus.mensaje_online });
         } else {
           const now = new Date();
-          const hour = new Date(now.toLocaleString("en-US", {timeZone: "America/Santiago"})).getHours();
+          const hour = new Date(now.toLocaleString("en-US", { timeZone: "America/Santiago" })).getHours();
           let msg = "SISTEMA CERRADO: Los archivos se procesarán el siguiente día hábil.";
           if (hour >= 13 && hour < 15) {
             msg = "HORARIO DE COLACIÓN: Volvemos a las 15:00 hrs.";
@@ -66,10 +69,19 @@ const DashboardTorresAguayo = ({ session }) => {
     };
 
     const channel = supabase.channel('dashboard_realtime_sync')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'configuracion_global' }, payload => {
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'configuracion_global'
+      }, payload => {
         updateBanner(payload.new);
       })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${session?.user?.id}` }, payload => {
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'profiles',
+        filter: `id=eq.${session?.user?.id}`
+      }, payload => {
         setDbCredits(payload.new.credits);
         setDisplayName(`${payload.new.full_name} ${payload.new.apellido || ''}`.trim().toUpperCase());
       })
@@ -94,13 +106,12 @@ const DashboardTorresAguayo = ({ session }) => {
 
   const styles = {
     main: { flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', backgroundColor: '#f3f4f6' },
-    // Banner actualizado para ser un contenedor Flex
-    banner: { 
-      backgroundColor: 'black', 
-      margin: '30px', 
-      padding: '40px 50px', 
-      borderRadius: '4px', 
-      color: 'white', 
+    banner: {
+      backgroundColor: 'black',
+      margin: '30px',
+      padding: '40px 50px',
+      borderRadius: '4px',
+      color: 'white',
       boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)',
       display: 'flex',
       alignItems: 'center',
@@ -108,16 +119,22 @@ const DashboardTorresAguayo = ({ session }) => {
       flexWrap: 'wrap',
       position: 'relative',
       overflow: 'hidden',
-      borderLeft: '5px solid #e11d48'
+      borderLeft: '5px solid #e11d48',
+      flexShrink: 0, // Evita que el banner se achique si otros elementos crecen
+      minHeight: '180px' // Asegura un tamaño mínimo siempre
     },
     grid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', padding: '0 30px', marginBottom: '30px' },
     card: { backgroundColor: 'white', padding: '30px', textAlign: 'center', borderRadius: '4px', borderBottom: '4px solid #eee', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' },
-    button: { backgroundColor: '#e11d48', color: 'white', border: 'none', padding: '12px 24px', fontWeight: 'bold', cursor: 'pointer', marginTop: '15px', borderRadius: '2px', textTransform: 'uppercase', fontSize: '12px' }
+    button: { backgroundColor: '#e11d48', color: 'white', border: 'none', padding: '12px 24px', fontWeight: 'bold', cursor: 'pointer', marginTop: '15px', borderRadius: '2px', textTransform: 'uppercase', fontSize: '12px' },
+    // ESTILOS DE PARTNERS
+    partnerSection: { margin: '10px 30px 20px 30px', textAlign: 'center' },
+    partnerTitle: { fontSize: '10px', color: '#999', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '15px', fontWeight: 'bold' },
+    partnerRibbon: { backgroundColor: 'rgba(0,0,0,0.03)', padding: '15px 20px', borderRadius: '4px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '80px', flexWrap: 'wrap', border: '1px solid #eee' },
+    logoStyle: { height: '110px', width: 'auto', filter: 'grayscale(1) opacity(0.6)', transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)', cursor: 'pointer' }
   };
 
   return (
     <div style={styles.main}>
-      {/* ANIMACIONES CSS */}
       <style>{`
         @keyframes fadeInLogo {
           from { opacity: 0; transform: translateX(-20px); }
@@ -126,14 +143,13 @@ const DashboardTorresAguayo = ({ session }) => {
       `}</style>
 
       <section style={styles.banner}>
-        {/* --- 1. LOGO DE SCANNER AUTOMOTRIZ --- */}
         <div style={{ animation: 'fadeInLogo 1s ease-out' }}>
-          <img 
+          <img
             src={logoTorres}
-            alt="Torres Aguayo Logo" 
-            style={{ 
-              height: '100px', 
-              width: 'auto', 
+            alt="Torres Aguayo Logo"
+            style={{
+              height: '100px',
+              width: 'auto',
               filter: 'drop-shadow(0px 0px 12px rgba(225, 29, 72, 0.5))',
               transition: 'transform 0.3s ease'
             }}
@@ -142,39 +158,65 @@ const DashboardTorresAguayo = ({ session }) => {
           />
         </div>
 
-        {/* --- 2. CONTENEDOR DE TEXTO --- */}
         <div style={{ flex: 1 }}>
-          <h1 style={{fontSize: '36px', margin: 0, textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '900'}}>
-            Plataforma <span style={{color: '#e11d48'}}>Reseller</span>
+          <h1 style={{ fontSize: '36px', margin: 0, textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '900' }}>
+            Plataforma <span style={{ color: '#e11d48' }}>Reseller</span>
           </h1>
-          <h2 style={{fontSize: '24px', color: '#e11d48', margin: '2px 0 0 0', fontStyle: 'italic', fontWeight: 'bold'}}>
+          <h2 style={{ fontSize: '24px', color: '#e11d48', margin: '2px 0 0 0', fontStyle: 'italic', fontWeight: 'bold' }}>
             Dealer Online
           </h2>
-          <p style={{color: '#9ca3af', fontSize: '11px', marginTop: '15px', letterSpacing: '2px', fontWeight: 'bold'}}>
+          <p style={{ color: '#9ca3af', fontSize: '11px', marginTop: '15px', letterSpacing: '2px', fontWeight: 'bold' }}>
             TORRES AGUAYO MOTORSPORT — CHILE
           </p>
         </div>
       </section>
 
-      {/* RESTO DE LAS CARDS (INTACTAS) */}
       <div style={styles.grid}>
         <div style={styles.card}>
-          <div style={{fontSize: '40px', marginBottom: '10px'}}>📄</div>
-          <h3 style={{margin: '0', fontSize: '16px', textTransform: 'uppercase'}}>SUBIR ARCHIVOS</h3>
-          <p style={{fontSize: '11px', color: '#888', margin: '10px 0'}}>Carga tu archivo y recibe una notificación de confirmación.</p>
+          <div style={{ fontSize: '40px', marginBottom: '10px' }}>📄</div>
+          <h3 style={{ margin: '0', fontSize: '16px', textTransform: 'uppercase' }}>SUBIR ARCHIVOS</h3>
+          <p style={{ fontSize: '11px', color: '#888', margin: '10px 0' }}>Carga tu archivo y recibe una notificación de confirmación.</p>
           <Link to="/upload"><button style={styles.button}>SUBIR EL ARCHIVO</button></Link>
         </div>
         <div style={styles.card}>
-          <div style={{fontSize: '40px', marginBottom: '10px'}}>💰</div>
-          <h3 style={{margin: '0', fontSize: '16px', textTransform: 'uppercase'}}>CARGAR CRÉDITOS</h3>
-          <p style={{fontSize: '11px', color: '#888', margin: '10px 0'}}>Carga fondos mediante transferencia o Webpay.</p>
+          <div style={{ fontSize: '40px', marginBottom: '10px' }}>💰</div>
+          <h3 style={{ margin: '0', fontSize: '16px', textTransform: 'uppercase' }}>CARGAR CRÉDITOS</h3>
+          <p style={{ fontSize: '11px', color: '#888', margin: '10px 0' }}>Carga fondos mediante transferencia o Webpay.</p>
           <Link to="/creditos"><button style={styles.button}>COMPRAR CRÉDITOS</button></Link>
         </div>
         <div style={styles.card}>
-          <div style={{fontSize: '40px', marginBottom: '10px'}}>🔧</div>
-          <h3 style={{margin: '0', fontSize: '16px', textTransform: 'uppercase'}}>Soporte</h3>
-          <p style={{fontSize: '11px', color: '#888', margin: '10px 0'}}>Tiempo estimado de respuesta: 15 - 45 min. Lunes a Viernes.</p>
+          <div style={{ fontSize: '40px', marginBottom: '10px' }}>🔧</div>
+          <h3 style={{ margin: '0', fontSize: '16px', textTransform: 'uppercase' }}>Soporte</h3>
+          <p style={{ fontSize: '11px', color: '#888', margin: '10px 0' }}>Tiempo estimado de respuesta: 15 - 45 min. Lunes a Viernes.</p>
           <Link to="/tickets"><button style={styles.button}>IR A SOPORTE</button></Link>
+        </div>
+      </div>
+
+      {/* SECCIÓN DE PARTNERS (NUEVA) */}
+      <div style={styles.partnerSection}>
+        <div style={styles.partnerTitle}>Official Technology Partners</div>
+        <div style={styles.partnerRibbon}>
+          {[
+            { id: 1, src: logoTorres, name: 'Torres Aguayo' },
+            { id: 2, src: logoMagic, name: 'Magic' },
+            { id: 3, src: logoStageX, name: 'StageX' },
+            { id: 4, src: logoFlex, name: 'Flex' }
+          ].map((logo) => (
+            <img
+              key={logo.id}
+              src={logo.src}
+              alt={logo.name}
+              style={styles.logoStyle}
+              onMouseOver={(e) => {
+                e.currentTarget.style.filter = 'grayscale(0) opacity(1) drop-shadow(0px 0px 8px rgba(225, 29, 72, 0.3))';
+                e.currentTarget.style.transform = 'scale(1.15)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.filter = 'grayscale(1) opacity(0.6)';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            />
+          ))}
         </div>
       </div>
 
