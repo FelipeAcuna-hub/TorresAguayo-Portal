@@ -13,7 +13,6 @@ const Clientes = ({ session }) => {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .order('created_at', { ascending: false });
 
       if (error) throw error;
       setClientes(data || []);
@@ -63,6 +62,10 @@ const Clientes = ({ session }) => {
   const solicitudesPendientes = clientes.filter(c => c.is_approved !== true);
   const clientesActivos = clientes.filter(c => c.is_approved === true);
 
+  console.log("Total clientes:", clientes.length);
+  console.log("Activos:", clientesActivos.length);
+  console.log("Pendientes:", solicitudesPendientes.length);
+  
   const styles = {
     container: { flex: 1, padding: '30px', backgroundColor: '#f3f4f6', minHeight: '100vh' },
     header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
