@@ -8,8 +8,8 @@ const Simulador = () => {
 
   // Lógica de precios (Manteniendo tus valores)
   const services = [
-    { id: 'stage1', name: 'STAGE 1', price: 15 },
-    { id: 'stage2', name: 'STAGE 2', price: 19 },
+    { id: 'stage1', name: 'STAGE 1', price: 140 },
+    { id: 'stage2', name: 'STAGE 2', price: 160 },
     { id: 'desactivacion', name: 'DESACTIVACIÓN', price: 5 },
   ];
 

@@ -4,8 +4,8 @@ import { supabase } from '../supabaseClient';
 
 // --- 1. DEFINICIÓN DE SERVICIOS (Igual al simulador) ---
 const OPCIONES_SERVICIO = [
-  { id: 'st1', cat: 'STAGE', label: 'STAGE 1', precio: 15 },
-  { id: 'st2', cat: 'STAGE', label: 'STAGE 2', precio: 19 },
+  { id: 'st1', cat: 'STAGE', label: 'STAGE 1', precio: 140 },
+  { id: 'st2', cat: 'STAGE', label: 'STAGE 2', precio: 160 },
   { id: 'desc', cat: 'STAGE', label: 'DESACTIVACIÓN', precio: 5 },
   { id: 'dpf', cat: 'EXTRA', label: 'DPF/ OPF OFF', precio: 4 },
   { id: 'egr', cat: 'EXTRA', label: 'EGR OFF', precio: 4 },

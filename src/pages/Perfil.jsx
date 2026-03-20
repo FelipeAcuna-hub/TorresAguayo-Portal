@@ -3,6 +3,9 @@ import { supabase } from '../supabaseClient';
 
 const Perfil = ({ session }) => {
   const [loading, setLoading] = useState(false);
+  // --- NUEVO ESTADO PARA CONTRASEÑA ---
+  const [newPassword, setNewPassword] = useState(""); 
+  
   const [profile, setProfile] = useState({
     full_name: '',
     apellido: '',
@@ -50,6 +53,28 @@ const Perfil = ({ session }) => {
     getProfile();
   }, [session]);
 
+  // --- NUEVA FUNCIÓN PARA CAMBIAR CONTRASEÑA ---
+  const handlePasswordChange = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      alert("Por favor, escribe una nueva contraseña de al menos 6 caracteres en el campo de texto.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      if (error) throw error;
+      alert("✅ ¡Contraseña actualizada con éxito!");
+      setNewPassword(""); // Limpia el campo después de la actualización
+    } catch (error) {
+      alert("Error al cambiar contraseña: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleUpdate = async (e) => {
     e.preventDefault();
     let userId = session?.user?.id;
@@ -80,7 +105,6 @@ const Perfil = ({ session }) => {
   };
 
   const styles = {
-    // Eliminamos container y sidebar porque el Layout ya los tiene
     mainContent: { flex: 1, padding: '0', backgroundColor: '#f3f4f6' },
     formCard: { backgroundColor: 'white', margin: '30px', padding: '40px', borderRadius: '4px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' },
     sectionTitle: { fontSize: '18px', fontWeight: 'bold', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px', color: '#333' },
@@ -91,9 +115,6 @@ const Perfil = ({ session }) => {
 
   return (
     <div style={styles.mainContent}>
-      {/* NOTA: Ya no incluimos el <aside> ni el <header> aquí 
-          porque el Layout.jsx se encarga de ellos globalmente. */}
-
       <form onSubmit={handleUpdate} style={styles.formCard}>
         <div style={styles.sectionTitle}>👤 INFORMACIÓN PERSONAL</div>
         <div style={styles.inputGroup}>
@@ -158,9 +179,22 @@ const Perfil = ({ session }) => {
             <input style={{ ...styles.input, backgroundColor: '#f9f9f9' }} type="email" value={session?.user?.email} disabled />
           </div>
           <div>
-            <label style={styles.label}>CONTRASEÑA</label>
-            <input style={styles.input} type="password" value="********" disabled />
-            <p style={{ fontSize: '11px', color: '#e11d48', cursor: 'pointer', marginTop: '8px', fontWeight: 'bold' }}>Cambiar contraseña</p>
+            <label style={styles.label}>NUEVA CONTRASEÑA</label>
+            {/* Cambiamos value="********" por el estado newPassword para que puedas escribir */}
+            <input 
+              style={styles.input} 
+              type="password" 
+              placeholder="Escribe tu nueva clave"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)} 
+            />
+            {/* Ahora el texto tiene la función handlePasswordChange al hacer clic */}
+            <p 
+              onClick={handlePasswordChange}
+              style={{ fontSize: '11px', color: '#e11d48', cursor: 'pointer', marginTop: '8px', fontWeight: 'bold' }}
+            >
+              {loading ? 'Procesando...' : 'Aplicar cambio de contraseña'}
+            </p>
           </div>
         </div>
 

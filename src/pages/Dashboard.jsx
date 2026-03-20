@@ -130,7 +130,7 @@ const DashboardTorresAguayo = ({ session }) => {
     partnerSection: { margin: '10px 30px 20px 30px', textAlign: 'center' },
     partnerTitle: { fontSize: '10px', color: '#999', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '15px', fontWeight: 'bold' },
     partnerRibbon: { backgroundColor: 'rgba(0,0,0,0.03)', padding: '15px 20px', borderRadius: '4px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '80px', flexWrap: 'wrap', border: '1px solid #eee' },
-    logoStyle: { height: '110px', width: 'auto', filter: 'grayscale(1) opacity(0.6)', transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)', cursor: 'pointer' }
+    logoStyle: { height: '130px', width: 'auto', filter: 'grayscale(1) opacity(0.6)', transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)', cursor: 'pointer' }
   };
 
   return (
@@ -148,7 +148,7 @@ const DashboardTorresAguayo = ({ session }) => {
             src={logoTorres}
             alt="Torres Aguayo Logo"
             style={{
-              height: '100px',
+              height: '160px',
               width: 'auto',
               filter: 'drop-shadow(0px 0px 12px rgba(225, 29, 72, 0.5))',
               transition: 'transform 0.3s ease'

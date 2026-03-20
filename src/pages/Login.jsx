@@ -32,12 +32,32 @@ const Login = () => {
           }
         });
         if (error) throw error;
-        alert('Registro exitoso. Revisa tu email para confirmar tu cuenta.');
+        alert('Registro exitoso. Un administrador revisará tu solicitud y te notificará por email cuando tu acceso sea activado.');
       } else {
-        // LOGIN NORMAL
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        navigate('/'); 
+        // LOGIN NORMAL CON FILTRO DE APROBACIÓN
+        const { data: { user }, error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+        
+        if (loginError) throw loginError;
+
+        if (user) {
+          // --- NUEVA LÓGICA DE VERIFICACIÓN DE APROBACIÓN ---
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('is_approved')
+            .eq('id', user.id)
+            .single();
+
+          if (profileError) throw profileError;
+
+          if (profile && !profile.is_approved) {
+            // Si no está aprobado, lo sacamos de la sesión inmediatamente
+            await supabase.auth.signOut();
+            alert("⚠️ Acceso en espera: Tu cuenta aún no ha sido aprobada por el administrador. Te avisaremos por correo una vez activada.");
+            return;
+          }
+          // Si está aprobado, lo dejamos pasar
+          navigate('/'); 
+        }
       }
     } catch (error) {
       alert(error.message);

@@ -16,6 +16,7 @@ import Archivos from './pages/Archivos';
 import Admin from './pages/Admin'; 
 import UploadFile from './pages/UploadFile'; 
 import Simulador from './pages/Simulador';
+import Clientes from './pages/Clientes';
 
 function App() {
   const [session, setSession] = useState(null);
@@ -79,7 +80,7 @@ function App() {
           <Route path="/archivos" element={<Archivos session={session} />} />
           <Route path="/upload" element={<UploadFile session={session} />} />
           <Route path="/simulador" element={<Simulador session={session} />} />
-
+          <Route path="/clientes" element={<Clientes session={session} />} />
           {/* Ruta Exclusiva para Administradores (también dentro del Layout) */}
           <Route 
             path="/admin" 

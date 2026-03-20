@@ -23,13 +23,21 @@ const Layout = ({ session }) => {
   const [displayName, setDisplayName] = useState("USUARIO");
   const [status, setStatus] = useState({ is_online: true, mensaje: 'Cargando estado...' });
   
-  // --- NUEVO: ESTADO PARA EL MENÚ MÓVIL ---
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
   const location = useLocation();
-  const isAdmin = session?.user?.app_metadata?.role === 'admin';
+
+  // --- LÓGICA DE ADMINISTRADOR ACTUALIZADA ---
+  const ADMIN_EMAILS = [
+    'scannerstorresaguayo@gmail.com',
+    'felipe.acuna2@mail.udp.cl',
+    'stockcarscl@gmail.com'
+  ];
+
+  const isAdmin = 
+    session?.user?.app_metadata?.role === 'admin' || 
+    ADMIN_EMAILS.includes(session?.user?.email?.toLowerCase());
   
-  // Detección de móvil para lógica de estilos
   const isMobile = window.innerWidth < 768;
 
   useEffect(() => {
@@ -86,7 +94,6 @@ const Layout = ({ session }) => {
     };
   }, [session]);
 
-  // --- ESTILOS ADAPTADOS PARA MÓVIL ---
   const styles = {
     container: { display: 'flex', height: '100vh', width: '100vw', backgroundColor: '#f3f4f6', fontFamily: 'sans-serif', margin: 0, padding: 0, position: 'fixed', top: 0, left: 0, overflow: 'hidden' },
     sidebar: { 
@@ -96,7 +103,6 @@ const Layout = ({ session }) => {
       display: 'flex', 
       flexDirection: 'column', 
       shrink: 0,
-      // Lógica responsiva para el Sidebar
       position: isMobile ? 'fixed' : 'relative',
       zIndex: 1000,
       height: '100vh',
@@ -104,8 +110,8 @@ const Layout = ({ session }) => {
       transform: isMobile && !isMenuOpen ? 'translateX(-100%)' : 'translateX(0)'
     },
     logo: { padding: '24px', fontSize: '24px', fontWeight: 'bold', borderBottom: '1px solid #333', textDecoration: 'none', color: 'white', display: 'block' },
-    navItem: { padding: '15px 24px', cursor: 'pointer', color: '#9ca3af', listStyle: 'none', textDecoration: 'none', display: 'flex', alignItems: 'center' },
-    navItemActive: { padding: '15px 24px', color: 'white', backgroundColor: '#e11d48', listStyle: 'none', fontWeight: 'bold', display: 'flex', alignItems: 'center' },
+    navItem: { padding: '15px 24px', cursor: 'pointer', color: '#9ca3af', listStyle: 'none', textDecoration: 'none', display: 'flex', alignItems: 'center', fontSize: '13px' },
+    navItemActive: { padding: '15px 24px', color: 'white', backgroundColor: '#e11d48', listStyle: 'none', fontWeight: 'bold', display: 'flex', alignItems: 'center', fontSize: '13px' },
     main: { flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%' },
     header: { 
       backgroundColor: 'white', 
@@ -118,7 +124,6 @@ const Layout = ({ session }) => {
       minHeight: '60px'
     },
     topBarStatus: { backgroundColor: status.is_online ? '#228b22' : '#e11d48', color: 'white', padding: isMobile ? '8px' : '12px 20px', fontWeight: 'bold', fontSize: isMobile ? '11px' : '13px', textAlign: 'center', transition: '0.5s' },
-    // Botón de hamburguesa
     menuButton: {
       display: isMobile ? 'block' : 'none',
       backgroundColor: 'transparent',
@@ -133,7 +138,6 @@ const Layout = ({ session }) => {
 
   return (
     <div style={styles.container}>
-      {/* SIDEBAR */}
       <aside style={styles.sidebar}>
         <Link to="/" style={styles.logo} onClick={() => setIsMenuOpen(false)}>
           TORRES<span style={{color: '#e11d48'}}>AGUAYO</span>
@@ -163,8 +167,18 @@ const Layout = ({ session }) => {
               <span style={{ marginRight: '12px' }}>📄</span> ARCHIVOS
             </li>
           </Link>
+
+          {/* --- NUEVA PESTAÑA: GESTIÓN DE CLIENTES (SOLO ADMINS) --- */}
+          {isAdmin && (
+            <Link to="/clientes" style={{ textDecoration: 'none' }} onClick={() => setIsMenuOpen(false)}>
+              <li style={location.pathname === "/clientes" ? styles.navItemActive : styles.navItem}>
+                <span style={{ marginRight: '12px' }}>👥</span> CLIENTES
+              </li>
+            </Link>
+          )}
+
           <Link to="/simulador" style={{ textDecoration: 'none', marginTop: '20px', display: 'block' }} onClick={() => setIsMenuOpen(false)}>
-            <li style={{ ...styles.navItem, fontSize: '13px', color: '#666' }}>SIMULA EL PRECIO DE UN ARCHIVO</li>
+            <li style={{ ...styles.navItem, fontSize: '11px', color: '#666' }}>SIMULA EL PRECIO DE UN ARCHIVO</li>
           </Link>
           
           {isAdmin && (
@@ -178,12 +192,10 @@ const Layout = ({ session }) => {
         </div>
       </aside>
 
-      {/* MAIN CONTENT */}
       <main style={styles.main}>
         <div style={styles.topBarStatus}>{status.mensaje}</div>
         <header style={styles.header}>
           <div style={{display: 'flex', alignItems: 'center'}}>
-            {/* BOTÓN HAMBURGUESA INTEGRADO */}
             <button onClick={() => setIsMenuOpen(!isMenuOpen)} style={styles.menuButton}>
               {isMenuOpen ? '✕' : '☰'}
             </button>
@@ -198,7 +210,6 @@ const Layout = ({ session }) => {
         <Outlet /> 
       </main>
 
-      {/* CAPA PARA CERRAR MENÚ AL TOCAR FUERA */}
       {isMobile && isMenuOpen && (
         <div 
           onClick={() => setIsMenuOpen(false)}

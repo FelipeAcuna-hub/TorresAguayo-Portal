@@ -102,12 +102,39 @@ const Archivos = ({ session }) => {
         const subjectText = nuevoEstado === 'completado' 
           ? `✅ Archivo Listo - Patente ${patente}` 
           : `🔍 Archivo en Revisión - Patente ${patente}`;
+
+        // --- DISEÑO DE CORREO DINÁMICO INTEGRADO ---
+        const emailHtml = `
+          <div style="font-family: 'Helvetica', Arial, sans-serif; background-color: #f9f9f9; padding: 40px 0;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+              <div style="background-color: #000000; padding: 20px; text-align: center;">
+                <h1 style="color: #e11d48; margin: 0; font-size: 24px; letter-spacing: 2px;">TORRES AGUAYO MMS</h1>
+              </div>
+              <div style="padding: 30px; line-height: 1.6; color: #333;">
+                <h2 style="color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px;">Actualización de Requerimiento</h2>
+                <p>Hola,</p>
+                <p>Te informamos que el archivo para el vehículo con patente <strong>${patente}</strong> ha cambiado su estado a:</p>
+                <div style="background-color: #f3f4f6; padding: 15px; border-left: 4px solid ${nuevoEstado === 'completado' ? '#22c55e' : '#facc15'}; margin: 20px 0; font-weight: bold; font-size: 18px; text-align: center; text-transform: uppercase; color: ${nuevoEstado === 'completado' ? '#166534' : '#854d0e'};">
+                  ${nuevoEstado === 'completado' ? '✅ ' + nuevoEstado : '🔍 ' + nuevoEstado}
+                </div>
+                <p>${nuevoEstado === 'completado' ? 'Ya puedes descargar tu archivo modificado desde el portal oficial.' : 'Nuestro equipo técnico ya está trabajando en tu solicitud. Te notificaremos apenas esté listo.'}</p>
+                <div style="text-align: center; margin-top: 30px;">
+                  <a href="https://torresaguayomms.cl/archivos" style="background-color: #e11d48; color: white; padding: 12px 25px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">IR AL PORTAL DE USUARIO</a>
+                </div>
+              </div>
+              <div style="background-color: #f3f4f6; padding: 20px; text-align: center; font-size: 12px; color: #999;">
+                <p>© 2026 Torres Aguayo MMS - Ingeniería en Reprogramación Automotriz</p>
+                <p>Este es un correo automático, por favor no respondas a este mensaje.</p>
+              </div>
+            </div>
+          </div>
+        `;
   
         await supabase.functions.invoke('swift-function', {
           body: {
             to: clienteEmail,
             subject: subjectText,
-            html: `<h3>Actualización Torres Aguayo MMS</h3><p>El estado de la patente ${patente} es: ${nuevoEstado.toUpperCase()}</p>`
+            html: emailHtml
           },
         });
       }
@@ -128,11 +155,7 @@ const Archivos = ({ session }) => {
     td: { padding: '12px', borderBottom: '1px solid #eee', fontSize: '12px' },
     statusBadge: { padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', color: 'white', textTransform: 'uppercase', whiteSpace: 'nowrap' },
     selectAdmin: { padding: '5px', fontSize: '10px', fontWeight: 'bold', borderRadius: '4px', border: '1px solid #ddd', cursor: 'pointer', textTransform: 'uppercase', outline: 'none', backgroundColor: 'white' },
-    
-    // BARRA DE BÚSQUEDA
     searchBar: { display: 'flex', alignItems: 'center', backgroundColor: '#f3f4f6', padding: '6px 12px', borderRadius: '4px', border: '1px solid #ddd' },
-    
-    // MODAL
     modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' },
     modalContent: { backgroundColor: 'white', width: '100%', maxWidth: '500px', borderRadius: '4px', overflow: 'hidden', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' },
     modalHeader: { backgroundColor: '#000', color: '#e11d48', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #e11d48' },
@@ -150,13 +173,10 @@ const Archivos = ({ session }) => {
     return '#e11d48';
   };
 
-  // --- FILTRADO DINÁMICO ---
   const filteredArchivos = archivos.filter(a => {
-    if (!searchTerm) return true; // Si no hay nada escrito, muestra todo
-    
-    const matchNumero = a.numero_orden?.toString() === searchTerm; // Exacto
-    const matchPatente = a.patente?.toLowerCase().includes(searchTerm.toLowerCase()); // Parcial
-    
+    if (!searchTerm) return true;
+    const matchNumero = a.numero_orden?.toString() === searchTerm;
+    const matchPatente = a.patente?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchNumero || matchPatente;
   });
 
@@ -168,7 +188,6 @@ const Archivos = ({ session }) => {
             {isAdmin ? "MODO ADMINISTRADOR" : "PORTAL OFICIAL"}
           </div>
 
-          {/* BARRA DE BÚSQUEDA POR N° O PATENTE */}
           <div style={styles.searchBar}>
             <span style={{ fontSize: '12px', marginRight: '8px' }}>🔍</span>
             <input 
