@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+// Corregido: Importación sin espacios y con la ruta exacta desde src/components/
+import logoScanner from '../magic_torresaguayo.svg';
 
 // --- FUNCIÓN DE CÁLCULO DE HORARIO CHILENO (INTACTA) ---
 const checkAutoOnline = () => {
@@ -109,7 +111,15 @@ const Layout = ({ session }) => {
       transition: 'transform 0.3s ease-in-out',
       transform: isMobile && !isMenuOpen ? 'translateX(-100%)' : 'translateX(0)'
     },
-    logo: { padding: '24px', fontSize: '24px', fontWeight: 'bold', borderBottom: '1px solid #333', textDecoration: 'none', color: 'white', display: 'block' },
+    // Estilo para el contenedor del logo ajustado para imágenes
+    logoContainer: { 
+      padding: '24px', 
+      borderBottom: '1px solid #333', 
+      textDecoration: 'none', 
+      display: 'flex', 
+      justifyContent: 'center', 
+      alignItems: 'center' 
+    },
     navItem: { padding: '15px 24px', cursor: 'pointer', color: '#9ca3af', listStyle: 'none', textDecoration: 'none', display: 'flex', alignItems: 'center', fontSize: '13px' },
     navItemActive: { padding: '15px 24px', color: 'white', backgroundColor: '#e11d48', listStyle: 'none', fontWeight: 'bold', display: 'flex', alignItems: 'center', fontSize: '13px' },
     main: { flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%' },
@@ -139,9 +149,15 @@ const Layout = ({ session }) => {
   return (
     <div style={styles.container}>
       <aside style={styles.sidebar}>
-        <Link to="/" style={styles.logo} onClick={() => setIsMenuOpen(false)}>
-          TORRES<span style={{color: '#e11d48'}}>AGUAYO</span>
+        {/* CORRECCIÓN: Se cambió el texto por el componente img cargando el logoScanner */}
+        <Link to="/" style={styles.logoContainer} onClick={() => setIsMenuOpen(false)}>
+          <img 
+            src={logoScanner} 
+            alt="TORRES AGUAYO" 
+            style={{ width: '100%', maxHeight: '200px', objectFit: 'contain' }} 
+          />
         </Link>
+
         <ul style={{ padding: 0, margin: 0, listStyle: 'none', flex: 1 }}>
           <Link to="/" style={{ textDecoration: 'none' }} onClick={() => setIsMenuOpen(false)}>
             <li style={location.pathname === "/" ? styles.navItemActive : styles.navItem}>
@@ -168,7 +184,6 @@ const Layout = ({ session }) => {
             </li>
           </Link>
 
-          {/* --- NUEVA PESTAÑA: GESTIÓN DE CLIENTES (SOLO ADMINS) --- */}
           {isAdmin && (
             <Link to="/clientes" style={{ textDecoration: 'none' }} onClick={() => setIsMenuOpen(false)}>
               <li style={location.pathname === "/clientes" ? styles.navItemActive : styles.navItem}>
