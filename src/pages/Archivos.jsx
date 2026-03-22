@@ -58,7 +58,7 @@ const Archivos = ({ session }) => {
     fetchArchivos();
   }, [session, isAdmin]);
 
-  // --- NUEVA FUNCIÓN: CANCELAR Y DEVOLVER CRÉDITOS ---
+  // --- FUNCIÓN: CANCELAR Y DEVOLVER CRÉDITOS ---
   const handleCancelarSolicitud = async (archivo) => {
     if (archivo.estado !== 'pendiente') {
       alert("Solo se pueden cancelar solicitudes en estado pendiente.");
@@ -71,7 +71,6 @@ const Archivos = ({ session }) => {
       try {
         setLoading(true);
 
-        // 1. Obtener créditos actuales del perfil
         const { data: perfil, error: errorPerfil } = await supabase
           .from('profiles')
           .select('credits')
@@ -82,7 +81,6 @@ const Archivos = ({ session }) => {
 
         const nuevosCreditos = (perfil.credits || 0) + costo;
 
-        // 2. Actualizar créditos en el perfil
         const { error: errorUpdate } = await supabase
           .from('profiles')
           .update({ credits: nuevosCreditos })
@@ -90,7 +88,6 @@ const Archivos = ({ session }) => {
 
         if (errorUpdate) throw errorUpdate;
 
-        // 3. Registrar la devolución en la tabla de movimientos (historial)
         await supabase.from('movimientos').insert([
           {
             user_id: session.user.id,
@@ -101,7 +98,6 @@ const Archivos = ({ session }) => {
           }
         ]);
 
-        // 4. Eliminar el registro del archivo
         const { error: errorDelete } = await supabase
           .from('archivos')
           .delete()
@@ -110,7 +106,7 @@ const Archivos = ({ session }) => {
         if (errorDelete) throw errorDelete;
 
         alert("Solicitud cancelada y créditos devueltos con éxito.");
-        fetchArchivos(); // Recargar la lista
+        fetchArchivos();
       } catch (error) {
         console.error("Error al cancelar:", error.message);
         alert("Ocurrió un error al procesar la cancelación.");
@@ -207,7 +203,6 @@ const Archivos = ({ session }) => {
       }
   
       setArchivos(prev => prev.map(a => a.id === archivoId ? { ...a, estado: nuevoEstado } : a));
-      alert("Estado actualizado y cliente notificado.");
     } catch (error) {
       console.error("Error:", error.message);
     }
@@ -231,13 +226,21 @@ const Archivos = ({ session }) => {
     infoTable: { width: '100%', borderCollapse: 'collapse', marginBottom: '20px' },
     infoLabel: { padding: '8px 0', fontWeight: 'bold', fontSize: '11px', color: '#000', borderBottom: '1px solid #eee', textTransform: 'uppercase', width: '40%' },
     infoValue: { padding: '8px 0', fontSize: '12px', color: '#444', borderBottom: '1px solid #eee' },
-    
-    // ESTILOS DE PAGINACIÓN
     pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '5px', marginTop: '20px', padding: '10px' },
     pageBtn: (active) => ({ padding: '6px 12px', cursor: 'pointer', backgroundColor: active ? '#e11d48' : 'white', color: active ? 'white' : '#666', border: '1px solid #ddd', borderRadius: '2px', fontSize: '12px', fontWeight: 'bold' }),
-
-    // BOTÓN ELIMINAR
-    btnDelete: { backgroundColor: '#e11d48', color: 'white', border: 'none', padding: '5px 8px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '9px', textTransform: 'uppercase', marginTop: '5px' }
+    
+    // BOTÓN ELIMINAR NUEVO
+    btnDelete: (active) => ({
+      backgroundColor: active ? '#e11d48' : '#eee',
+      color: active ? 'white' : '#ccc',
+      border: 'none',
+      padding: '6px 10px',
+      borderRadius: '2px',
+      cursor: active ? 'pointer' : 'not-allowed',
+      fontWeight: 'bold',
+      fontSize: '9px',
+      textTransform: 'uppercase'
+    })
   };
 
   const getBadgeColor = (estado) => {
@@ -268,33 +271,18 @@ const Archivos = ({ session }) => {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            <select 
-              style={styles.statusSelector} 
-              value={statusFilter} 
-              onChange={(e) => { setStatusFilter(e.target.value); setPaginaActual(1); }}
-            >
-              <option value="todos">TODOS LOS ESTADOS</option>
+            <select style={styles.statusSelector} value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPaginaActual(1); }}>
+              <option value="todos">ESTADO (TODOS)</option>
               <option value="pendiente">PENDIENTES</option>
               <option value="en revision">EN REVISIÓN</option>
               <option value="completado">COMPLETADOS</option>
             </select>
-
             <div style={styles.searchBar}>
               <span style={{ fontSize: '12px', marginRight: '8px' }}>🔍</span>
-              <input 
-                type="text" 
-                placeholder="Buscar N° o Patente..." 
-                style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', width: '150px' }}
-                value={searchTerm}
-                onChange={(e) => { setSearchTerm(e.target.value); setPaginaActual(1); }}
-              />
+              <input type="text" placeholder="Buscar..." style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', width: '150px' }} value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setPaginaActual(1); }} />
             </div>
           </div>
         </div>
-
-        <h2 style={{ fontSize: '16px', borderBottom: '1px solid #eee', paddingBottom: '10px', marginTop: '15px', textTransform: 'uppercase', color: '#333' }}>
-          {isAdmin ? "Gestión Global" : "Mis Archivos"}
-        </h2>
 
         <div style={styles.responsiveContainer}>
           <table style={styles.table}>
@@ -304,131 +292,74 @@ const Archivos = ({ session }) => {
                 {isAdmin && <th style={styles.th}>Empresa</th>}
                 <th style={styles.th}>Patente</th>
                 <th style={styles.th}>Marca / Modelo</th>
-                {isAdmin && <th style={styles.th}>Ficha</th>}
+                <th style={styles.th}>Ficha</th>
                 <th style={styles.th}>Estado</th>
+                <th style={styles.th}>Eliminar</th> {/* COLUMNA NUEVA */}
                 <th style={styles.th}>Acción</th>
               </tr>
             </thead>
             <tbody>
-              {archivosPaginados.length > 0 ? (
-                archivosPaginados.map((archivo) => (
-                  <tr key={archivo.id}>
-                    <td style={styles.td}>
-                      <div style={{ fontWeight: 'bold', color: '#e11d48', fontSize: '14px' }}>#{archivo.numero_orden || '---'}</div>
-                      <div style={{ fontSize: '10px', color: '#999' }}>{new Date(archivo.created_at).toLocaleDateString('es-CL')}</div>
-                    </td>
-                    {isAdmin && (
-                      <td style={{ ...styles.td, fontWeight: 'bold', color: '#e11d48' }}>
-                        {archivo.profiles?.company || 'PARTICULAR'}
-                      </td>
-                    )}
-                    <td style={styles.td}>{archivo.patente}</td>
-                    <td style={styles.td}>{archivo.marca_modelo}</td>
-                    
-                    {isAdmin && (
-                      <td style={styles.td}>
-                        <button 
-                          onClick={() => setArchivoDetalle(archivo)}
-                          style={{ backgroundColor: '#000', color: '#fff', border: 'none', padding: '4px 8px', fontSize: '9px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px' }}
-                        >
-                          DETALLES
-                        </button>
-                      </td>
-                    )}
+              {archivosPaginados.map((archivo) => (
+                <tr key={archivo.id}>
+                  <td style={styles.td}>
+                    <div style={{ fontWeight: 'bold', color: '#e11d48', fontSize: '14px' }}>#{archivo.numero_orden || '---'}</div>
+                    <div style={{ fontSize: '10px', color: '#999' }}>{new Date(archivo.created_at).toLocaleDateString('es-CL')}</div>
+                  </td>
+                  {isAdmin && <td style={{ ...styles.td, fontWeight: 'bold', color: '#e11d48' }}>{archivo.profiles?.company || 'PARTICULAR'}</td>}
+                  <td style={styles.td}>{archivo.patente}</td>
+                  <td style={styles.td}>{archivo.marca_modelo}</td>
+                  <td style={styles.td}>
+                    <button onClick={() => setArchivoDetalle(archivo)} style={{ backgroundColor: '#000', color: '#fff', border: 'none', padding: '4px 8px', fontSize: '9px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px' }}>DETALLES</button>
+                  </td>
+                  <td style={styles.td}>
+                    {isAdmin ? (
+                      <select style={{ ...styles.selectAdmin, color: getBadgeColor(archivo.estado), borderColor: getBadgeColor(archivo.estado) }} value={archivo.estado} onChange={(e) => handleStatusChange(archivo.id, e.target.value, archivo.profiles?.email, archivo.patente)}>
+                        <option value="pendiente">Pendiente</option>
+                        <option value="en revision">En Revisión</option>
+                        <option value="completado">Completado</option>
+                        <option value="cancelado">Cancelado</option>
+                      </select>
+                    ) : <span style={{ ...styles.statusBadge, backgroundColor: getBadgeColor(archivo.estado) }}>{archivo.estado}</span>}
+                  </td>
 
-                    <td style={styles.td}>
-                      {isAdmin ? (
-                        <select
-                          style={{ ...styles.selectAdmin, color: getBadgeColor(archivo.estado), borderColor: getBadgeColor(archivo.estado) }}
-                          value={archivo.estado}
-                          onChange={(e) => handleStatusChange(archivo.id, e.target.value, archivo.profiles?.email, archivo.patente)}
-                        >
-                          <option value="pendiente">Pendiente</option>
-                          <option value="en revision">En Revisión</option>
-                          <option value="completado">Completado</option>
-                          <option value="cancelado">Cancelado</option>
-                        </select>
-                      ) : (
-                        <span style={{ ...styles.statusBadge, backgroundColor: getBadgeColor(archivo.estado) }}>{archivo.estado}</span>
+                  {/* COLUMNA ELIMINAR */}
+                  <td style={styles.td}>
+                    {!isAdmin && (
+                      <button 
+                        style={styles.btnDelete(archivo.estado === 'pendiente')} 
+                        onClick={() => handleCancelarSolicitud(archivo)}
+                        disabled={archivo.estado !== 'pendiente'}
+                      >
+                        {archivo.estado === 'pendiente' ? '❌ ELIMINAR' : 'BLOQUEADO'}
+                      </button>
+                    )}
+                    {isAdmin && <span style={{fontSize: '9px', color: '#ccc'}}>Solo Cliente</span>}
+                  </td>
+
+                  <td style={styles.td}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      {archivo.file_url && <button onClick={() => window.open(archivo.file_url, '_blank')} style={{ color: '#666', border: '1px solid #ddd', background: '#fff', cursor: 'pointer', fontWeight: 'bold', fontSize: '9px', padding: '5px', textTransform: 'uppercase', borderRadius: '4px' }}>📄 ORIGINAL</button>}
+                      {archivo.mod_file_url ? (
+                        <button onClick={() => window.open(archivo.mod_file_url, '_blank')} style={{ color: 'white', border: 'none', background: '#22c55e', cursor: 'pointer', fontWeight: 'bold', fontSize: '9px', padding: '5px', textTransform: 'uppercase', borderRadius: '4px' }}>🚀 MODIFICADO</button>
+                      ) : isAdmin && (
+                        <label style={{ backgroundColor: '#000', color: '#e11d48', padding: '5px', fontSize: '9px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #e11d48', textAlign: 'center', fontWeight: 'bold' }}>
+                          {loading ? '...' : '📤 SUBIR MOD'}
+                          <input type="file" style={{ display: 'none' }} onChange={(e) => handleUploadModificado(archivo.id, e.target.files[0], archivo.patente, archivo.profiles?.email)} />
+                        </label>
                       )}
-                    </td>
-                    <td style={styles.td}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                        {archivo.file_url && (
-                          <button
-                            onClick={() => window.open(archivo.file_url, '_blank')}
-                            style={{ color: '#666', border: '1px solid #ddd', background: '#fff', cursor: 'pointer', fontWeight: 'bold', fontSize: '9px', padding: '5px', textTransform: 'uppercase', borderRadius: '4px' }}
-                          >
-                            📄 ORIGINAL
-                          </button>
-                        )}
-                        {archivo.mod_file_url ? (
-                          <button
-                            onClick={() => window.open(archivo.mod_file_url, '_blank')}
-                            style={{ color: 'white', border: 'none', background: '#22c55e', cursor: 'pointer', fontWeight: 'bold', fontSize: '9px', padding: '5px', textTransform: 'uppercase', borderRadius: '4px' }}
-                          >
-                            🚀 MODIFICADO
-                          </button>
-                        ) : (
-                          isAdmin && (
-                            <label style={{ backgroundColor: '#000', color: '#e11d48', padding: '5px', fontSize: '9px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #e11d48', textAlign: 'center', fontWeight: 'bold' }}>
-                              {loading ? '...' : '📤 SUBIR MOD'}
-                              <input type="file" style={{ display: 'none' }} onChange={(e) => handleUploadModificado(archivo.id, e.target.files[0], archivo.patente, archivo.profiles?.email)} />
-                            </label>
-                          )
-                        )}
-
-                        {/* BOTÓN ELIMINAR SOLICITUD - SOLO USUARIOS Y SOLO PENDIENTES */}
-                        {!isAdmin && archivo.estado === 'pendiente' && (
-                          <button 
-                            style={styles.btnDelete}
-                            onClick={() => handleCancelarSolicitud(archivo)}
-                          >
-                            ELIMINAR SOLICITUD
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={isAdmin ? "7" : "6"} style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                    {loading ? 'Cargando archivos...' : 'No se encontraron registros.'}
+                    </div>
                   </td>
                 </tr>
-              )}
+              ))}
             </tbody>
           </table>
         </div>
 
         {totalPaginas > 1 && (
           <div style={styles.pagination}>
-            <button 
-              onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
-              disabled={paginaActual === 1}
-              style={{ ...styles.pageBtn(false), opacity: paginaActual === 1 ? 0.5 : 1 }}
-            >
-              Anterior
-            </button>
-            
-            {[...Array(totalPaginas).keys()].map(n => (
-              <button 
-                key={n + 1}
-                onClick={() => setPaginaActual(n + 1)}
-                style={styles.pageBtn(paginaActual === n + 1)}
-              >
-                {n + 1}
-              </button>
-            ))}
-
-            <button 
-              onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))}
-              disabled={paginaActual === totalPaginas}
-              style={{ ...styles.pageBtn(false), opacity: paginaActual === totalPaginas ? 0.5 : 1 }}
-            >
-              Siguiente
-            </button>
+            <button onClick={() => setPaginaActual(p => Math.max(1, p - 1))} disabled={paginaActual === 1} style={{ ...styles.pageBtn(false), opacity: paginaActual === 1 ? 0.3 : 1 }}>← ANTERIOR</button>
+            {[...Array(totalPaginas).keys()].map(n => <button key={n+1} onClick={() => setPaginaActual(n+1)} style={styles.pageBtn(paginaActual === n+1)}>{n+1}</button>)}
+            <button onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))} disabled={paginaActual === totalPaginas} style={{ ...styles.pageBtn(false), opacity: paginaActual === totalPaginas ? 0.3 : 1 }}>SIGUIENTE →</button>
           </div>
         )}
       </div>
@@ -437,23 +368,17 @@ const Archivos = ({ session }) => {
         <div style={styles.modalOverlay}>
           <div style={styles.modalContent}>
             <div style={styles.modalHeader}>
-              <h3 style={{ margin: 0, fontSize: '13px', letterSpacing: '1px' }}>
-                ORDEN DE TRABAJO N° {archivoDetalle.numero_orden} - {archivoDetalle.patente}
-              </h3>
-              <button onClick={() => setArchivoDetalle(null)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '16px' }}>✕</button>
+              <h3 style={{ margin: 0, fontSize: '13px' }}>ORDEN N° {archivoDetalle.numero_orden} - {archivoDetalle.patente}</h3>
+              <button onClick={() => setArchivoDetalle(null)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>✕</button>
             </div>
             <div style={styles.modalBody}>
-              <div style={{ marginBottom: '15px', fontWeight: 'bold', fontSize: '11px', color: '#666', borderBottom: '1px solid #eee', paddingBottom: '5px' }}>VEHICLE INFORMATION</div>
               <table style={styles.infoTable}>
                 <tbody>
                   {[
-                    ['N° Orden Correlativo', archivoDetalle.numero_orden],
                     ['License Plate', archivoDetalle.patente],
                     ['Brand / Model', archivoDetalle.marca_modelo],
                     ['Year', archivoDetalle.detalles_tecnicos?.anio],
                     ['Motor', archivoDetalle.detalles_tecnicos?.motor],
-                    ['HP', archivoDetalle.detalles_tecnicos?.hp],
-                    ['Fuel', archivoDetalle.detalles_tecnicos?.combustible],
                     ['ECU', archivoDetalle.detalles_tecnicos?.ecu],
                     ['Services', archivoDetalle.detalles_tecnicos?.servicios_solicitados],
                     ['Credits', archivoDetalle.detalles_tecnicos?.costo_creditos]
@@ -465,15 +390,13 @@ const Archivos = ({ session }) => {
                   ))}
                 </tbody>
               </table>
-              <div style={{ marginTop: '20px', backgroundColor: '#f9f9f9', padding: '15px', borderRadius: '4px', borderLeft: '4px solid #e11d48' }}>
-                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#e11d48', marginBottom: '5px' }}>COMMENTS:</div>
-                <p style={{ margin: 0, fontSize: '12px', color: '#333', fontStyle: 'italic', lineHeight: '1.4' }}>
-                  {archivoDetalle.detalles_tecnicos?.comentarios || 'No comments provided.'}
-                </p>
+              <div style={{ marginTop: '20px', backgroundColor: '#f9f9f9', padding: '15px', borderLeft: '4px solid #e11d48' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#e11d48' }}>COMMENTS:</div>
+                <p style={{ margin: 0, fontSize: '12px', fontStyle: 'italic' }}>{archivoDetalle.detalles_tecnicos?.comentarios || 'No comments provided.'}</p>
               </div>
             </div>
-            <div style={{ padding: '15px', textAlign: 'right', borderTop: '1px solid #eee' }}>
-              <button onClick={() => setArchivoDetalle(null)} style={{ backgroundColor: '#000', color: 'white', border: 'none', padding: '8px 25px', borderRadius: '2px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>CLOSE</button>
+            <div style={{ padding: '15px', textAlign: 'right' }}>
+              <button onClick={() => setArchivoDetalle(null)} style={{ backgroundColor: '#000', color: 'white', border: 'none', padding: '8px 25px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>CLOSE</button>
             </div>
           </div>
         </div>
