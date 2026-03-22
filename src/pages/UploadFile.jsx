@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 
-// --- 1. DEFINICIÓN DE SERVICIOS (Igual al simulador) ---
+// --- 1. DEFINICIÓN DE SERVICIOS ---
 const OPCIONES_SERVICIO = [
   { id: 'st1', cat: 'STAGE', label: 'STAGE 1', precio: 140 },
   { id: 'st2', cat: 'STAGE', label: 'STAGE 2', precio: 160 },
@@ -20,7 +20,7 @@ const UploadFile = ({ session }) => {
 
   const [selectedFile, setSelectedFile] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [serviciosSeleccionados, setServiciosSeleccionados] = useState([]); // Nuevo: Servicios marcados
+  const [serviciosSeleccionados, setServiciosSeleccionados] = useState([]); 
   
   const [formData, setFormData] = useState({
     patente: '', marca: '', modelo: '', anio: '',
@@ -28,7 +28,6 @@ const UploadFile = ({ session }) => {
     tipo_modulo: '', comentarios: ''
   });
 
-  // --- LÓGICA DE CÁLCULO DE CRÉDITOS ---
   const totalCreditos = serviciosSeleccionados.reduce((acc, s) => acc + s.precio, 0);
 
   const toggleServicio = (servicio) => {
@@ -89,6 +88,23 @@ const UploadFile = ({ session }) => {
 
       if (updateCreditsError) throw updateCreditsError;
 
+      // --- REGISTRAR EN EL HISTORIAL DE MOVIMIENTOS ---
+      // Esto hace que aparezca en la pestaña de Créditos del cliente
+      const { error: historyError } = await supabase
+        .from('historial_movimientos')
+        .insert([
+          {
+            perfil_id: session.user.id,
+            tipo: 'canje',
+            cantidad: totalCreditos,
+            descripcion: `Canje por archivo: ${selectedFile.name} (${formData.marca} ${formData.modelo})`,
+          }
+        ]);
+
+      if (historyError) {
+        console.error("Error al registrar historial:", historyError.message);
+      }
+
       // 4. INSERTAR EN TABLA 'ARCHIVOS'
       const detalleServicios = serviciosSeleccionados.map(s => s.label).join(' + ');
       
@@ -128,8 +144,6 @@ const UploadFile = ({ session }) => {
     },
     button: { backgroundColor: '#e11d48', color: 'white', border: 'none', padding: '15px 40px', fontWeight: 'bold', cursor: 'pointer', marginTop: '20px', borderRadius: '2px', textTransform: 'uppercase', fontSize: '13px' },
     btnBack: { color: '#666', textDecoration: 'none', fontSize: '13px', marginLeft: '30px', marginTop: '20px', display: 'inline-block', fontWeight: 'bold' },
-    
-    // ESTILOS PARA EL SELECTOR DE SERVICIOS
     selectorGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', margin: '20px 0' },
     serviceItem: (isSelected) => ({
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -153,9 +167,7 @@ const UploadFile = ({ session }) => {
   return (
     <div style={styles.main}>
       <Link to="/" style={styles.btnBack}>← VOLVER AL DASHBOARD</Link>
-
       <div style={styles.formCard}>
-        {/* SECCIÓN 1: INFO VEHICULO (Tu código original) */}
         <h2 style={{ fontSize: '20px', marginBottom: '30px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
           INFORMACIÓN DEL VEHÍCULO
         </h2>
@@ -186,11 +198,9 @@ const UploadFile = ({ session }) => {
           </div>
         </div>
 
-        {/* SECCIÓN 2: SELECTOR DE SERVICIOS (LO NUEVO) */}
         <h2 style={{ fontSize: '20px', margin: '40px 0 20px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
           SIMULA EL PRECIO DE TU ARCHIVO
         </h2>
-        
         <div style={styles.selectorGrid}>
           <div>
             <label style={styles.label}>1. SELECT STAGE</label>
@@ -212,7 +222,6 @@ const UploadFile = ({ session }) => {
           </div>
         </div>
 
-        {/* SECCIÓN 3: REQUERIMIENTOS Y COMENTARIOS */}
         <div style={{ marginBottom: '25px' }}>
           <label style={styles.label}>Tipo de Módulo</label>
           <select style={styles.input} value={formData.tipo_modulo} onChange={e => setFormData({...formData, tipo_modulo: e.target.value})}>
@@ -227,7 +236,6 @@ const UploadFile = ({ session }) => {
           <textarea style={{ ...styles.input, height: '100px' }} placeholder="Escribe un comentario..." value={formData.comentarios} onChange={e => setFormData({...formData, comentarios: e.target.value})}></textarea>
         </div>
 
-        {/* SECCIÓN 4: ADJUNTAR ARCHIVO */}
         <h2 style={{ fontSize: '20px', margin: '40px 0 20px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
           ADJUNTAR ARCHIVO
         </h2>
@@ -240,7 +248,6 @@ const UploadFile = ({ session }) => {
           <div style={{ fontSize: '12px', color: '#888' }}>{selectedFile ? selectedFile.name : 'Formatos: .mmf, .bin, .rar'}</div>
         </div>
 
-        {/* RESUMEN DE CRÉDITOS Y BOTÓN FINAL */}
         <div style={styles.resumenBox}>
             <div style={{ textAlign: 'left' }}>
                 <p style={{ margin: 0, fontSize: '12px', color: '#aaa' }}>Créditos a descontar:</p>

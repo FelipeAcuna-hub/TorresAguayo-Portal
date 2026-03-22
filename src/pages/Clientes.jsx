@@ -12,7 +12,7 @@ const Clientes = ({ session }) => {
       setLoading(true);
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*');
 
       if (error) throw error;
       setClientes(data || []);
@@ -27,7 +27,47 @@ const Clientes = ({ session }) => {
     fetchClientes();
   }, []);
 
-  // --- 2. ACCIONES DE ADMINISTRADOR ---
+  // --- 2. ACCIÓN: CARGAR CRÉDITOS (¡ESTO ES LO QUE TE FALTABA!) ---
+  const handleAddCredits = async (id, currentCredits, fullName) => {
+    const amount = window.prompt(`¿Cuántos créditos quieres cargar a ${fullName}? (Actualmente tiene: ${currentCredits || 0})`);
+    
+    if (amount && !isNaN(amount)) {
+      const cantidad = parseInt(amount);
+      const nuevoSaldo = (currentCredits || 0) + cantidad;
+
+      try {
+        // A. Actualizamos el saldo en el perfil
+        const { error: updateErr } = await supabase
+          .from('profiles')
+          .update({ credits: nuevoSaldo })
+          .eq('id', id);
+
+        if (updateErr) throw updateErr;
+
+        // B. ¡IMPORTANTE! Registramos el movimiento para el historial del usuario
+        const { error: historyErr } = await supabase
+          .from('movimientos')
+          .insert([
+            {
+              perfil_id: id,
+              tipo: 'carga',
+              cantidad: cantidad,
+              descripcion: 'Carga manual de créditos por administrador',
+              fecha: new Date().toISOString()
+            }
+          ]);
+
+        if (historyErr) throw historyErr;
+
+        alert(`✅ Se han cargado ${cantidad} créditos a ${fullName}. Nuevo saldo: ${nuevoSaldo}`);
+        fetchClientes();
+      } catch (error) {
+        alert("Error al cargar créditos: " + error.message);
+      }
+    }
+  };
+
+  // --- 3. ACCIONES DE ADMINISTRADOR ---
   const handleAprobar = async (id, email) => {
     try {
       const { error } = await supabase
@@ -38,7 +78,6 @@ const Clientes = ({ session }) => {
       if (error) throw error;
       
       alert(`✅ Cliente aprobado. Se notificará a ${email}`);
-      // Aquí podrías disparar tu función de correo 'swift-function' si quieres avisarle
       fetchClientes();
     } catch (error) {
       alert("Error al aprobar: " + error.message);
@@ -58,14 +97,10 @@ const Clientes = ({ session }) => {
     }
   };
 
-  // --- 3. FILTRADO ---
+  // --- 4. FILTRADO ---
   const solicitudesPendientes = clientes.filter(c => c.is_approved !== true);
   const clientesActivos = clientes.filter(c => c.is_approved === true);
 
-  console.log("Total clientes:", clientes.length);
-  console.log("Activos:", clientesActivos.length);
-  console.log("Pendientes:", solicitudesPendientes.length);
-  
   const styles = {
     container: { flex: 1, padding: '30px', backgroundColor: '#f3f4f6', minHeight: '100vh' },
     header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
@@ -86,13 +121,14 @@ const Clientes = ({ session }) => {
     th: { textAlign: 'left', padding: '12px', borderBottom: '2px solid #eee', fontSize: '11px', color: '#888', textTransform: 'uppercase' },
     td: { padding: '12px', borderBottom: '1px solid #eee', fontSize: '13px' },
     btnApprove: { backgroundColor: '#22c55e', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px', marginRight: '5px' },
-    btnReject: { backgroundColor: '#e11d48', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }
+    btnReject: { backgroundColor: '#e11d48', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' },
+    btnCredits: { backgroundColor: '#3b82f6', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px', marginRight: '5px' }
   };
 
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '1px' }}>Gestión de Clientes</h2>
+        <h2 style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '1px', fontSize: '20px' }}>Gestión de Clientes</h2>
         <div style={{ backgroundColor: '#e11d48', color: 'white', padding: '5px 15px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' }}>
           {solicitudesPendientes.length} Solicitudes nuevas
         </div>
@@ -113,8 +149,8 @@ const Clientes = ({ session }) => {
             <tr>
               <th style={styles.th}>Nombre / Empresa</th>
               <th style={styles.th}>Email</th>
-              <th style={styles.th}>Teléfono / RUT</th>
-              <th style={styles.th}>País / Actividad</th>
+              <th style={styles.th}>Créditos</th>
+              <th style={styles.th}>País / RUT</th>
               <th style={styles.th}>Acciones</th>
             </tr>
           </thead>
@@ -125,14 +161,15 @@ const Clientes = ({ session }) => {
                   <div style={{ fontWeight: 'bold' }}>{c.full_name} {c.apellido}</div>
                   <div style={{ fontSize: '11px', color: '#e11d48' }}>{c.company || 'PARTICULAR'}</div>
                 </td>
-                <td style={styles.td}>{c.email || '---'}</td>
+                <td style={styles.td}>{c.email}</td>
                 <td style={styles.td}>
-                  <div>{c.phone}</div>
-                  <div style={{ fontSize: '10px', color: '#999' }}>{c.rut}</div>
+                  <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
+                    {c.credits || 0}
+                  </div>
                 </td>
                 <td style={styles.td}>
                   <div>{c.country}</div>
-                  <div style={{ fontSize: '10px', color: '#999' }}>{c.actividad}</div>
+                  <div style={{ fontSize: '10px', color: '#999' }}>{c.rut}</div>
                 </td>
                 <td style={styles.td}>
                   {tab === 'pendientes' ? (
@@ -141,15 +178,15 @@ const Clientes = ({ session }) => {
                       <button style={styles.btnReject} onClick={() => handleEliminar(c.id)}>RECHAZAR</button>
                     </>
                   ) : (
-                    <button style={styles.btnReject} onClick={() => handleEliminar(c.id)}>ELIMINAR</button>
+                    <>
+                      <button style={styles.btnCredits} onClick={() => handleAddCredits(c.id, c.credits, c.full_name)}>CARGAR CRÉDITOS</button>
+                      <button style={styles.btnReject} onClick={() => handleEliminar(c.id)}>ELIMINAR</button>
+                    </>
                   )}
                 </td>
               </tr>
             ))}
             {loading && <tr><td colSpan="5" style={{ textAlign: 'center', padding: '20px' }}>Cargando datos...</td></tr>}
-            {!loading && (tab === 'pendientes' ? solicitudesPendientes : clientesActivos).length === 0 && (
-              <tr><td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: '#999' }}>No hay registros para mostrar.</td></tr>
-            )}
           </tbody>
         </table>
       </div>

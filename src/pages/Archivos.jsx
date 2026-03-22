@@ -5,8 +5,14 @@ const Archivos = ({ session }) => {
   const [archivos, setArchivos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [archivoDetalle, setArchivoDetalle] = useState(null);
-  // --- NUEVO ESTADO PARA EL FILTRO ---
   const [searchTerm, setSearchTerm] = useState('');
+
+  // --- LÓGICA DE PAGINACIÓN ---
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [itemsPorPagina] = useState(8); 
+
+  // --- FILTRO DE ESTADO ---
+  const [statusFilter, setStatusFilter] = useState('todos');
 
   const ADMIN_EMAILS = [
     'scannerstorresaguayo@gmail.com',
@@ -18,39 +24,101 @@ const Archivos = ({ session }) => {
     session?.user?.user_metadata?.role === 'admin' ||
     ADMIN_EMAILS.includes(session?.user?.email?.toLowerCase());
 
+  const fetchArchivos = async () => {
+    try {
+      setLoading(true);
+      if (!session?.user?.id) return;
+  
+      let query = supabase
+        .from('archivos')
+        .select(`
+          *,
+          profiles:user_id (
+            company,
+            email
+          )
+        `);
+      
+      if (!isAdmin) {
+        query = query.eq('user_id', session.user.id);
+      }
+  
+      const { data, error } = await query.order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setArchivos(data || []);
+    } catch (error) {
+      console.error("Error al cargar archivos:", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchArchivos = async () => {
+    fetchArchivos();
+  }, [session, isAdmin]);
+
+  // --- NUEVA FUNCIÓN: CANCELAR Y DEVOLVER CRÉDITOS ---
+  const handleCancelarSolicitud = async (archivo) => {
+    if (archivo.estado !== 'pendiente') {
+      alert("Solo se pueden cancelar solicitudes en estado pendiente.");
+      return;
+    }
+
+    const costo = archivo.detalles_tecnicos?.costo_creditos || 0;
+
+    if (window.confirm(`¿Estás seguro de cancelar esta solicitud? Se te devolverán ${costo} créditos.`)) {
       try {
         setLoading(true);
-        if (!session?.user?.id) return;
-    
-        let query = supabase
+
+        // 1. Obtener créditos actuales del perfil
+        const { data: perfil, error: errorPerfil } = await supabase
+          .from('profiles')
+          .select('credits')
+          .eq('id', session.user.id)
+          .single();
+
+        if (errorPerfil) throw errorPerfil;
+
+        const nuevosCreditos = (perfil.credits || 0) + costo;
+
+        // 2. Actualizar créditos en el perfil
+        const { error: errorUpdate } = await supabase
+          .from('profiles')
+          .update({ credits: nuevosCreditos })
+          .eq('id', session.user.id);
+
+        if (errorUpdate) throw errorUpdate;
+
+        // 3. Registrar la devolución en la tabla de movimientos (historial)
+        await supabase.from('movimientos').insert([
+          {
+            user_id: session.user.id,
+            tipo: 'carga',
+            cantidad: costo,
+            descripcion: `Devolución por cancelación: ${archivo.marca_modelo} (${archivo.patente})`,
+            created_at: new Date()
+          }
+        ]);
+
+        // 4. Eliminar el registro del archivo
+        const { error: errorDelete } = await supabase
           .from('archivos')
-          .select(`
-            *,
-            profiles:user_id (
-              company,
-              email
-            )
-          `);
-        
-        if (!isAdmin) {
-          query = query.eq('user_id', session.user.id);
-        }
-    
-        const { data, error } = await query.order('created_at', { ascending: false });
-        
-        if (error) throw error;
-        setArchivos(data || []);
+          .delete()
+          .eq('id', archivo.id);
+
+        if (errorDelete) throw errorDelete;
+
+        alert("Solicitud cancelada y créditos devueltos con éxito.");
+        fetchArchivos(); // Recargar la lista
       } catch (error) {
-        console.error("Error al cargar archivos:", error.message);
+        console.error("Error al cancelar:", error.message);
+        alert("Ocurrió un error al procesar la cancelación.");
       } finally {
         setLoading(false);
       }
-    };
-
-    fetchArchivos();
-  }, [session, isAdmin]);
+    }
+  };
 
   const handleUploadModificado = async (archivoId, file, patente, clienteEmail) => {
     try {
@@ -103,7 +171,6 @@ const Archivos = ({ session }) => {
           ? `✅ Archivo Listo - Patente ${patente}` 
           : `🔍 Archivo en Revisión - Patente ${patente}`;
 
-        // --- DISEÑO DE CORREO DINÁMICO INTEGRADO ---
         const emailHtml = `
           <div style="font-family: 'Helvetica', Arial, sans-serif; background-color: #f9f9f9; padding: 40px 0;">
             <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
@@ -156,13 +223,21 @@ const Archivos = ({ session }) => {
     statusBadge: { padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', color: 'white', textTransform: 'uppercase', whiteSpace: 'nowrap' },
     selectAdmin: { padding: '5px', fontSize: '10px', fontWeight: 'bold', borderRadius: '4px', border: '1px solid #ddd', cursor: 'pointer', textTransform: 'uppercase', outline: 'none', backgroundColor: 'white' },
     searchBar: { display: 'flex', alignItems: 'center', backgroundColor: '#f3f4f6', padding: '6px 12px', borderRadius: '4px', border: '1px solid #ddd' },
+    statusSelector: { padding: '6px 12px', borderRadius: '4px', border: '1px solid #ddd', fontSize: '12px', outline: 'none', backgroundColor: '#fff', cursor: 'pointer', fontWeight: 'bold', color: '#333', marginRight: '10px' },
     modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' },
     modalContent: { backgroundColor: 'white', width: '100%', maxWidth: '500px', borderRadius: '4px', overflow: 'hidden', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' },
     modalHeader: { backgroundColor: '#000', color: '#e11d48', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #e11d48' },
     modalBody: { padding: '25px', maxHeight: '75vh', overflowY: 'auto' },
     infoTable: { width: '100%', borderCollapse: 'collapse', marginBottom: '20px' },
     infoLabel: { padding: '8px 0', fontWeight: 'bold', fontSize: '11px', color: '#000', borderBottom: '1px solid #eee', textTransform: 'uppercase', width: '40%' },
-    infoValue: { padding: '8px 0', fontSize: '12px', color: '#444', borderBottom: '1px solid #eee' }
+    infoValue: { padding: '8px 0', fontSize: '12px', color: '#444', borderBottom: '1px solid #eee' },
+    
+    // ESTILOS DE PAGINACIÓN
+    pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '5px', marginTop: '20px', padding: '10px' },
+    pageBtn: (active) => ({ padding: '6px 12px', cursor: 'pointer', backgroundColor: active ? '#e11d48' : 'white', color: active ? 'white' : '#666', border: '1px solid #ddd', borderRadius: '2px', fontSize: '12px', fontWeight: 'bold' }),
+
+    // BOTÓN ELIMINAR
+    btnDelete: { backgroundColor: '#e11d48', color: 'white', border: 'none', padding: '5px 8px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '9px', textTransform: 'uppercase', marginTop: '5px' }
   };
 
   const getBadgeColor = (estado) => {
@@ -174,11 +249,15 @@ const Archivos = ({ session }) => {
   };
 
   const filteredArchivos = archivos.filter(a => {
-    if (!searchTerm) return true;
-    const matchNumero = a.numero_orden?.toString() === searchTerm;
-    const matchPatente = a.patente?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchNumero || matchPatente;
+    const matchSearch = !searchTerm || a.numero_orden?.toString() === searchTerm || a.patente?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchStatus = statusFilter === 'todos' || a.estado === statusFilter;
+    return matchSearch && matchStatus;
   });
+
+  const indiceUltimo = paginaActual * itemsPorPagina;
+  const indicePrimer = indiceUltimo - itemsPorPagina;
+  const archivosPaginados = filteredArchivos.slice(indicePrimer, indiceUltimo);
+  const totalPaginas = Math.ceil(filteredArchivos.length / itemsPorPagina);
 
   return (
     <div style={styles.mainContent}>
@@ -188,15 +267,28 @@ const Archivos = ({ session }) => {
             {isAdmin ? "MODO ADMINISTRADOR" : "PORTAL OFICIAL"}
           </div>
 
-          <div style={styles.searchBar}>
-            <span style={{ fontSize: '12px', marginRight: '8px' }}>🔍</span>
-            <input 
-              type="text" 
-              placeholder="Buscar N° o Patente..." 
-              style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', width: '150px' }}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <select 
+              style={styles.statusSelector} 
+              value={statusFilter} 
+              onChange={(e) => { setStatusFilter(e.target.value); setPaginaActual(1); }}
+            >
+              <option value="todos">TODOS LOS ESTADOS</option>
+              <option value="pendiente">PENDIENTES</option>
+              <option value="en revision">EN REVISIÓN</option>
+              <option value="completado">COMPLETADOS</option>
+            </select>
+
+            <div style={styles.searchBar}>
+              <span style={{ fontSize: '12px', marginRight: '8px' }}>🔍</span>
+              <input 
+                type="text" 
+                placeholder="Buscar N° o Patente..." 
+                style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', width: '150px' }}
+                value={searchTerm}
+                onChange={(e) => { setSearchTerm(e.target.value); setPaginaActual(1); }}
+              />
+            </div>
           </div>
         </div>
 
@@ -218,8 +310,8 @@ const Archivos = ({ session }) => {
               </tr>
             </thead>
             <tbody>
-              {filteredArchivos.length > 0 ? (
-                filteredArchivos.map((archivo) => (
+              {archivosPaginados.length > 0 ? (
+                archivosPaginados.map((archivo) => (
                   <tr key={archivo.id}>
                     <td style={styles.td}>
                       <div style={{ fontWeight: 'bold', color: '#e11d48', fontSize: '14px' }}>#{archivo.numero_orden || '---'}</div>
@@ -285,6 +377,16 @@ const Archivos = ({ session }) => {
                             </label>
                           )
                         )}
+
+                        {/* BOTÓN ELIMINAR SOLICITUD - SOLO USUARIOS Y SOLO PENDIENTES */}
+                        {!isAdmin && archivo.estado === 'pendiente' && (
+                          <button 
+                            style={styles.btnDelete}
+                            onClick={() => handleCancelarSolicitud(archivo)}
+                          >
+                            ELIMINAR SOLICITUD
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -299,9 +401,38 @@ const Archivos = ({ session }) => {
             </tbody>
           </table>
         </div>
+
+        {totalPaginas > 1 && (
+          <div style={styles.pagination}>
+            <button 
+              onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
+              disabled={paginaActual === 1}
+              style={{ ...styles.pageBtn(false), opacity: paginaActual === 1 ? 0.5 : 1 }}
+            >
+              Anterior
+            </button>
+            
+            {[...Array(totalPaginas).keys()].map(n => (
+              <button 
+                key={n + 1}
+                onClick={() => setPaginaActual(n + 1)}
+                style={styles.pageBtn(paginaActual === n + 1)}
+              >
+                {n + 1}
+              </button>
+            ))}
+
+            <button 
+              onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))}
+              disabled={paginaActual === totalPaginas}
+              style={{ ...styles.pageBtn(false), opacity: paginaActual === totalPaginas ? 0.5 : 1 }}
+            >
+              Siguiente
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* MODAL DE DETALLES TÉCNICOS */}
       {archivoDetalle && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalContent}>
