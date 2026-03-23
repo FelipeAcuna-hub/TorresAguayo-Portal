@@ -107,7 +107,8 @@ const Admin = ({ session }) => {
             user_id: userId,
             descripcion: desc,
             cantidad: amount,
-            tipo: tipoMovimiento
+            tipo: tipoMovimiento,
+            admin_email: session?.user?.email 
           }
         ]);
 
