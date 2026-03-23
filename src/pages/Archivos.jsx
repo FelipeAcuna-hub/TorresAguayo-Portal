@@ -7,11 +7,8 @@ const Archivos = ({ session }) => {
   const [archivoDetalle, setArchivoDetalle] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // --- LÓGICA DE PAGINACIÓN ---
   const [paginaActual, setPaginaActual] = useState(1);
-  const [itemsPorPagina] = useState(8); 
-
-  // --- FILTRO DE ESTADO ---
+  const [itemsPorPagina] = useState(8);
   const [statusFilter, setStatusFilter] = useState('todos');
 
   const ADMIN_EMAILS = [
@@ -28,7 +25,7 @@ const Archivos = ({ session }) => {
     try {
       setLoading(true);
       if (!session?.user?.id) return;
-  
+
       let query = supabase
         .from('archivos')
         .select(`
@@ -38,13 +35,13 @@ const Archivos = ({ session }) => {
             email
           )
         `);
-      
+
       if (!isAdmin) {
         query = query.eq('user_id', session.user.id);
       }
-  
+
       const { data, error } = await query.order('created_at', { ascending: false });
-      
+
       if (error) throw error;
       setArchivos(data || []);
     } catch (error) {
@@ -58,7 +55,7 @@ const Archivos = ({ session }) => {
     fetchArchivos();
   }, [session, isAdmin]);
 
-  // --- FUNCIÓN: CANCELAR Y DEVOLVER CRÉDITOS ---
+  // --- FUNCIÓN BLINDADA: BORRA EN DB Y LUEGO EN EL ESTADO LOCAL ---
   const handleCancelarSolicitud = async (archivo) => {
     if (archivo.estado !== 'pendiente') {
       alert("Solo se pueden cancelar solicitudes en estado pendiente.");
@@ -71,6 +68,18 @@ const Archivos = ({ session }) => {
       try {
         setLoading(true);
 
+        // 1. ELIMINAR DE SUPABASE
+        const { error: errorDelete } = await supabase
+          .from('archivos')
+          .delete()
+          .eq('id', archivo.id);
+
+        if (errorDelete) throw new Error("No se pudo eliminar de la base de datos.");
+
+        // 2. ACTUALIZAR ESTADO LOCAL INMEDIATAMENTE (Esto hace que desaparezca de la lista al segundo)
+        setArchivos(prevArchivos => prevArchivos.filter(a => a.id !== archivo.id));
+
+        // 3. OBTENER SALDO Y ACTUALIZAR CRÉDITOS
         const { data: perfil, error: errorPerfil } = await supabase
           .from('profiles')
           .select('credits')
@@ -81,35 +90,31 @@ const Archivos = ({ session }) => {
 
         const nuevosCreditos = (perfil.credits || 0) + costo;
 
-        const { error: errorUpdate } = await supabase
+        await supabase
           .from('profiles')
           .update({ credits: nuevosCreditos })
           .eq('id', session.user.id);
 
-        if (errorUpdate) throw errorUpdate;
-
+        // 4. REGISTRAR MOVIMIENTO
         await supabase.from('movimientos').insert([
           {
             user_id: session.user.id,
             tipo: 'carga',
             cantidad: costo,
-            descripcion: `Devolución por cancelación: ${archivo.marca_modelo} (${archivo.patente})`,
+            descripcion: `Cancelación Solicitud: ${archivo.marca_modelo} (${archivo.patente})`,
             created_at: new Date()
           }
         ]);
 
-        const { error: errorDelete } = await supabase
-          .from('archivos')
-          .delete()
-          .eq('id', archivo.id);
-
-        if (errorDelete) throw errorDelete;
-
-        alert("Solicitud cancelada y créditos devueltos con éxito.");
+        alert("✅ Solicitud eliminada y créditos devueltos.");
+        
+        // Refrescamos por si acaso, pero el filter ya lo quitó de la vista
         fetchArchivos();
+
       } catch (error) {
-        console.error("Error al cancelar:", error.message);
-        alert("Ocurrió un error al procesar la cancelación.");
+        console.error("Error:", error.message);
+        alert("Error crítico: " + error.message);
+        fetchArchivos(); 
       } finally {
         setLoading(false);
       }
@@ -134,19 +139,20 @@ const Archivos = ({ session }) => {
 
       const { error: dbError } = await supabase
         .from('archivos')
-        .update({ 
-          mod_file_url: publicUrl, 
-          estado: 'completado' 
+        .update({
+          mod_file_url: publicUrl,
+          estado: 'completado'
         })
         .eq('id', archivoId);
 
       if (dbError) throw dbError;
 
       await handleStatusChange(archivoId, 'completado', clienteEmail, patente);
-      alert("Archivo MODIFICADO cargado con éxito.");
-      
+      alert("✅ Archivo MODIFICADO cargado con éxito.");
+      fetchArchivos();
+
     } catch (error) {
-      console.error("Error al subir modificado:", error.message);
+      console.error("Error:", error.message);
       alert("Error al subir el archivo.");
     } finally {
       setLoading(false);
@@ -159,12 +165,12 @@ const Archivos = ({ session }) => {
         .from('archivos')
         .update({ estado: nuevoEstado })
         .eq('id', archivoId);
-  
+
       if (error) throw error;
-  
+
       if (clienteEmail) {
-        const subjectText = nuevoEstado === 'completado' 
-          ? `✅ Archivo Listo - Patente ${patente}` 
+        const subjectText = nuevoEstado === 'completado'
+          ? `✅ Archivo Listo - Patente ${patente}`
           : `🔍 Archivo en Revisión - Patente ${patente}`;
 
         const emailHtml = `
@@ -180,28 +186,20 @@ const Archivos = ({ session }) => {
                 <div style="background-color: #f3f4f6; padding: 15px; border-left: 4px solid ${nuevoEstado === 'completado' ? '#22c55e' : '#facc15'}; margin: 20px 0; font-weight: bold; font-size: 18px; text-align: center; text-transform: uppercase; color: ${nuevoEstado === 'completado' ? '#166534' : '#854d0e'};">
                   ${nuevoEstado === 'completado' ? '✅ ' + nuevoEstado : '🔍 ' + nuevoEstado}
                 </div>
-                <p>${nuevoEstado === 'completado' ? 'Ya puedes descargar tu archivo modificado desde el portal oficial.' : 'Nuestro equipo técnico ya está trabajando en tu solicitud. Te notificaremos apenas esté listo.'}</p>
+                <p>${nuevoEstado === 'completado' ? 'Ya puedes descargar tu archivo modificado desde el portal oficial.' : 'Nuestro equipo técnico ya está trabajando en tu solicitud.'}</p>
                 <div style="text-align: center; margin-top: 30px;">
-                  <a href="https://torresaguayomms.cl/archivos" style="background-color: #e11d48; color: white; padding: 12px 25px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">IR AL PORTAL DE USUARIO</a>
+                  <a href="https://torresaguayomms.cl/archivos" style="background-color: #e11d48; color: white; padding: 12px 25px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">IR AL PORTAL</a>
                 </div>
-              </div>
-              <div style="background-color: #f3f4f6; padding: 20px; text-align: center; font-size: 12px; color: #999;">
-                <p>© 2026 Torres Aguayo MMS - Ingeniería en Reprogramación Automotriz</p>
-                <p>Este es un correo automático, por favor no respondas a este mensaje.</p>
               </div>
             </div>
           </div>
         `;
-  
+
         await supabase.functions.invoke('swift-function', {
-          body: {
-            to: clienteEmail,
-            subject: subjectText,
-            html: emailHtml
-          },
+          body: { to: clienteEmail, subject: subjectText, html: emailHtml },
         });
       }
-  
+
       setArchivos(prev => prev.map(a => a.id === archivoId ? { ...a, estado: nuevoEstado } : a));
     } catch (error) {
       console.error("Error:", error.message);
@@ -216,7 +214,7 @@ const Archivos = ({ session }) => {
     th: { textAlign: 'left', padding: '12px', borderBottom: '2px solid #eee', fontSize: '10px', color: '#666', textTransform: 'uppercase', fontWeight: 'bold' },
     td: { padding: '12px', borderBottom: '1px solid #eee', fontSize: '12px' },
     statusBadge: { padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', color: 'white', textTransform: 'uppercase', whiteSpace: 'nowrap' },
-    selectAdmin: { padding: '5px', fontSize: '10px', fontWeight: 'bold', borderRadius: '4px', border: '1px solid #ddd', cursor: 'pointer', textTransform: 'uppercase', outline: 'none', backgroundColor: 'white' },
+    selectAdmin: { padding: '5px', fontSize: '10px', fontWeight: 'bold', borderRadius: '4px', border: '1px solid #ddd', cursor: 'pointer', outline: 'none', backgroundColor: 'white' },
     searchBar: { display: 'flex', alignItems: 'center', backgroundColor: '#f3f4f6', padding: '6px 12px', borderRadius: '4px', border: '1px solid #ddd' },
     statusSelector: { padding: '6px 12px', borderRadius: '4px', border: '1px solid #ddd', fontSize: '12px', outline: 'none', backgroundColor: '#fff', cursor: 'pointer', fontWeight: 'bold', color: '#333', marginRight: '10px' },
     modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' },
@@ -228,8 +226,7 @@ const Archivos = ({ session }) => {
     infoValue: { padding: '8px 0', fontSize: '12px', color: '#444', borderBottom: '1px solid #eee' },
     pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '5px', marginTop: '20px', padding: '10px' },
     pageBtn: (active) => ({ padding: '6px 12px', cursor: 'pointer', backgroundColor: active ? '#e11d48' : 'white', color: active ? 'white' : '#666', border: '1px solid #ddd', borderRadius: '2px', fontSize: '12px', fontWeight: 'bold' }),
-    
-    // BOTÓN ELIMINAR NUEVO
+
     btnDelete: (active) => ({
       backgroundColor: active ? '#e11d48' : '#eee',
       color: active ? 'white' : '#ccc',
@@ -294,7 +291,7 @@ const Archivos = ({ session }) => {
                 <th style={styles.th}>Marca / Modelo</th>
                 <th style={styles.th}>Ficha</th>
                 <th style={styles.th}>Estado</th>
-                <th style={styles.th}>Eliminar</th> {/* COLUMNA NUEVA */}
+                <th style={styles.th}>Eliminar</th>
                 <th style={styles.th}>Acción</th>
               </tr>
             </thead>
@@ -322,18 +319,17 @@ const Archivos = ({ session }) => {
                     ) : <span style={{ ...styles.statusBadge, backgroundColor: getBadgeColor(archivo.estado) }}>{archivo.estado}</span>}
                   </td>
 
-                  {/* COLUMNA ELIMINAR */}
                   <td style={styles.td}>
                     {!isAdmin && (
-                      <button 
-                        style={styles.btnDelete(archivo.estado === 'pendiente')} 
+                      <button
+                        style={styles.btnDelete(archivo.estado === 'pendiente')}
                         onClick={() => handleCancelarSolicitud(archivo)}
                         disabled={archivo.estado !== 'pendiente'}
                       >
                         {archivo.estado === 'pendiente' ? '❌ ELIMINAR' : 'BLOQUEADO'}
                       </button>
                     )}
-                    {isAdmin && <span style={{fontSize: '9px', color: '#ccc'}}>Solo Cliente</span>}
+                    {isAdmin && <span style={{ fontSize: '9px', color: '#ccc' }}>Solo Cliente</span>}
                   </td>
 
                   <td style={styles.td}>
@@ -358,7 +354,7 @@ const Archivos = ({ session }) => {
         {totalPaginas > 1 && (
           <div style={styles.pagination}>
             <button onClick={() => setPaginaActual(p => Math.max(1, p - 1))} disabled={paginaActual === 1} style={{ ...styles.pageBtn(false), opacity: paginaActual === 1 ? 0.3 : 1 }}>← ANTERIOR</button>
-            {[...Array(totalPaginas).keys()].map(n => <button key={n+1} onClick={() => setPaginaActual(n+1)} style={styles.pageBtn(paginaActual === n+1)}>{n+1}</button>)}
+            {[...Array(totalPaginas).keys()].map(n => <button key={n + 1} onClick={() => setPaginaActual(n + 1)} style={styles.pageBtn(paginaActual === n + 1)}>{n + 1}</button>)}
             <button onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))} disabled={paginaActual === totalPaginas} style={{ ...styles.pageBtn(false), opacity: paginaActual === totalPaginas ? 0.3 : 1 }}>SIGUIENTE →</button>
           </div>
         )}
@@ -379,6 +375,8 @@ const Archivos = ({ session }) => {
                     ['Brand / Model', archivoDetalle.marca_modelo],
                     ['Year', archivoDetalle.detalles_tecnicos?.anio],
                     ['Motor', archivoDetalle.detalles_tecnicos?.motor],
+                    ['HP', archivoDetalle.detalles_tecnicos?.hp],
+                    ['Fuel', archivoDetalle.detalles_tecnicos?.combustible],
                     ['ECU', archivoDetalle.detalles_tecnicos?.ecu],
                     ['Services', archivoDetalle.detalles_tecnicos?.servicios_solicitados],
                     ['Credits', archivoDetalle.detalles_tecnicos?.costo_creditos]

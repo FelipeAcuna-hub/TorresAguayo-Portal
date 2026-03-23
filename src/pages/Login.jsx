@@ -6,6 +6,9 @@ const Login = () => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  // --- ESTADO PARA MOSTRAR/OCULTAR CONTRASEÑA ---
+  const [showPassword, setShowPassword] = useState(false);
+
   // Nuevos estados para el registro extendido
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
@@ -18,7 +21,6 @@ const Login = () => {
     e.preventDefault();
     try {
       if (isRegistering) {
-        // REGISTRO EXTENDIDO: Enviamos metadatos a Supabase Auth
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -27,20 +29,18 @@ const Login = () => {
               full_name: `${nombre} ${apellido}`,
               phone: telefono,
               company: compania,
-              role: 'user' // Por defecto todos entran como usuarios
+              role: 'user'
             }
           }
         });
         if (error) throw error;
         alert('Registro exitoso. Un administrador revisará tu solicitud y te notificará por email cuando tu acceso sea activado.');
       } else {
-        // LOGIN NORMAL CON FILTRO DE APROBACIÓN
         const { data: { user }, error: loginError } = await supabase.auth.signInWithPassword({ email, password });
         
         if (loginError) throw loginError;
 
         if (user) {
-          // --- NUEVA LÓGICA DE VERIFICACIÓN DE APROBACIÓN ---
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('is_approved')
@@ -50,12 +50,10 @@ const Login = () => {
           if (profileError) throw profileError;
 
           if (profile && !profile.is_approved) {
-            // Si no está aprobado, lo sacamos de la sesión inmediatamente
             await supabase.auth.signOut();
-            alert("⚠️ Acceso en espera: Tu cuenta aún no ha sido aprobada por el administrador. Te avisaremos por correo una vez activada.");
+            alert("⚠️ Acceso en espera: Tu cuenta aún no ha sido aprobada por el administrador.");
             return;
           }
-          // Si está aprobado, lo dejamos pasar
           navigate('/'); 
         }
       }
@@ -77,11 +75,17 @@ const Login = () => {
     logo: { fontSize: '28px', fontWeight: 'bold', textAlign: 'center', marginBottom: '5px', color: 'white' },
     subtitle: { fontSize: '11px', color: '#666', textAlign: 'center', marginBottom: '25px', textTransform: 'uppercase', letterSpacing: '2px' },
     inputGroup: { marginBottom: '15px' },
-    row: { display: 'flex', gap: '10px', marginBottom: '15px' }, // Para Nombre y Apellido juntos
+    row: { display: 'flex', gap: '10px', marginBottom: '15px' },
     label: { display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#888', marginBottom: '5px', textTransform: 'uppercase' },
     input: {
       width: '100%', padding: '12px', backgroundColor: '#1a1a1a', border: '1px solid #333',
       borderRadius: '4px', color: 'white', outline: 'none', boxSizing: 'border-box', fontSize: '14px'
+    },
+    // Estilo específico para el contenedor del input password
+    passContainer: { position: 'relative', display: 'flex', alignItems: 'center' },
+    eyeBtn: {
+      position: 'absolute', right: '10px', background: 'none', border: 'none',
+      cursor: 'pointer', color: '#666', fontSize: '16px', display: 'flex', alignItems: 'center'
     },
     button: {
       width: '100%', backgroundColor: '#e11d48', color: 'white', padding: '14px',
@@ -130,7 +134,22 @@ const Login = () => {
           
           <div style={styles.inputGroup}>
             <label style={styles.label}>Contraseña</label>
-            <input style={styles.input} type="password" placeholder="••••••••" onChange={(e) => setPassword(e.target.value)} required />
+            <div style={styles.passContainer}>
+              <input 
+                style={{ ...styles.input, paddingRight: '40px' }} 
+                type={showPassword ? "text" : "password"} 
+                placeholder="••••••••" 
+                onChange={(e) => setPassword(e.target.value)} 
+                required 
+              />
+              <button 
+                type="button" 
+                onClick={() => setShowPassword(!showPassword)}
+                style={styles.eyeBtn}
+              >
+                {showPassword ? '🔒' : '👁️'}
+              </button>
+            </div>
           </div>
 
           <button type="submit" style={styles.button}>

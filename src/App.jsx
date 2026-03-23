@@ -56,8 +56,16 @@ function App() {
     );
   }
 
-  // Lógica de Administrador basada en los metadatos de Supabase
-  const isAdmin = session?.user?.app_metadata?.role === 'admin';
+  // --- LÓGICA DE ADMINISTRADOR UNIFICADA (LOS 3 CORREOS + ROL) ---
+  const ADMIN_EMAILS = [
+    'scannerstorresaguayo@gmail.com',
+    'felipe.acuna2@mail.udp.cl',
+    'stockcarscl@gmail.com'
+  ];
+
+  const isAdmin = 
+    session?.user?.app_metadata?.role === 'admin' || 
+    ADMIN_EMAILS.includes(session?.user?.email?.toLowerCase());
 
   return (
     <Router>
@@ -81,7 +89,8 @@ function App() {
           <Route path="/upload" element={<UploadFile session={session} />} />
           <Route path="/simulador" element={<Simulador session={session} />} />
           <Route path="/clientes" element={<Clientes session={session} />} />
-          {/* Ruta Exclusiva para Administradores (también dentro del Layout) */}
+          
+          {/* Ruta Exclusiva para Administradores */}
           <Route 
             path="/admin" 
             element={isAdmin ? <Admin session={session} /> : <Navigate to="/" />} 

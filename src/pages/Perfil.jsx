@@ -3,9 +3,11 @@ import { supabase } from '../supabaseClient';
 
 const Perfil = ({ session }) => {
   const [loading, setLoading] = useState(false);
-  // --- NUEVO ESTADO PARA CONTRASEÑA ---
-  const [newPassword, setNewPassword] = useState(""); 
   
+  // --- ESTADOS UNIFICADOS PARA CONTRASEÑA ---
+  const [newPassword, setNewPassword] = useState("");
+  const [mostrarPassword, setMostrarPassword] = useState(false);
+
   const [profile, setProfile] = useState({
     full_name: '',
     apellido: '',
@@ -53,10 +55,10 @@ const Perfil = ({ session }) => {
     getProfile();
   }, [session]);
 
-  // --- NUEVA FUNCIÓN PARA CAMBIAR CONTRASEÑA ---
+  // --- FUNCIÓN PARA CAMBIAR CONTRASEÑA ---
   const handlePasswordChange = async () => {
     if (!newPassword || newPassword.length < 6) {
-      alert("Por favor, escribe una nueva contraseña de al menos 6 caracteres en el campo de texto.");
+      alert("Por favor, escribe una nueva contraseña de al menos 6 caracteres.");
       return;
     }
 
@@ -67,7 +69,7 @@ const Perfil = ({ session }) => {
       });
       if (error) throw error;
       alert("✅ ¡Contraseña actualizada con éxito!");
-      setNewPassword(""); // Limpia el campo después de la actualización
+      setNewPassword(""); 
     } catch (error) {
       alert("Error al cambiar contraseña: " + error.message);
     } finally {
@@ -176,22 +178,54 @@ const Perfil = ({ session }) => {
         <div style={styles.inputGroup}>
           <div>
             <label style={styles.label}>E-MAIL</label>
-            <input style={{ ...styles.input, backgroundColor: '#f9f9f9' }} type="email" value={session?.user?.email} disabled />
+            <input
+              style={{ ...styles.input, backgroundColor: '#f9f9f9' }}
+              type="email"
+              value={session?.user?.email}
+              disabled
+            />
           </div>
+
           <div>
             <label style={styles.label}>NUEVA CONTRASEÑA</label>
-            {/* Cambiamos value="********" por el estado newPassword para que puedas escribir */}
-            <input 
-              style={styles.input} 
-              type="password" 
-              placeholder="Escribe tu nueva clave"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)} 
-            />
-            {/* Ahora el texto tiene la función handlePasswordChange al hacer clic */}
-            <p 
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <input
+                style={{ ...styles.input, paddingRight: '40px' }}
+                type={mostrarPassword ? "text" : "password"}
+                placeholder="Escribe tu nueva clave"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => setMostrarPassword(!mostrarPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  padding: '5px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                {mostrarPassword ? '🔒' : '👁️'}
+              </button>
+            </div>
+
+            <p
               onClick={handlePasswordChange}
-              style={{ fontSize: '11px', color: '#e11d48', cursor: 'pointer', marginTop: '8px', fontWeight: 'bold' }}
+              style={{
+                fontSize: '11px',
+                color: '#e11d48',
+                cursor: 'pointer',
+                marginTop: '8px',
+                fontWeight: 'bold',
+                display: 'inline-block'
+              }}
             >
               {loading ? 'Procesando...' : 'Aplicar cambio de contraseña'}
             </p>
