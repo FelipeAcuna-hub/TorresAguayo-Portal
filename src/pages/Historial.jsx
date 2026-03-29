@@ -33,8 +33,6 @@ const Historial = ({ session }) => {
         .select('*, profiles:user_id(company)')
         .order('created_at', { ascending: false });
 
-      // IMPORTANTE: Solo filtramos si NO es admin. 
-      // Si es admin, ve la gestión global de todos.
       if (!isAdmin) {
         queryMovs = queryMovs.eq('user_id', session?.user?.id);
       }
@@ -48,6 +46,7 @@ const Historial = ({ session }) => {
         .select('*, profiles:perfil_id(company)')
         .order('fecha', { ascending: false });
 
+      // CORRECCIÓN AQUÍ: Si es admin, eliminamos el filtro para ver TODO el historial global
       if (!isAdmin) {
         queryCanjes = queryCanjes.eq('perfil_id', session?.user?.id);
       }

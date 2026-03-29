@@ -4,7 +4,7 @@ const Tickets = () => {
   
   // --- FUNCIÓN PARA GENERAR EL MENSAJE DE WHATSAPP ---
   const abrirWhatsappSoporte = () => {
-    const telefonoSoporte = "569XXXXXXXX"; // <-- REEMPLAZA CON TU NÚMERO (con código de país)
+    const telefonoSoporte = "56995161488"; // <-- REEMPLAZA CON TU NÚMERO (con código de país)
     const mensaje = encodeURIComponent(
       "Hola *Torres Aguayo MMS* 🏎️, necesito soporte técnico con un archivo. ¿Me podrían ayudar?"
     );
