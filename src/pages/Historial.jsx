@@ -22,10 +22,13 @@ const Historial = ({ session }) => {
     ADMIN_EMAILS.includes(session?.user?.email?.toLowerCase());
 
   // --- FUNCIÓN DE CARGA DE DATOS COMPLETA ---
+  // CAMBIO: Dependencias optimizadas para evitar re-creaciones de la función
   const fetchDatos = useCallback(async () => {
     try {
       setLoading(true);
       if (!session?.user?.id) return;
+
+      console.log("Cargando historial desde la base de datos...");
 
       // 1. CARGAR RECARGAS Y RETIROS (Tabla: movimientos)
       let queryMovs = supabase
@@ -46,7 +49,6 @@ const Historial = ({ session }) => {
         .select('*, profiles:perfil_id(company)')
         .order('fecha', { ascending: false });
 
-      // CORRECCIÓN AQUÍ: Si es admin, eliminamos el filtro para ver TODO el historial global
       if (!isAdmin) {
         queryCanjes = queryCanjes.eq('perfil_id', session?.user?.id);
       }
@@ -62,11 +64,14 @@ const Historial = ({ session }) => {
     } finally {
       setLoading(false);
     }
-  }, [session, isAdmin]);
+  }, [session?.user?.id, isAdmin]); // CAMBIO: Dependemos del ID, no del objeto session entero
 
+  // CAMBIO: useEffect ahora solo se dispara cuando el ID de usuario cambia realmente
   useEffect(() => {
-    fetchDatos();
-  }, [fetchDatos]);
+    if (session?.user?.id) {
+      fetchDatos();
+    }
+  }, [session?.user?.id, fetchDatos]); 
 
   // --- LÓGICA DE CÁLCULO DE PÁGINAS ---
   const totalPagMovs = Math.ceil(movimientos.length / itemsPorPagina);

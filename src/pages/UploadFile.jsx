@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom'; // Agregamos useLocation
 import { supabase } from '../supabaseClient';
 
-// --- 1. DEFINICIÓN DE SERVICIOS DINÁMICOS (PDF: $1.000 = 1 Crédito) ---
+// --- 1. DEFINICIÓN DE SERVICIOS DINÁMICOS ---
 const SERVICIOS_CONFIG = {
   'REPROS BENCINA': [
     { id: 'b_s1', name: 'STAGE 1 (INCLUYE VMAX OFF)', price: 140 },
@@ -34,12 +34,12 @@ const SERVICIOS_CONFIG = {
 
 const UploadFile = ({ session }) => {
   const navigate = useNavigate();
+  const location = useLocation(); // Hook para recibir los datos del Simulador
   const years = Array.from({ length: 2026 - 1990 + 1 }, (_, i) => 2026 - i);
 
   const [selectedFile, setSelectedFile] = useState(null);
   const [loading, setLoading] = useState(false);
   
-  // Estados para la lógica dinámica
   const [categoriaSel, setCategoriaSel] = useState(null);
   const [servicioSel, setServicioSel] = useState(null);
   
@@ -49,6 +49,28 @@ const UploadFile = ({ session }) => {
     tipo_modulo: '', comentarios: ''
   });
 
+  // --- EFECTO PARA CAPTURAR DATOS DEL SIMULADOR ---
+  useEffect(() => {
+    // Verificamos si en el historial de navegación vienen datos del servicio
+    if (location.state?.servicio) {
+      const { name, price, id } = location.state.servicio;
+      
+      // Encontrar a qué categoría pertenece el servicio enviado
+      const categoriaEncontrada = Object.keys(SERVICIOS_CONFIG).find(cat => 
+        SERVICIOS_CONFIG[cat].some(s => s.id === id)
+      );
+
+      if (categoriaEncontrada) {
+        setCategoriaSel(categoriaEncontrada);
+        setServicioSel({ id, name, price });
+        
+        // Auto-seleccionar combustible si es Diésel o Bencina
+        if (categoriaEncontrada === 'REPROS DIÉSEL') setFormData(prev => ({...prev, combustible: 'Diesel'}));
+        if (categoriaEncontrada === 'REPROS BENCINA') setFormData(prev => ({...prev, combustible: 'Bencina'}));
+      }
+    }
+  }, [location]);
+
   const totalCreditos = servicioSel ? servicioSel.price : 0;
 
   const handleSubmit = async () => {
@@ -57,13 +79,12 @@ const UploadFile = ({ session }) => {
       return;
     }
     if (!servicioSel) {
-      alert("Por favor selecciona un servicio en el simulador");
+      alert("Por favor selecciona un servicio");
       return;
     }
 
     setLoading(true);
     try {
-      // 1. Obtener créditos actuales
       const { data: perfil, error: perfilErr } = await supabase
         .from('profiles')
         .select('credits')
@@ -78,7 +99,6 @@ const UploadFile = ({ session }) => {
         return;
       }
 
-      // 2. Subida de archivo al Storage
       const fileExt = selectedFile.name.split('.').pop();
       const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
       const filePath = `${session.user.id}/${fileName}`;
@@ -93,7 +113,6 @@ const UploadFile = ({ session }) => {
         .from('archivos-vehiculos')
         .getPublicUrl(filePath);
 
-      // 3. ACTUALIZACIÓN CRÍTICA: Descontar créditos primero
       const { error: updateCreditsError } = await supabase
         .from('profiles')
         .update({ credits: perfil.credits - totalCreditos })
@@ -101,8 +120,6 @@ const UploadFile = ({ session }) => {
 
       if (updateCreditsError) throw updateCreditsError;
 
-      // 4. REGISTRAR EN HISTORIAL (AQUÍ ESTABA EL FALLO)
-      // Agregamos 'await' y 'throw' para que si falla, nos diga por qué.
       const { error: historyError } = await supabase
         .from('historial_movimientos')
         .insert([
@@ -111,16 +128,12 @@ const UploadFile = ({ session }) => {
             tipo: 'canje',
             cantidad: totalCreditos,
             descripcion: `Canje por archivo: ${selectedFile.name} (${formData.marca} ${formData.modelo}) - ${servicioSel.name}`,
-            fecha: new Date().toISOString(), // Asegúrate que en la DB el campo sea 'fecha' y acepte este formato
+            fecha: new Date().toISOString(),
           }
         ]);
 
-      if (historyError) {
-        console.error("Error detallado en historial:", historyError);
-        throw new Error(`No se pudo registrar en historial: ${historyError.message}`);
-      }
+      if (historyError) throw historyError;
 
-      // 5. Insertar en tabla 'archivos'
       const { error: dbError } = await supabase.from('archivos').insert({
         user_id: session.user.id,
         patente: formData.patente,
@@ -140,7 +153,7 @@ const UploadFile = ({ session }) => {
       navigate('/archivos');
 
     } catch (error) {
-      console.error("Error completo del proceso:", error);
+      console.error("Error completo:", error);
       alert('Error: ' + error.message);
     } finally {
       setLoading(false);
@@ -173,9 +186,7 @@ const UploadFile = ({ session }) => {
   };
 
   const handleFileChange = (e) => {
-    if (e.target.files.length > 0) {
-      setSelectedFile(e.target.files[0]);
-    }
+    if (e.target.files.length > 0) setSelectedFile(e.target.files[0]);
   };
 
   return (
@@ -185,7 +196,7 @@ const UploadFile = ({ session }) => {
         <h2 style={{ fontSize: '20px', marginBottom: '30px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
           INFORMACIÓN DEL VEHÍCULO
         </h2>
-        {/* FILAS DE INFORMACIÓN TÉCNICA (PATENTE, MARCA, ETC) */}
+        
         <div style={styles.row}>
           <div><label style={styles.label}>Patente</label><input style={styles.input} placeholder="AACC82" value={formData.patente} onChange={e => setFormData({...formData, patente: e.target.value.toUpperCase()})} /></div>
           <div><label style={styles.label}>Marca</label><input style={styles.input} placeholder="AUDI" value={formData.marca} onChange={e => setFormData({...formData, marca: e.target.value.toUpperCase()})} /></div>
@@ -218,7 +229,6 @@ const UploadFile = ({ session }) => {
         </h2>
         
         <div style={styles.selectorGrid}>
-          {/* COLUMNA 1: TIPO SERVICIO */}
           <div>
             <label style={styles.label}>1. TIPO SERVICIO</label>
             {Object.keys(SERVICIOS_CONFIG).map(cat => (
@@ -232,7 +242,6 @@ const UploadFile = ({ session }) => {
             ))}
           </div>
 
-          {/* COLUMNA 2: DETALLE DINÁMICO */}
           <div>
             <label style={styles.label}>2. DETALLE</label>
             {categoriaSel ? SERVICIOS_CONFIG[categoriaSel].map(s => (
@@ -248,6 +257,7 @@ const UploadFile = ({ session }) => {
           </div>
         </div>
 
+        {/* ... Resto de componentes (Módulo, Comentarios, Archivo) ... */}
         <div style={{ marginBottom: '25px' }}>
           <label style={styles.label}>Tipo de Módulo</label>
           <select style={styles.input} value={formData.tipo_modulo} onChange={e => setFormData({...formData, tipo_modulo: e.target.value})}>

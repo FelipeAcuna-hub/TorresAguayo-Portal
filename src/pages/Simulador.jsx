@@ -3,40 +3,39 @@ import { useNavigate } from 'react-router-dom';
 
 const Simulador = () => {
   const navigate = useNavigate();
+  
+  // 1. ESTADOS PARA FILTRADO DINÁMICO
   const [categoriaSel, setCategoriaSel] = useState(null);
   const [servicioSel, setServicioSel] = useState(null);
 
-  // DATA EXTRAÍDA DIRECTAMENTE DEL PDF [cite: 6, 10, 13]
-  // Conversión: $1.000 = 1 Crédito
+  // 2. CONFIGURACIÓN COMPLETA (Categorías separadas para que sea dinámico)
   const SERVICIOS_CONFIG = {
     'REPROS BENCINA': [
-      { id: 'b_s1', name: 'STAGE 1 (INCLUYE VMAX OFF)', price: 140 }, // $140.000 [cite: 13]
-      { id: 'b_s1pb', name: 'STAGE 1 + POPS AND BANGS', price: 180 }, // $180.000 [cite: 13]
-      { id: 'b_s2', name: 'STAGE 2 (REQUIERE MODS FÍSICAS)', price: 160 }, // $160.000 [cite: 13]
-      { id: 'b_pb', name: 'POPS AND BANGS (SOLO)', price: 60 } // $60.000 [cite: 13]
+      { id: 'b_s1', name: 'STAGE 1 (INCLUYE VMAX OFF)', price: 140 },
+      { id: 'b_s1pb', name: 'STAGE 1 + POPS AND BANGS', price: 180 },
+      { id: 'b_s2', name: 'STAGE 2 (REQUIERE MODS)', price: 160 },
+      { id: 'b_pb', name: 'POPS AND BANGS (SOLO)', price: 60 }
     ],
     'REPROS DIÉSEL': [
-      { id: 'd_s1', name: 'STAGE 1 (POTENCIA SOLA)', price: 140 }, 
-      { id: 'd_s1egr', name: 'STAGE 1 + EGR OFF', price: 150 }, 
-      { id: 'd_s1dpf', name: 'STAGE 1 + DPF OFF', price: 160 }, 
+      { id: 'd_s1', name: 'STAGE 1 (POTENCIA SOLA)', price: 140 },
+      { id: 'd_s1egr', name: 'STAGE 1 + EGR OFF', price: 150 },
+      { id: 'd_s1dpf', name: 'STAGE 1 + DPF OFF', price: 160 },
       { id: 'd_s1full', name: 'STAGE 1 + DPF & EGR OFF', price: 180 },
       { id: 'd_s2', name: 'STAGE 2 (POTENCIA + MODS)', price: 160 }
     ],
     'ANULACIONES EURO': [
-      { id: 'dpf_egr', name: 'DPF OFF + EGR OFF', price: 60 }, // $60.000 [cite: 6]
-      { id: 'adblue_full', name: 'ADBLUE + DPF & EGR OFF', price: 80 }, // $80.000 [cite: 6]
-      { id: 'egr_only', name: 'EGR OFF', price: 40 }, // $40.000 [cite: 6]
-      { id: 'adblue_only', name: 'ADBLUE OFF', price: 60 }, // $60.000 [cite: 6]
-      { id: 'flaps', name: 'FLAPS/FLATS OFF', price: 60 } // $60.000 [cite: 6]
+      { id: 'dpf_egr', name: 'DPF OFF + EGR OFF', price: 60 },
+      { id: 'adblue_full', name: 'ADBLUE + DPF & EGR OFF', price: 80 },
+      { id: 'egr_only', name: 'EGR OFF', price: 40 },
+      { id: 'adblue_only', name: 'ADBLUE OFF', price: 60 },
+      { id: 'flaps', name: 'FLAPS/FLATS OFF', price: 60 }
     ],
     'DESACTIVACIONES': [
-      { id: 'dtc', name: 'DTC OFF', price: 30 }, // $30.000 [cite: 10]
-      { id: 'lambda', name: 'LAMBDA OFF', price: 60 }, // $60.000 [cite: 10]
-      { id: 'decat', name: 'DECAT OFF', price: 60 }, // $60.000 [cite: 10]
-      { id: 'tva', name: 'TVA OFF', price: 60 }, // $60.000 [cite: 10]
-      { id: 'immo', name: 'IMMO OFF', price: 60 }, // $60.000 [cite: 10]
-      { id: 'vmax', name: 'VMAX OFF (LIMITADORES)', price: 80 }, // $80.000 [cite: 13]
-      { id: 'immo_toyota', name: 'IMMO OFF SPECIAL (TOYOTA/LEXUS)', price: 80 } // $80.000 [cite: 13]
+      { id: 'dtc', name: 'DTC OFF', price: 30 },
+      { id: 'lambda', name: 'LAMBDA OFF', price: 60 },
+      { id: 'immo', name: 'IMMO OFF', price: 60 },
+      { id: 'vmax', name: 'VMAX OFF (LIMITADORES)', price: 80 },
+      { id: 'immo_toyota', name: 'IMMO OFF SPECIAL (TOYOTA)', price: 80 }
     ]
   };
 
@@ -57,14 +56,14 @@ const Simulador = () => {
 
   return (
     <div style={styles.mainContent}>
-      <div style={styles.title}>🔳 Simula el precio de tu archivo</div>
+      <div style={styles.title}>🔲 Simula el precio de tu archivo</div>
 
       <div style={styles.grid}>
-        {/* 1. SELECT 1 */}
+        {/* 1. SELECCIÓN DE CATEGORÍA */}
         <div>
           <h3 style={styles.columnTitle}>1. TIPO SERVICIO</h3>
           <div style={{ backgroundColor: '#d1eaf0', padding: '15px', borderRadius: '4px', marginBottom: '20px', fontSize: '13px', color: '#1e5a69' }}>
-            Selecciona el tipo de servicio que requieres.
+            Selecciona la categoría principal.
           </div>
           {Object.keys(SERVICIOS_CONFIG).map(cat => (
             <div 
@@ -80,9 +79,9 @@ const Simulador = () => {
           ))}
         </div>
 
-        {/* 2. SELECT 2 */}
+        {/* 2. OPCIONES ESPECÍFICAS */}
         <div>
-          <h3 style={styles.columnTitle}>2. DETALLE</h3>
+          <h3 style={styles.columnTitle}>2. OPCIONES</h3>
           {categoriaSel ? (
             SERVICIOS_CONFIG[categoriaSel].map(s => (
               <div 
@@ -96,16 +95,16 @@ const Simulador = () => {
             ))
           ) : (
             <div style={{ color: '#999', textAlign: 'center', marginTop: '50px', fontStyle: 'italic' }}>
-              Selecciona una categoría a la izquierda...
+              Selecciona una categoría a la izquierda para ver las opciones...
             </div>
           )}
         </div>
 
-        {/* 3. CREDITS */}
+        {/* 3. TOTAL Y REDIRECCIÓN */}
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <h3 style={styles.columnTitle}>3. CREDITS</h3>
+          <h3 style={styles.columnTitle}>3. TOTAL</h3>
           <div style={styles.infoBox}>
-            Total de créditos que se descontarán de tu cuenta al cargar tu archivo. (1 crédito = $1.000 CLP).
+            Total de créditos que se descontarán de tu cuenta. (1 Crédito = $1.000 CLP)
           </div>
           
           <div style={styles.totalBox}>
@@ -117,7 +116,16 @@ const Simulador = () => {
 
           <button 
             style={{ ...styles.btnCargar, opacity: servicioSel ? 1 : 0.5 }} 
-            onClick={() => servicioSel && navigate('/upload', { state: { servicio: servicioSel } })}
+            onClick={() => {
+              if (servicioSel) {
+                // REDIRECCIÓN CON ESTADO: Enviamos el nombre y el precio
+                navigate('/upload', { 
+                  state: { 
+                    servicio: servicioSel
+                  } 
+                });
+              }
+            }}
             disabled={!servicioSel}
           >
             CARGAR MI ARCHIVO
