@@ -18,6 +18,9 @@ import UploadFile from './pages/UploadFile';
 import Simulador from './pages/Simulador';
 import Clientes from './pages/Clientes';
 
+import RecuperarPassword from './pages/RecuperarPassword';
+import ActualizarPassword from './pages/ActualizarPassword';
+
 function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -75,6 +78,10 @@ function App() {
           path="/login" 
           element={!session ? <Login /> : <Navigate to="/" />} 
         />
+
+        {/* Agregamos las rutas de recuperación aquí afuera */}
+        <Route path="/recuperar-password" element={<RecuperarPassword />} />
+        <Route path="/actualizar-password" element={<ActualizarPassword />} />
 
         {/* --- GRUPO DE RUTAS PROTEGIDAS CON LAYOUT --- */}
         {/* Si hay sesión, carga Layout. Si no, manda a Login */}

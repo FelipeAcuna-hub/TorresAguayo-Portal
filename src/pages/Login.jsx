@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+// IMPORTAMOS EL LOGO SVG DESDE SRC
+import logoImg from '../magic_torresaguayo.svg';
 
 const Login = () => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  // --- ESTADO PARA MOSTRAR/OCULTAR CONTRASEÑA ---
   const [showPassword, setShowPassword] = useState(false);
 
-  // Nuevos estados para el registro extendido
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
   const [telefono, setTelefono] = useState('');
@@ -72,7 +72,17 @@ const Login = () => {
       backgroundColor: '#111', padding: '40px', borderRadius: '8px', width: '100%',
       maxWidth: '450px', border: '1px solid #222', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)'
     },
-    logo: { fontSize: '28px', fontWeight: 'bold', textAlign: 'center', marginBottom: '5px', color: 'white' },
+    // NUEVO ESTILO PARA EL CONTENEDOR DEL LOGO
+    logoContainer: {
+      width: '100%',
+      display: 'flex',
+      justifyContent: 'center',
+      marginBottom: '20px'
+    },
+    logoImg: {
+      width: '300px', // Ajusta este tamaño según prefieras
+      height: 'auto'
+    },
     subtitle: { fontSize: '11px', color: '#666', textAlign: 'center', marginBottom: '25px', textTransform: 'uppercase', letterSpacing: '2px' },
     inputGroup: { marginBottom: '15px' },
     row: { display: 'flex', gap: '10px', marginBottom: '15px' },
@@ -81,7 +91,6 @@ const Login = () => {
       width: '100%', padding: '12px', backgroundColor: '#1a1a1a', border: '1px solid #333',
       borderRadius: '4px', color: 'white', outline: 'none', boxSizing: 'border-box', fontSize: '14px'
     },
-    // Estilo específico para el contenedor del input password
     passContainer: { position: 'relative', display: 'flex', alignItems: 'center' },
     eyeBtn: {
       position: 'absolute', right: '10px', background: 'none', border: 'none',
@@ -92,15 +101,22 @@ const Login = () => {
       border: 'none', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px', marginTop: '10px'
     },
     toggleText: { textAlign: 'center', marginTop: '20px', fontSize: '13px', color: '#888' },
-    link: { color: '#e11d48', cursor: 'pointer', fontWeight: 'bold', marginLeft: '5px' }
+    link: { color: '#e11d48', cursor: 'pointer', fontWeight: 'bold', marginLeft: '5px', textDecoration: 'none' },
+    forgotPass: { 
+      display: 'block', textAlign: 'right', marginTop: '8px', fontSize: '11px', 
+      color: '#666', textDecoration: 'none', transition: '0.3s' 
+    }
   };
 
   return (
     <div style={styles.container}>
       <div style={styles.loginBox}>
-        <div style={styles.logo}>
-          TORRES<span style={{ color: '#e11d48' }}>AGUAYO</span>
+        
+        {/* REEMPLAZAMOS EL TEXTO POR LA IMAGEN SVG */}
+        <div style={styles.logoContainer}>
+          <img src={logoImg} alt="Torres Aguayo" style={styles.logoImg} />
         </div>
+
         <div style={styles.subtitle}>{isRegistering ? 'Crea tu cuenta de Distribuidor' : 'Portal Distribuidores'}</div>
 
         <form onSubmit={handleAuth}>
@@ -150,6 +166,12 @@ const Login = () => {
                 {showPassword ? '🔒' : '👁️'}
               </button>
             </div>
+            
+            {!isRegistering && (
+              <Link to="/recuperar-password" style={styles.forgotPass}>
+                ¿Olvidaste tu contraseña?
+              </Link>
+            )}
           </div>
 
           <button type="submit" style={styles.button}>
