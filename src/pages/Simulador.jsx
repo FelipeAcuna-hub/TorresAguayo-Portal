@@ -10,17 +10,18 @@ const Simulador = () => {
 
   // 2. CONFIGURACIÓN COMPLETA (Categorías separadas para que sea dinámico)
   const SERVICIOS_CONFIG = {
-    'REPROS GASOLINA': [
+    'REPRO GASOLINA': [
       { id: 'b_s1', name: 'STAGE 1 (INCLUYE VMAX OFF)', price: 140 },
       { id: 'b_s1pb', name: 'STAGE 1 + POPS AND BANGS', price: 180 },
       { id: 'b_s2', name: 'STAGE 2 (REQUIERE MODS)', price: 160 },
+      { id: 'b_s2pb', name: 'STAGE 2 + POPS AND BANGS', price: 220 },
       { id: 'b_pb', name: 'POPS AND BANGS (SOLO)', price: 60 }
     ],
-    'REPROS DIÉSEL': [
-      { id: 'd_s1', name: 'STAGE 1 (POTENCIA SOLA)', price: 140 },
+    'REPRO DIÉSEL': [
+      { id: 'd_s1', name: 'STAGE 1', price: 140 },
       { id: 'd_s1egr', name: 'STAGE 1 + EGR OFF', price: 150 },
-      { id: 'd_s1dpf', name: 'STAGE 1 + DPF OFF', price: 160 },
-      { id: 'd_s1full', name: 'STAGE 1 + DPF & EGR OFF', price: 180 },
+      { id: 'd_s1dpf', name: 'STAGE 1 + DPF OFF + EGR OFF', price: 160 },
+      { id: 'd_s1full', name: 'STAGE 1 + DPF + EGR OFF + ADBLUE OFF', price: 190 },
       { id: 'd_s2', name: 'STAGE 2 (POTENCIA + MODS)', price: 160 }
     ],
     'ANULACIONES EURO': [
@@ -28,14 +29,17 @@ const Simulador = () => {
       { id: 'adblue_full', name: 'ADBLUE + DPF & EGR OFF', price: 80 },
       { id: 'egr_only', name: 'EGR OFF', price: 40 },
       { id: 'adblue_only', name: 'ADBLUE OFF', price: 60 },
-      { id: 'flaps', name: 'FLAPS/FLATS OFF', price: 60 }
+      { id: 'restauracion_orig', name: 'RESTAURACIÓN ORIG', price: 60 }
     ],
     'DESACTIVACIONES': [
       { id: 'dtc', name: 'DTC OFF', price: 30 },
       { id: 'lambda', name: 'LAMBDA OFF', price: 60 },
       { id: 'immo', name: 'IMMO OFF', price: 60 },
-      { id: 'vmax', name: 'VMAX OFF (LIMITADORES)', price: 80 },
-      { id: 'immo_toyota', name: 'IMMO OFF SPECIAL (TOYOTA)', price: 80 }
+      { id: 'vmax', name: 'VMAX OFF (LIMITADOR DE VELOCIDAD)', price: 80 },
+      { id: 'immo_toyota', name: 'IMMO OFF SPECIAL (TOYOTA)', price: 80 },
+      { id: 'decat_off', name: 'DECAT OFF', price: 60 },
+      { id: 'tva_off', name: 'TVA OFF', price: 60 },
+      { id: 'flaps_swirls', name: 'FLAPS/SWIRLS', price: 60 }
     ]
   };
 
