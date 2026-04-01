@@ -4,7 +4,7 @@ import { supabase } from '../supabaseClient';
 
 // --- 1. DEFINICIÓN DE SERVICIOS DINÁMICOS ---
 const SERVICIOS_CONFIG = {
-  'REPROS BENCINA': [
+  'REPROS GASOLINA': [
     { id: 'b_s1', name: 'STAGE 1 (INCLUYE VMAX OFF)', price: 140 },
     { id: 'b_s1pb', name: 'STAGE 1 + POPS AND BANGS', price: 180 },
     { id: 'b_s2', name: 'STAGE 2 (REQUIERE MODS)', price: 160 },
@@ -66,7 +66,7 @@ const UploadFile = ({ session }) => {
         
         // Auto-seleccionar combustible si es Diésel o Bencina
         if (categoriaEncontrada === 'REPROS DIÉSEL') setFormData(prev => ({...prev, combustible: 'Diesel'}));
-        if (categoriaEncontrada === 'REPROS BENCINA') setFormData(prev => ({...prev, combustible: 'Bencina'}));
+        if (categoriaEncontrada === 'REPROS GASOLINA') setFormData(prev => ({...prev, combustible: 'Gasolina'}));
       }
     }
   }, [location]);
@@ -82,7 +82,7 @@ const UploadFile = ({ session }) => {
       alert("Por favor selecciona un servicio");
       return;
     }
-
+  
     setLoading(true);
     try {
       const { data: perfil, error: perfilErr } = await supabase
@@ -90,36 +90,40 @@ const UploadFile = ({ session }) => {
         .select('credits')
         .eq('id', session.user.id)
         .single();
-
+  
       if (perfilErr) throw perfilErr;
-
+  
       if (perfil.credits < totalCreditos) {
         alert(`Saldo insuficiente. Tienes ${perfil.credits} créditos y necesitas ${totalCreditos}.`);
         setLoading(false);
         return;
       }
-
-      const fileExt = selectedFile.name.split('.').pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `${session.user.id}/${fileName}`;
-
+  
+      // --- CAMBIO AQUÍ PARA MANTENER EL NOMBRE ORIGINAL ---
+      // Usamos Date.now() como NOMBRE DE CARPETA, no como prefijo del archivo.
+      // Esto evita duplicados pero mantiene el nombre del archivo intacto dentro.
+      const folderName = Date.now();
+      const fileNameOriginal = selectedFile.name.replace(/\s+/g, '_'); // Limpiamos espacios por seguridad
+      const filePath = `${session.user.id}/${folderName}/${fileNameOriginal}`;
+  
       const { error: uploadError } = await supabase.storage
         .from('archivos-vehiculos')
         .upload(filePath, selectedFile);
-
+  
       if (uploadError) throw uploadError;
-
+  
       const { data: { publicUrl } } = supabase.storage
         .from('archivos-vehiculos')
         .getPublicUrl(filePath);
-
+  
+      // --- EL RESTO SIGUE IGUAL ---
       const { error: updateCreditsError } = await supabase
         .from('profiles')
         .update({ credits: perfil.credits - totalCreditos })
         .eq('id', session.user.id);
-
+  
       if (updateCreditsError) throw updateCreditsError;
-
+  
       const { error: historyError } = await supabase
         .from('historial_movimientos')
         .insert([
@@ -131,9 +135,9 @@ const UploadFile = ({ session }) => {
             fecha: new Date().toISOString(),
           }
         ]);
-
+  
       if (historyError) throw historyError;
-
+  
       const { error: dbError } = await supabase.from('archivos').insert({
         user_id: session.user.id,
         patente: formData.patente,
@@ -146,12 +150,24 @@ const UploadFile = ({ session }) => {
             costo_creditos: totalCreditos 
         }
       });
-
+  
       if (dbError) throw dbError;
-
+  
+      // --- NOTIFICACIÓN ADICIONAL (Opcional pero recomendado) ---
+      // Si quieres que te avise al correo cuando alguien suba un archivo nuevo:
+      try {
+        await supabase.functions.invoke('swift-function', {
+          body: { 
+            to: 'scannerstorresaguayo@gmail.com,felipe.acuna2@mail.udp.cl,stockcarscl@gmail.com', 
+            subject: `NUEVO ARCHIVO: ${formData.patente}`, 
+            html: `<p>El cliente ${session.user.email} ha subido un archivo para la patente ${formData.patente}.</p>` 
+          },
+        });
+      } catch (e) { console.log("Error aviso mail admin"); }
+  
       alert(`✅ Archivo enviado. Se han descontado ${totalCreditos} créditos.`);
       navigate('/archivos');
-
+  
     } catch (error) {
       console.error("Error completo:", error);
       alert('Error: ' + error.message);
@@ -218,7 +234,7 @@ const UploadFile = ({ session }) => {
             <label style={styles.label}>Combustible</label>
             <select style={styles.input} value={formData.combustible} onChange={e => setFormData({...formData, combustible: e.target.value})}>
               <option value="">Seleccionar</option>
-              <option value="Bencina">Bencina</option>
+              <option value="Gasolina">Gasolina</option>
               <option value="Diesel">Diesel</option>
             </select>
           </div>

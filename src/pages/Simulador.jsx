@@ -10,7 +10,7 @@ const Simulador = () => {
 
   // 2. CONFIGURACIÓN COMPLETA (Categorías separadas para que sea dinámico)
   const SERVICIOS_CONFIG = {
-    'REPROS BENCINA': [
+    'REPROS GASOLINA': [
       { id: 'b_s1', name: 'STAGE 1 (INCLUYE VMAX OFF)', price: 140 },
       { id: 'b_s1pb', name: 'STAGE 1 + POPS AND BANGS', price: 180 },
       { id: 'b_s2', name: 'STAGE 2 (REQUIERE MODS)', price: 160 },
