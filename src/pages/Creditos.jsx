@@ -18,7 +18,7 @@ const Creditos = ({ session }) => {
     const numQty = parseInt(qty);
     if (isNaN(numQty) || numQty <= 0) return;
     
-    const amount = (numQty * 1000).toLocaleString('es-CL');
+    const amount = (numQty * 10000).toLocaleString('es-CL');
     const message = encodeURIComponent(
       `Hola! 👋 Soy ${session?.user?.email}, me gustaría comprar ${numQty} créditos por $${amount} CLP para mi cuenta.`
     );
@@ -82,10 +82,10 @@ const Creditos = ({ session }) => {
       </div>
 
       <div style={styles.grid}>
-        {[100, 300, 500].map(qty => (
+        {[10, 30, 50].map(qty => (
           <div key={qty} style={styles.card}>
             <div style={{ fontWeight: 'bold', marginBottom: '15px' }}>{qty} CRÉDITOS</div>
-            <div style={styles.price}>${(qty * 1000).toLocaleString('es-CL')}</div>
+            <div style={styles.price}>${(qty * 10000).toLocaleString('es-CL')}</div>
             <button onClick={() => handleWhatsAppBuy(qty)} style={styles.btnComprar}>COMPRAR AHORA</button>
           </div>
         ))}
@@ -110,7 +110,7 @@ const Creditos = ({ session }) => {
           <div style={{ color: '#e11d48' }}>=</div>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '12px', color: '#999' }}>PESOS CLP</div>
-            ${( (parseInt(customAmount) || 0) * 1000).toLocaleString('es-CL')}
+            ${( (parseInt(customAmount) || 0) * 10000).toLocaleString('es-CL')}
           </div>
         </div>
 
