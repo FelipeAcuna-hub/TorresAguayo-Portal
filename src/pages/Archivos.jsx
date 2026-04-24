@@ -55,7 +55,6 @@ const Archivos = ({ session }) => {
     fetchArchivos();
   }, [session, isAdmin]);
 
-  // --- FUNCIÓN BLINDADA: BORRA EN DB Y LUEGO EN EL ESTADO LOCAL ---
   const handleCancelarSolicitud = async (archivo) => {
     if (archivo.estado !== 'pendiente') {
       alert("Solo se pueden cancelar solicitudes en estado pendiente.");
@@ -68,7 +67,6 @@ const Archivos = ({ session }) => {
       try {
         setLoading(true);
 
-        // 1. ELIMINAR DE SUPABASE
         const { error: errorDelete } = await supabase
           .from('archivos')
           .delete()
@@ -76,10 +74,8 @@ const Archivos = ({ session }) => {
 
         if (errorDelete) throw new Error("No se pudo eliminar de la base de datos.");
 
-        // 2. ACTUALIZAR ESTADO LOCAL INMEDIATAMENTE (Esto hace que desaparezca de la lista al segundo)
         setArchivos(prevArchivos => prevArchivos.filter(a => a.id !== archivo.id));
 
-        // 3. OBTENER SALDO Y ACTUALIZAR CRÉDITOS
         const { data: perfil, error: errorPerfil } = await supabase
           .from('profiles')
           .select('credits')
@@ -95,7 +91,6 @@ const Archivos = ({ session }) => {
           .update({ credits: nuevosCreditos })
           .eq('id', session.user.id);
 
-        // 4. REGISTRAR MOVIMIENTO
         await supabase.from('movimientos').insert([
           {
             user_id: session.user.id,
@@ -107,8 +102,6 @@ const Archivos = ({ session }) => {
         ]);
 
         alert("✅ Solicitud eliminada y créditos devueltos.");
-        
-        // Refrescamos por si acaso, pero el filter ya lo quitó de la vista
         fetchArchivos();
 
       } catch (error) {
@@ -122,11 +115,15 @@ const Archivos = ({ session }) => {
   };
 
   const handleUploadModificado = async (archivoId, file, patente, clienteEmail) => {
+    const nota = window.prompt("Ingrese una nota para el cliente (opcional):");
     try {
       if (!file) return;
       setLoading(true);
 
-      const fileName = `${Date.now()}_${patente}_MODIFICADO.bin`;
+      // --- CAMBIO: MANTENER EXTENSIÓN ORIGINAL ---
+      const extension = file.name.split('.').pop();
+      const fileName = `${Date.now()}_${patente}_MODIFICADO.${extension}`;
+      
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('archivos-vehiculos')
         .upload(`procesados/${fileName}`, file);
@@ -141,7 +138,8 @@ const Archivos = ({ session }) => {
         .from('archivos')
         .update({
           mod_file_url: publicUrl,
-          estado: 'completado'
+          estado: 'completado',
+          nota_instalacion: nota
         })
         .eq('id', archivoId);
 
@@ -156,6 +154,22 @@ const Archivos = ({ session }) => {
       alert("Error al subir el archivo.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGuardarNota = async (archivoId, notaActual) => {
+    if (!isAdmin) return;
+    
+    const nuevaNota = window.prompt("Instrucciones de instalación:", notaActual || "");
+    
+    if (nuevaNota !== null) {
+      const { error } = await supabase
+        .from('archivos')
+        .update({ notas_instalacion: nuevaNota })
+        .eq('id', archivoId);
+  
+      if (error) alert("Error al guardar nota");
+      else fetchArchivos();
     }
   };
 
@@ -291,8 +305,9 @@ const Archivos = ({ session }) => {
                 <th style={styles.th}>Marca / Modelo</th>
                 <th style={styles.th}>Ficha</th>
                 <th style={styles.th}>Estado</th>
-                <th style={styles.th}>Eliminar</th>
                 <th style={styles.th}>Acción</th>
+                {/* --- NUEVA COLUMNA --- */}
+                <th style={styles.th}>Mensaje Técnico</th>
               </tr>
             </thead>
             <tbody>
@@ -320,28 +335,72 @@ const Archivos = ({ session }) => {
                   </td>
 
                   <td style={styles.td}>
-                    {!isAdmin && (
-                      <button
-                        style={styles.btnDelete(archivo.estado === 'pendiente')}
-                        onClick={() => handleCancelarSolicitud(archivo)}
-                        disabled={archivo.estado !== 'pendiente'}
-                      >
-                        {archivo.estado === 'pendiente' ? '❌ ELIMINAR' : 'BLOQUEADO'}
-                      </button>
-                    )}
-                    {isAdmin && <span style={{ fontSize: '9px', color: '#ccc' }}>Solo Cliente</span>}
-                  </td>
-
-                  <td style={styles.td}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                      {archivo.file_url && <button onClick={() => window.open(archivo.file_url, '_blank')} style={{ color: '#666', border: '1px solid #ddd', background: '#fff', cursor: 'pointer', fontWeight: 'bold', fontSize: '9px', padding: '5px', textTransform: 'uppercase', borderRadius: '4px' }}>📄 ORIGINAL</button>}
+                      {archivo.file_url && (
+                        <a 
+                          href={archivo.file_url} 
+                          download={`${archivo.patente}_ORIGINAL.bin`}
+                          style={{ color: '#666', border: '1px solid #ddd', background: '#fff', cursor: 'pointer', fontWeight: 'bold', fontSize: '9px', padding: '5px', textTransform: 'uppercase', borderRadius: '4px', textDecoration: 'none', textAlign: 'center' }}
+                        >
+                          📄 ORIGINAL
+                        </a>
+                      )}
+                      
                       {archivo.mod_file_url ? (
-                        <button onClick={() => window.open(archivo.mod_file_url, '_blank')} style={{ color: 'white', border: 'none', background: '#22c55e', cursor: 'pointer', fontWeight: 'bold', fontSize: '9px', padding: '5px', textTransform: 'uppercase', borderRadius: '4px' }}>🚀 MODIFICADO</button>
+                        <a 
+                          href={archivo.mod_file_url} 
+                          download={`${archivo.patente}_MODIFICADO.mmf`}
+                          style={{ color: 'white', border: 'none', background: '#22c55e', cursor: 'pointer', fontWeight: 'bold', fontSize: '9px', padding: '5px', textTransform: 'uppercase', borderRadius: '4px', textDecoration: 'none', textAlign: 'center' }}
+                        >
+                          🚀 MODIFICADO
+                        </a>
                       ) : isAdmin && (
                         <label style={{ backgroundColor: '#000', color: '#e11d48', padding: '5px', fontSize: '9px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #e11d48', textAlign: 'center', fontWeight: 'bold' }}>
                           {loading ? '...' : '📤 SUBIR MOD'}
                           <input type="file" style={{ display: 'none' }} onChange={(e) => handleUploadModificado(archivo.id, e.target.files[0], archivo.patente, archivo.profiles?.email)} />
                         </label>
+                      )}
+                    </div>
+                  </td>
+
+                  {/* --- CELDA DE MENSAJE TÉCNICO (GUÍA DE INSTALACIÓN) --- */}
+                  <td style={{ ...styles.td, minWidth: '180px' }}>
+                    <div style={{
+                      fontSize: '11px',
+                      padding: '10px',
+                      backgroundColor: archivo.notas_instalacion ? '#fffbeb' : '#f9f9f9',
+                      border: '1px solid ' + (archivo.notas_instalacion ? '#fef3c7' : '#eee'),
+                      borderRadius: '4px',
+                      color: '#333',
+                      minHeight: '50px'
+                    }}>
+                      {archivo.notas_instalacion ? (
+                        <>
+                          <div style={{ fontWeight: 'bold', color: '#92400e', marginBottom: '4px', fontSize: '9px' }}>📝 INSTRUCCIONES:</div>
+                          {archivo.notas_instalacion}
+                        </>
+                      ) : (
+                        <span style={{ color: '#aaa', fontStyle: 'italic' }}>Esperando instrucciones...</span>
+                      )}
+
+                      {isAdmin && (
+                        <button 
+                          onClick={() => handleGuardarNota(archivo.id, archivo.notas_instalacion)}
+                          style={{
+                            display: 'block',
+                            marginTop: '8px',
+                            backgroundColor: '#e11d48',
+                            color: 'white',
+                            border: 'none',
+                            padding: '3px 7px',
+                            fontSize: '9px',
+                            fontWeight: 'bold',
+                            borderRadius: '2px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {archivo.notas_instalacion ? 'EDITAR MENSAJE' : '+ ESCRIBIR NOTA'}
+                        </button>
                       )}
                     </div>
                   </td>
