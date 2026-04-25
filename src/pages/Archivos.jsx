@@ -55,6 +55,32 @@ const Archivos = ({ session }) => {
     fetchArchivos();
   }, [session, isAdmin]);
 
+  // --- FUNCIÓN PARA DESCARGA LIMPIA FORZADA ---
+  const handleForceDownload = async (url) => {
+    if (!url) return;
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      
+      // Limpiamos el nombre del archivo de prefijos y timestamps
+      const baseName = url.split('/').pop();
+      const cleanName = baseName.replace(/^\d+_/, '').replace(/^(ID_|MAPA_|PASS_|MOD_|EXTRA_)/, '');
+      
+      link.setAttribute('download', cleanName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+      console.error("Error en descarga:", e);
+      // Fallback si falla el blob
+      window.open(url, '_blank');
+    }
+  };
+
   const handleCancelarSolicitud = async (archivo) => {
     if (archivo.estado !== 'pendiente') {
       alert("Solo se pueden cancelar solicitudes en estado pendiente.");
@@ -107,51 +133,57 @@ const Archivos = ({ session }) => {
       } catch (error) {
         console.error("Error:", error.message);
         alert("Error crítico: " + error.message);
-        fetchArchivos(); 
+        fetchArchivos();
       } finally {
         setLoading(false);
       }
     }
   };
 
-  const handleUploadModificado = async (archivoId, file, patente, clienteEmail) => {
-    const nota = window.prompt("Ingrese una nota para el cliente (opcional):");
+  const handleUploadModificado = async (archivoId, file, patente, clienteEmail, campoDestino = 'mod_file_url') => {
+    let nota = null;
+    if (campoDestino === 'mod_file_url') {
+      nota = window.prompt("Nota de instalación (Opcional):");
+    }
+  
     try {
       if (!file) return;
       setLoading(true);
-
-      // --- CAMBIO: MANTENER EXTENSIÓN ORIGINAL ---
-      const extension = file.name.split('.').pop();
-      const fileName = `${Date.now()}_${patente}_MODIFICADO.${extension}`;
-      
+  
+      const fileNameClean = file.name.replace(/\s+/g, '_'); 
+      const storagePath = `procesados/${Date.now()}/${fileNameClean}`;
+  
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('archivos-vehiculos')
-        .upload(`procesados/${fileName}`, file);
-
+        .upload(storagePath, file);
+  
       if (uploadError) throw uploadError;
-
+  
       const { data: { publicUrl } } = supabase.storage
         .from('archivos-vehiculos')
-        .getPublicUrl(`procesados/${fileName}`);
-
+        .getPublicUrl(storagePath);
+  
+      const updateData = {
+        [campoDestino]: publicUrl,
+        estado: 'completado'
+      };
+  
+      if (nota) updateData.nota_instalacion = nota;
+  
       const { error: dbError } = await supabase
         .from('archivos')
-        .update({
-          mod_file_url: publicUrl,
-          estado: 'completado',
-          nota_instalacion: nota
-        })
+        .update(updateData)
         .eq('id', archivoId);
-
+  
       if (dbError) throw dbError;
-
+  
       await handleStatusChange(archivoId, 'completado', clienteEmail, patente);
-      alert("✅ Archivo MODIFICADO cargado con éxito.");
+      alert(`✅ Subido con éxito: ${fileNameClean}`);
       fetchArchivos();
-
+  
     } catch (error) {
       console.error("Error:", error.message);
-      alert("Error al subir el archivo.");
+      alert("Error al subir.");
     } finally {
       setLoading(false);
     }
@@ -159,15 +191,15 @@ const Archivos = ({ session }) => {
 
   const handleGuardarNota = async (archivoId, notaActual) => {
     if (!isAdmin) return;
-    
+
     const nuevaNota = window.prompt("Instrucciones de instalación:", notaActual || "");
-    
+
     if (nuevaNota !== null) {
       const { error } = await supabase
         .from('archivos')
         .update({ notas_instalacion: nuevaNota })
         .eq('id', archivoId);
-  
+
       if (error) alert("Error al guardar nota");
       else fetchArchivos();
     }
@@ -222,9 +254,9 @@ const Archivos = ({ session }) => {
 
   const styles = {
     mainContent: { flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#f3f4f6', width: '100%', minHeight: '100vh' },
-    tableCard: { backgroundColor: 'white', margin: '10px', padding: '15px', borderRadius: '4px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', overflow: 'hidden' },
-    responsiveContainer: { width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' },
-    table: { width: '100%', borderCollapse: 'collapse', marginTop: '20px', minWidth: '600px' },
+    tableCard: { backgroundColor: 'white', margin: '10px', padding: '15px', borderRadius: '4px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' },
+    responsiveContainer: { width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch', marginBottom: '20px' },
+    table: { width: '100%', borderCollapse: 'collapse', marginTop: '20px', minWidth: '800px' },
     th: { textAlign: 'left', padding: '12px', borderBottom: '2px solid #eee', fontSize: '10px', color: '#666', textTransform: 'uppercase', fontWeight: 'bold' },
     td: { padding: '12px', borderBottom: '1px solid #eee', fontSize: '12px' },
     statusBadge: { padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', color: 'white', textTransform: 'uppercase', whiteSpace: 'nowrap' },
@@ -238,20 +270,9 @@ const Archivos = ({ session }) => {
     infoTable: { width: '100%', borderCollapse: 'collapse', marginBottom: '20px' },
     infoLabel: { padding: '8px 0', fontWeight: 'bold', fontSize: '11px', color: '#000', borderBottom: '1px solid #eee', textTransform: 'uppercase', width: '40%' },
     infoValue: { padding: '8px 0', fontSize: '12px', color: '#444', borderBottom: '1px solid #eee' },
-    pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '5px', marginTop: '20px', padding: '10px' },
-    pageBtn: (active) => ({ padding: '6px 12px', cursor: 'pointer', backgroundColor: active ? '#e11d48' : 'white', color: active ? 'white' : '#666', border: '1px solid #ddd', borderRadius: '2px', fontSize: '12px', fontWeight: 'bold' }),
-
-    btnDelete: (active) => ({
-      backgroundColor: active ? '#e11d48' : '#eee',
-      color: active ? 'white' : '#ccc',
-      border: 'none',
-      padding: '6px 10px',
-      borderRadius: '2px',
-      cursor: active ? 'pointer' : 'not-allowed',
-      fontWeight: 'bold',
-      fontSize: '9px',
-      textTransform: 'uppercase'
-    })
+    pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '30px', paddingBottom: '20px' },
+    pageBtn: (active) => ({ padding: '8px 16px', cursor: 'pointer', backgroundColor: active ? '#e11d48' : 'white', color: active ? 'white' : '#666', border: '1px solid #ddd', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', transition: '0.2s' }),
+    btnDownload: { border: 'none', fontSize: '9px', padding: '6px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', textDecoration: 'none', textAlign: 'center', color: 'white', display: 'block', width: '100%' }
   };
 
   const getBadgeColor = (estado) => {
@@ -268,10 +289,10 @@ const Archivos = ({ session }) => {
     return matchSearch && matchStatus;
   });
 
+  const totalPaginas = Math.ceil(filteredArchivos.length / itemsPorPagina);
   const indiceUltimo = paginaActual * itemsPorPagina;
   const indicePrimer = indiceUltimo - itemsPorPagina;
   const archivosPaginados = filteredArchivos.slice(indicePrimer, indiceUltimo);
-  const totalPaginas = Math.ceil(filteredArchivos.length / itemsPorPagina);
 
   return (
     <div style={styles.mainContent}>
@@ -306,7 +327,7 @@ const Archivos = ({ session }) => {
                 <th style={styles.th}>Ficha</th>
                 <th style={styles.th}>Estado</th>
                 <th style={styles.th}>Acción</th>
-                {/* --- NUEVA COLUMNA --- */}
+                <th style={styles.th}>Acción ADMI</th>
                 <th style={styles.th}>Mensaje Técnico</th>
               </tr>
             </thead>
@@ -334,71 +355,56 @@ const Archivos = ({ session }) => {
                     ) : <span style={{ ...styles.statusBadge, backgroundColor: getBadgeColor(archivo.estado) }}>{archivo.estado}</span>}
                   </td>
 
+                  {/* --- COLUMNA ACCIÓN (USUARIO) --- */}
                   <td style={styles.td}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                      {archivo.file_url && (
-                        <a 
-                          href={archivo.file_url} 
-                          download={`${archivo.patente}_ORIGINAL.bin`}
-                          style={{ color: '#666', border: '1px solid #ddd', background: '#fff', cursor: 'pointer', fontWeight: 'bold', fontSize: '9px', padding: '5px', textTransform: 'uppercase', borderRadius: '4px', textDecoration: 'none', textAlign: 'center' }}
-                        >
-                          📄 ORIGINAL
-                        </a>
-                      )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', minWidth: '110px' }}>
+                      {archivo.file_url_id && <button onClick={() => handleForceDownload(archivo.file_url_id)} style={{ ...styles.btnDownload, background: '#3b82f6' }}>🆔 ID (Export Console)</button>}
+                      {archivo.file_url_mapa && <button onClick={() => handleForceDownload(archivo.file_url_mapa)} style={{ ...styles.btnDownload, background: '#8b5cf6' }}>🗺️ MAPA</button>}
+                      {archivo.file_url_password && <button onClick={() => handleForceDownload(archivo.file_url_password)} style={{ ...styles.btnDownload, background: '#f59e0b' }}>🔑 PASSWORD</button>}
                       
+                      {archivo.file_url && !archivo.file_url_id && !archivo.file_url_mapa && (
+                        <button onClick={() => handleForceDownload(archivo.file_url)} style={{ ...styles.btnDownload, background: '#fff', border: '1px solid #ddd', color: '#666' }}>📄 ORIGINAL</button>
+                      )}
+                    </div>
+                  </td>
+
+                  {/* --- COLUMNA ACCIÓN ADMI (ADMINISTRADOR) --- */}
+                  <td style={styles.td}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', minWidth: '110px' }}>
                       {archivo.mod_file_url ? (
-                        <a 
-                          href={archivo.mod_file_url} 
-                          download={`${archivo.patente}_MODIFICADO.mmf`}
-                          style={{ color: 'white', border: 'none', background: '#22c55e', cursor: 'pointer', fontWeight: 'bold', fontSize: '9px', padding: '5px', textTransform: 'uppercase', borderRadius: '4px', textDecoration: 'none', textAlign: 'center' }}
-                        >
-                          🚀 MODIFICADO
-                        </a>
+                        <button onClick={() => handleForceDownload(archivo.mod_file_url)} style={{ ...styles.btnDownload, background: '#22c55e' }}>🚀 DESCARGAR MOD</button>
                       ) : isAdmin && (
-                        <label style={{ backgroundColor: '#000', color: '#e11d48', padding: '5px', fontSize: '9px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #e11d48', textAlign: 'center', fontWeight: 'bold' }}>
+                        <label style={{ backgroundColor: '#000', color: '#22c55e', padding: '5px', fontSize: '9px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #22c55e', textAlign: 'center', fontWeight: 'bold' }}>
                           {loading ? '...' : '📤 SUBIR MOD'}
-                          <input type="file" style={{ display: 'none' }} onChange={(e) => handleUploadModificado(archivo.id, e.target.files[0], archivo.patente, archivo.profiles?.email)} />
+                          <input type="file" style={{ display: 'none' }} onChange={(e) => handleUploadModificado(archivo.id, e.target.files[0], archivo.patente, archivo.profiles?.email, 'mod_file_url')} />
+                        </label>
+                      )}
+
+                      {archivo.mod_file_extra_url ? (
+                        <button onClick={() => handleForceDownload(archivo.mod_file_extra_url)} style={{ ...styles.btnDownload, background: '#10b981' }}>📦 DESCARGAR EXTRA</button>
+                      ) : isAdmin && (
+                        <label style={{ backgroundColor: '#111', color: '#10b981', padding: '5px', fontSize: '9px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #10b981', textAlign: 'center', fontWeight: 'bold' }}>
+                          {loading ? '...' : '➕ SUBIR EXTRA'}
+                          <input type="file" style={{ display: 'none' }} onChange={(e) => handleUploadModificado(archivo.id, e.target.files[0], archivo.patente, archivo.profiles?.email, 'mod_file_extra_url')} />
                         </label>
                       )}
                     </div>
                   </td>
 
-                  {/* --- CELDA DE MENSAJE TÉCNICO (GUÍA DE INSTALACIÓN) --- */}
                   <td style={{ ...styles.td, minWidth: '180px' }}>
                     <div style={{
-                      fontSize: '11px',
-                      padding: '10px',
+                      fontSize: '11px', padding: '10px',
                       backgroundColor: archivo.notas_instalacion ? '#fffbeb' : '#f9f9f9',
                       border: '1px solid ' + (archivo.notas_instalacion ? '#fef3c7' : '#eee'),
-                      borderRadius: '4px',
-                      color: '#333',
-                      minHeight: '50px'
+                      borderRadius: '4px', color: '#333', minHeight: '50px'
                     }}>
                       {archivo.notas_instalacion ? (
-                        <>
-                          <div style={{ fontWeight: 'bold', color: '#92400e', marginBottom: '4px', fontSize: '9px' }}>📝 INSTRUCCIONES:</div>
-                          {archivo.notas_instalacion}
-                        </>
+                        <><div style={{ fontWeight: 'bold', color: '#92400e', marginBottom: '4px', fontSize: '9px' }}>📝 INSTRUCCIONES:</div>{archivo.notas_instalacion}</>
                       ) : (
-                        <span style={{ color: '#aaa', fontStyle: 'italic' }}>Esperando instrucciones...</span>
+                        <span style={{ color: '#aaa', fontStyle: 'italic' }}>No se han subido intrucciones...</span>
                       )}
-
                       {isAdmin && (
-                        <button 
-                          onClick={() => handleGuardarNota(archivo.id, archivo.notas_instalacion)}
-                          style={{
-                            display: 'block',
-                            marginTop: '8px',
-                            backgroundColor: '#e11d48',
-                            color: 'white',
-                            border: 'none',
-                            padding: '3px 7px',
-                            fontSize: '9px',
-                            fontWeight: 'bold',
-                            borderRadius: '2px',
-                            cursor: 'pointer'
-                          }}
-                        >
+                        <button onClick={() => handleGuardarNota(archivo.id, archivo.notas_instalacion)} style={{ display: 'block', marginTop: '8px', backgroundColor: '#e11d48', color: 'white', border: 'none', padding: '3px 7px', fontSize: '9px', fontWeight: 'bold', borderRadius: '2px', cursor: 'pointer' }}>
                           {archivo.notas_instalacion ? 'EDITAR MENSAJE' : '+ ESCRIBIR NOTA'}
                         </button>
                       )}
@@ -412,9 +418,9 @@ const Archivos = ({ session }) => {
 
         {totalPaginas > 1 && (
           <div style={styles.pagination}>
-            <button onClick={() => setPaginaActual(p => Math.max(1, p - 1))} disabled={paginaActual === 1} style={{ ...styles.pageBtn(false), opacity: paginaActual === 1 ? 0.3 : 1 }}>← ANTERIOR</button>
-            {[...Array(totalPaginas).keys()].map(n => <button key={n + 1} onClick={() => setPaginaActual(n + 1)} style={styles.pageBtn(paginaActual === n + 1)}>{n + 1}</button>)}
-            <button onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))} disabled={paginaActual === totalPaginas} style={{ ...styles.pageBtn(false), opacity: paginaActual === totalPaginas ? 0.3 : 1 }}>SIGUIENTE →</button>
+            <button onClick={() => { setPaginaActual(p => Math.max(1, p - 1)); window.scrollTo(0,0); }} disabled={paginaActual === 1} style={{ ...styles.pageBtn(false), opacity: paginaActual === 1 ? 0.3 : 1 }}>← ANTERIOR</button>
+            {[...Array(totalPaginas).keys()].map(n => <button key={n + 1} onClick={() => { setPaginaActual(n + 1); window.scrollTo(0,0); }} style={styles.pageBtn(paginaActual === n + 1)}>{n + 1}</button>)}
+            <button onClick={() => { setPaginaActual(p => Math.min(totalPaginas, p + 1)); window.scrollTo(0,0); }} disabled={paginaActual === totalPaginas} style={{ ...styles.pageBtn(false), opacity: paginaActual === totalPaginas ? 0.3 : 1 }}>SIGUIENTE →</button>
           </div>
         )}
       </div>

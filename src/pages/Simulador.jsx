@@ -31,6 +31,14 @@ const Simulador = () => {
       { id: 'adblue_only', name: 'ADBLUE OFF', price: 6 },
       { id: 'restauracion_orig', name: 'RESTAURACIÓN ORIG', price: 6 }
     ],
+    'ANULACIONES EURO (CAMIONES)': [
+    { id: 'truck_dpf_egr', name: 'DPF OFF + EGR OFF', price: 12 },
+    { id: 'truck_adblue_full', name: 'ADBLUE + DPF & EGR OFF', price: 16 },
+    { id: 'truck_egr_only', name: 'EGR OFF', price: 8 }, //egr only
+    { id: 'truck_adbue_only', name: 'ADBLUE OFF', price: 20 },  //adblue solo camiones
+    { id: 'truck_dpf_only', name: 'DPF OFF', price: 12 }, //dpf solo camiones
+    { id: 'truck_cummins_emissions', name: 'CUMMINS EMISSIONS', price: 35 }
+  ],
     'DESACTIVACIONES': [
       { id: 'dtc', name: 'DTC OFF', price: 3 },
       { id: 'lambda', name: 'LAMBDA OFF', price: 6 },

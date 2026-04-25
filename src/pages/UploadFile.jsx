@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom'; // Agregamos useLocation
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 
 // --- 1. DEFINICIÓN DE SERVICIOS DINÁMICOS ---
@@ -25,6 +25,14 @@ const SERVICIOS_CONFIG = {
     { id: 'adblue_only', name: 'ADBLUE OFF', price: 6 },
     { id: 'restauracion_orig', name: 'RESTAURACION ORI', price: 6 }
   ],
+  'ANULACIONES EURO (CAMIONES)': [
+    { id: 'truck_dpf_egr', name: 'DPF OFF + EGR OFF', price: 12 },
+    { id: 'truck_adblue_full', name: 'ADBLUE + DPF & EGR OFF', price: 16 },
+    { id: 'truck_egr_only', name: 'EGR OFF', price: 8 }, //egr only
+    { id: 'truck_adbue_only', name: 'ADBLUE OFF', price: 20 },  //adblue solo camiones
+    { id: 'truck_dpf_only', name: 'DPF OFF', price: 12 }, //dpf solo camiones
+    { id: 'truck_cummins_emissions', name: 'CUMMINS EMISSIONS', price: 35 }
+  ],
   'DESACTIVACIONES': [
     { id: 'dtc', name: 'DTC OFF', price: 3 },
     { id: 'lambda', name: 'LAMBDA OFF', price: 6 },
@@ -39,12 +47,15 @@ const SERVICIOS_CONFIG = {
 
 const UploadFile = ({ session }) => {
   const navigate = useNavigate();
-  const location = useLocation(); // Hook para recibir los datos del Simulador
+  const location = useLocation(); 
   const years = Array.from({ length: 2026 - 1990 + 1 }, (_, i) => 2026 - i);
 
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [loading, setLoading] = useState(false);
+  // --- ESTADOS DE ARCHIVOS (CAMBIADO A 3) ---
+  const [fileId, setFileId] = useState(null);
+  const [fileMapa, setFileMapa] = useState(null);
+  const [filePass, setFilePass] = useState(null);
   
+  const [loading, setLoading] = useState(false);
   const [categoriaSel, setCategoriaSel] = useState(null);
   const [servicioSel, setServicioSel] = useState(null);
   
@@ -54,22 +65,15 @@ const UploadFile = ({ session }) => {
     tipo_modulo: '', comentarios: ''
   });
 
-  // --- EFECTO PARA CAPTURAR DATOS DEL SIMULADOR ---
   useEffect(() => {
-    // Verificamos si en el historial de navegación vienen datos del servicio
     if (location.state?.servicio) {
       const { name, price, id } = location.state.servicio;
-      
-      // Encontrar a qué categoría pertenece el servicio enviado
       const categoriaEncontrada = Object.keys(SERVICIOS_CONFIG).find(cat => 
         SERVICIOS_CONFIG[cat].some(s => s.id === id)
       );
-
       if (categoriaEncontrada) {
         setCategoriaSel(categoriaEncontrada);
         setServicioSel({ id, name, price });
-        
-        // Auto-seleccionar combustible si es Diésel o Bencina
         if (categoriaEncontrada === 'REPRO DIÉSEL') setFormData(prev => ({...prev, combustible: 'Diesel'}));
         if (categoriaEncontrada === 'REPRO GASOLINA') setFormData(prev => ({...prev, combustible: 'Gasolina'}));
       }
@@ -78,9 +82,28 @@ const UploadFile = ({ session }) => {
 
   const totalCreditos = servicioSel ? servicioSel.price : 0;
 
+  // FUNCIÓN AUXILIAR DE SUBIDA (PARA REUTILIZAR)
+  const uploadSingleFile = async (file, prefix, folderName) => {
+    if (!file) return null;
+    const fileNameClean = file.name.replace(/\s+/g, '_');
+    const filePath = `${session.user.id}/${folderName}/${prefix}_${fileNameClean}`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('archivos-vehiculos')
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('archivos-vehiculos')
+      .getPublicUrl(filePath);
+
+    return publicUrl;
+  };
+
   const handleSubmit = async () => {
-    if (!selectedFile || !session?.user?.id) {
-      alert("Por favor selecciona un archivo");
+    if ((!fileId && !fileMapa && !filePass) || !session?.user?.id) {
+      alert("Por favor selecciona al menos un archivo (ID, Mapa o Password)");
       return;
     }
     if (!servicioSel) {
@@ -104,24 +127,13 @@ const UploadFile = ({ session }) => {
         return;
       }
   
-      // --- CAMBIO AQUÍ PARA MANTENER EL NOMBRE ORIGINAL ---
-      // Usamos Date.now() como NOMBRE DE CARPETA, no como prefijo del archivo.
-      // Esto evita duplicados pero mantiene el nombre del archivo intacto dentro.
       const folderName = Date.now();
-      const fileNameOriginal = selectedFile.name.replace(/\s+/g, '_'); // Limpiamos espacios por seguridad
-      const filePath = `${session.user.id}/${folderName}/${fileNameOriginal}`;
+      
+      // SUBIMOS LOS 3 DE FORMA INDEPENDIENTE
+      const urlId = await uploadSingleFile(fileId, 'ID', folderName);
+      const urlMapa = await uploadSingleFile(fileMapa, 'MAPA', folderName);
+      const urlPass = await uploadSingleFile(filePass, 'PASS', folderName);
   
-      const { error: uploadError } = await supabase.storage
-        .from('archivos-vehiculos')
-        .upload(filePath, selectedFile);
-  
-      if (uploadError) throw uploadError;
-  
-      const { data: { publicUrl } } = supabase.storage
-        .from('archivos-vehiculos')
-        .getPublicUrl(filePath);
-  
-      // --- EL RESTO SIGUE IGUAL ---
       const { error: updateCreditsError } = await supabase
         .from('profiles')
         .update({ credits: perfil.credits - totalCreditos })
@@ -129,26 +141,25 @@ const UploadFile = ({ session }) => {
   
       if (updateCreditsError) throw updateCreditsError;
   
-      const { error: historyError } = await supabase
-        .from('historial_movimientos')
-        .insert([
-          {
-            perfil_id: session.user.id,
-            tipo: 'canje',
-            cantidad: totalCreditos,
-            descripcion: `Canje por archivo: ${selectedFile.name} (${formData.marca} ${formData.modelo}) - ${servicioSel.name}`,
-            fecha: new Date().toISOString(),
-          }
-        ]);
-  
-      if (historyError) throw historyError;
+      await supabase.from('historial_movimientos').insert([
+        {
+          perfil_id: session.user.id,
+          tipo: 'canje',
+          cantidad: totalCreditos,
+          descripcion: `Canje: ${formData.marca} ${formData.modelo} (${formData.patente}) - ${servicioSel.name}`,
+          fecha: new Date().toISOString(),
+        }
+      ]);
   
       const { error: dbError } = await supabase.from('archivos').insert({
         user_id: session.user.id,
         patente: formData.patente,
         marca_modelo: `${formData.marca} ${formData.modelo}`.trim(),
         estado: 'pendiente',
-        file_url: publicUrl,
+        file_url: urlMapa || urlId || urlPass, // Compatibilidad con chat
+        file_url_id: urlId,
+        file_url_mapa: urlMapa,
+        file_url_password: urlPass,
         detalles_tecnicos: { 
             ...formData, 
             servicios_solicitados: servicioSel.name,
@@ -158,19 +169,17 @@ const UploadFile = ({ session }) => {
   
       if (dbError) throw dbError;
   
-      // --- NOTIFICACIÓN ADICIONAL (Opcional pero recomendado) ---
-      // Si quieres que te avise al correo cuando alguien suba un archivo nuevo:
       try {
         await supabase.functions.invoke('swift-function', {
           body: { 
             to: 'scannerstorresaguayo@gmail.com,felipe.acuna2@mail.udp.cl,stockcarscl@gmail.com', 
-            subject: `NUEVO ARCHIVO: ${formData.patente}`, 
-            html: `<p>El cliente ${session.user.email} ha subido un archivo para la patente ${formData.patente}.</p>` 
+            subject: `NUEVO REQUERIMIENTO: ${formData.patente}`, 
+            html: `<p>El cliente ${session.user.email} ha subido nuevos archivos para la patente ${formData.patente}.</p>` 
           },
         });
-      } catch (e) { console.log("Error aviso mail admin"); }
+      } catch (e) { console.log("Error aviso mail"); }
   
-      alert(`✅ Archivo enviado. Se han descontado ${totalCreditos} créditos.`);
+      alert(`✅ Archivos enviados. Se han descontado ${totalCreditos} créditos.`);
       navigate('/archivos');
   
     } catch (error) {
@@ -187,27 +196,26 @@ const UploadFile = ({ session }) => {
     row: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '20px', marginBottom: '20px' },
     label: { display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '8px', color: '#333', textTransform: 'uppercase' },
     input: { width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' },
-    fileUploadContainer: {
-      border: '2px dashed #ddd', padding: '20px', textAlign: 'center', borderRadius: '4px', backgroundColor: '#f9f9f9', marginBottom: '25px', cursor: 'pointer'
-    },
+    // GRILLA PARA ARCHIVOS
+    gridFiles: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '25px' },
+    fileBox: (hasFile) => ({
+      border: hasFile ? '2px solid #22c55e' : '2px dashed #ddd',
+      padding: '20px', textAlign: 'center', borderRadius: '4px', 
+      backgroundColor: hasFile ? '#f0fdf4' : '#f9f9f9', cursor: 'pointer', transition: '0.3s'
+    }),
     button: { backgroundColor: '#e11d48', color: 'white', border: 'none', padding: '15px 40px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px', textTransform: 'uppercase', fontSize: '13px' },
     btnBack: { color: '#666', textDecoration: 'none', fontSize: '13px', marginLeft: '30px', marginTop: '20px', display: 'inline-block', fontWeight: 'bold' },
     selectorGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', margin: '20px 0' },
     serviceItem: (isSelected) => ({
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       padding: '12px', marginBottom: '8px', border: isSelected ? '2px solid #e11d48' : '1px solid #eee',
-      borderRadius: '4px', cursor: 'pointer', backgroundColor: isSelected ? '#fff5f6' : 'white',
-      transition: '0.2s'
+      borderRadius: '4px', cursor: 'pointer', backgroundColor: isSelected ? '#fff5f6' : 'white'
     }),
     badgePrecio: { backgroundColor: '#e11d48', color: 'white', padding: '2px 6px', borderRadius: '3px', fontSize: '11px', fontWeight: 'bold' },
     resumenBox: { 
         backgroundColor: '#000', color: 'white', padding: '30px', borderRadius: '4px', 
         textAlign: 'center', marginTop: '30px', display: 'flex', justifyContent: 'space-around', alignItems: 'center' 
     }
-  };
-
-  const handleFileChange = (e) => {
-    if (e.target.files.length > 0) setSelectedFile(e.target.files[0]);
   };
 
   return (
@@ -253,24 +261,15 @@ const UploadFile = ({ session }) => {
           <div>
             <label style={styles.label}>1. TIPO SERVICIO</label>
             {Object.keys(SERVICIOS_CONFIG).map(cat => (
-              <div 
-                key={cat} 
-                style={styles.serviceItem(categoriaSel === cat)} 
-                onClick={() => { setCategoriaSel(cat); setServicioSel(null); }}
-              >
+              <div key={cat} style={styles.serviceItem(categoriaSel === cat)} onClick={() => { setCategoriaSel(cat); setServicioSel(null); }}>
                 <span style={{ fontSize: '13px', fontWeight: 'bold' }}>› {cat}</span>
               </div>
             ))}
           </div>
-
           <div>
             <label style={styles.label}>2. DETALLE</label>
             {categoriaSel ? SERVICIOS_CONFIG[categoriaSel].map(s => (
-              <div 
-                key={s.id} 
-                style={styles.serviceItem(servicioSel?.id === s.id)} 
-                onClick={() => setServicioSel(s)}
-              >
+              <div key={s.id} style={styles.serviceItem(servicioSel?.id === s.id)} onClick={() => setServicioSel(s)}>
                 <span style={{ fontSize: '12px', fontWeight: '500' }}>{s.name}</span>
                 <span style={styles.badgePrecio}>+{s.price}</span>
               </div>
@@ -278,7 +277,6 @@ const UploadFile = ({ session }) => {
           </div>
         </div>
 
-        {/* ... Resto de componentes (Módulo, Comentarios, Archivo) ... */}
         <div style={{ marginBottom: '25px' }}>
           <label style={styles.label}>Tipo de Módulo</label>
           <select style={styles.input} value={formData.tipo_modulo} onChange={e => setFormData({...formData, tipo_modulo: e.target.value})}>
@@ -294,15 +292,31 @@ const UploadFile = ({ session }) => {
         </div>
 
         <h2 style={{ fontSize: '20px', margin: '40px 0 20px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
-          ADJUNTAR ARCHIVO
+          ADJUNTAR ARCHIVOS
         </h2>
-        <div style={styles.fileUploadContainer} onClick={() => document.getElementById('fileInput').click()}>
-          <input type="file" id="fileInput" style={{ display: 'none' }} accept=".mmf,.bin,.ori,.rar,.zip" onChange={handleFileChange} />
-          <div style={{ fontSize: '30px', marginBottom: '10px' }}>📁</div>
-          <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#e11d48' }}>
-            {selectedFile ? 'ARCHIVO LISTO' : 'HAGA CLIC PARA ESCOGER'}
+
+        {/* --- GRILLA DE 3 SUBIDAS INDEPENDIENTES --- */}
+        <div style={styles.gridFiles}>
+          <div style={styles.fileBox(!!fileId)} onClick={() => document.getElementById('fileId').click()}>
+            <input type="file" id="fileId" style={{ display: 'none' }} onChange={(e) => setFileId(e.target.files[0])} />
+            <div style={{ fontSize: '24px', marginBottom: '5px' }}>🆔</div>
+            <div style={{ fontSize: '12px', fontWeight: 'bold', color: fileId ? '#22c55e' : '#e11d48' }}>{fileId ? 'ID LISTO' : 'SUBIR ID (EXPORT CONSOLE)'}</div>
+            <div style={{ fontSize: '10px', color: '#888' }}>{fileId ? fileId.name : '(Requerido)'}</div>
           </div>
-          <div style={{ fontSize: '12px', color: '#888' }}>{selectedFile ? selectedFile.name : '.mmf, .bin, .rar, etc..'}</div>
+
+          <div style={styles.fileBox(!!fileMapa)} onClick={() => document.getElementById('fileMapa').click()}>
+            <input type="file" id="fileMapa" style={{ display: 'none' }} onChange={(e) => setFileMapa(e.target.files[0])} />
+            <div style={{ fontSize: '24px', marginBottom: '5px' }}>🗺️</div>
+            <div style={{ fontSize: '12px', fontWeight: 'bold', color: fileMapa ? '#22c55e' : '#e11d48' }}>{fileMapa ? 'MAPA LISTO' : 'SUBIR MAPA'}</div>
+            <div style={{ fontSize: '10px', color: '#888' }}>{fileMapa ? fileMapa.name : '(Requerido)'}</div>
+          </div>
+
+          <div style={styles.fileBox(!!filePass)} onClick={() => document.getElementById('filePass').click()}>
+            <input type="file" id="filePass" style={{ display: 'none' }} onChange={(e) => setFilePass(e.target.files[0])} />
+            <div style={{ fontSize: '24px', marginBottom: '5px' }}>🔑</div>
+            <div style={{ fontSize: '12px', fontWeight: 'bold', color: filePass ? '#22c55e' : '#e11d48' }}>{filePass ? 'PASS LISTO' : 'SUBIR PASS'}</div>
+            <div style={{ fontSize: '10px', color: '#888' }}>{filePass ? filePass.name : '(Opcional)'}</div>
+          </div>
         </div>
 
         <div style={styles.resumenBox}>
@@ -312,10 +326,10 @@ const UploadFile = ({ session }) => {
             </div>
             <button 
               onClick={handleSubmit}
-              style={{ ...styles.button, opacity: (loading || !selectedFile || totalCreditos === 0) ? 0.6 : 1 }} 
-              disabled={loading || !selectedFile || totalCreditos === 0}
+              style={{ ...styles.button, opacity: (loading || (!fileId && !fileMapa && !filePass) || totalCreditos === 0) ? 0.6 : 1 }} 
+              disabled={loading || (!fileId && !fileMapa && !filePass) || totalCreditos === 0}
             >
-              {loading ? 'PROCESANDO...' : 'CARGAR MI ARCHIVO'}
+              {loading ? 'PROCESANDO...' : 'CARGAR ARCHIVOS'}
             </button>
         </div>
       </div>

@@ -9,7 +9,12 @@ const Admin = ({ session }) => {
 
   const [config, setConfig] = useState({ is_online: true, mensaje_online: '', mensaje_offline: '' });
 
-  // --- CONFIGURACIÓN DE LOS 3 ADMINISTRADORES (AGREGADO) ---
+  // --- NUEVOS ESTADOS PARA BÚSQUEDA Y PAGINACIÓN ---
+  const [searchTerm, setSearchTerm] = useState('');
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [itemsPorPagina] = useState(10);
+
+  // --- CONFIGURACIÓN DE LOS 3 ADMINISTRADORES ---
   const ADMIN_EMAILS = [
     'scannerstorresaguayo@gmail.com',
     'felipe.acuna2@mail.udp.cl',
@@ -21,7 +26,6 @@ const Admin = ({ session }) => {
     ADMIN_EMAILS.includes(session?.user?.email?.toLowerCase());
 
   useEffect(() => {
-    // Solo carga datos si es uno de los 3 admins
     if (isAdmin) {
       fetchUsers();
       fetchConfig();
@@ -31,8 +35,6 @@ const Admin = ({ session }) => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      console.log("Actualizando lista de usuarios...");
-
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -123,20 +125,43 @@ const Admin = ({ session }) => {
     }
   };
 
+  // --- LÓGICA DE FILTRADO Y PAGINACIÓN ---
+  const usersFiltrados = users.filter(u => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      (u.full_name?.toLowerCase().includes(searchLower)) ||
+      (u.email?.toLowerCase().includes(searchLower))
+    );
+  });
+
+  const totalPaginas = Math.ceil(usersFiltrados.length / itemsPorPagina);
+  const indiceUltimo = paginaActual * itemsPorPagina;
+  const indicePrimer = indiceUltimo - itemsPorPagina;
+  const usersPaginados = usersFiltrados.slice(indicePrimer, indiceUltimo);
+
   const styles = {
-    main: { flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#f3f4f6' },
+    main: { flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#f3f4f6', minHeight: '100vh' },
     switchCard: { backgroundColor: 'white', margin: '30px 30px 0 30px', padding: '20px 30px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid #ddd', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' },
     contentCard: { backgroundColor: 'white', margin: '30px', padding: '30px', borderRadius: '4px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' },
+    searchBar: { 
+      display: 'flex', alignItems: 'center', backgroundColor: '#f3f4f6', 
+      padding: '10px 15px', borderRadius: '4px', border: '1px solid #ddd', 
+      marginBottom: '20px', width: '100%', maxWidth: '400px'
+    },
     table: { width: '100%', borderCollapse: 'collapse' },
     th: { textAlign: 'left', padding: '12px', fontSize: '11px', color: '#888', textTransform: 'uppercase', borderBottom: '2px solid #eee' },
     td: { padding: '12px', fontSize: '13px', borderBottom: '1px solid #eee' },
     btnAction: { backgroundColor: 'black', color: 'white', border: 'none', padding: '8px 12px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px', fontSize: '10px' },
     btnInfo: { backgroundColor: 'transparent', color: '#666', border: '1px solid #ddd', padding: '8px 12px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px', fontSize: '10px', marginRight: '5px' },
     modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
-    modalBox: { backgroundColor: 'white', padding: '30px', borderRadius: '8px', width: '550px', maxHeight: '85vh', overflowY: 'auto' }
+    modalBox: { backgroundColor: 'white', padding: '30px', borderRadius: '8px', width: '550px', maxHeight: '85vh', overflowY: 'auto' },
+    pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '30px' },
+    pageBtn: (active) => ({ 
+      padding: '8px 16px', cursor: 'pointer', backgroundColor: active ? '#e11d48' : 'white', 
+      color: active ? 'white' : '#666', border: '1px solid #ddd', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' 
+    })
   };
 
-  // Validación de seguridad visual
   if (!isAdmin) {
     return <div style={{ padding: '50px', textAlign: 'center' }}><h2>Acceso Denegado</h2></div>;
   }
@@ -182,6 +207,19 @@ const Admin = ({ session }) => {
 
       <div style={styles.contentCard}>
         <h2 style={{ fontSize: '18px', marginBottom: '20px', textTransform: 'uppercase' }}>Usuarios y Créditos</h2>
+        
+        {/* BARRA DE BÚSQUEDA */}
+        <div style={styles.searchBar}>
+          <span style={{ marginRight: '10px' }}>🔍</span>
+          <input 
+            type="text" 
+            placeholder="Buscar por email o nombre..." 
+            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '13px', background: 'transparent' }}
+            value={searchTerm}
+            onChange={(e) => { setSearchTerm(e.target.value); setPaginaActual(1); }}
+          />
+        </div>
+
         <table style={styles.table}>
           <thead>
             <tr>
@@ -192,11 +230,11 @@ const Admin = ({ session }) => {
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => (
+            {usersPaginados.map((u) => (
               <tr key={u.id}>
                 <td style={styles.td}>{u.email}</td>
                 <td style={styles.td}>{u.full_name || 'Sin nombre'}</td>
-                <td style={{ ...styles.td, fontWeight: 'bold', color: u.credits > 0 ? '#22c55e' : '#e11d48' }}>{u.credits.toLocaleString('es-CL')}</td>
+                <td style={{ ...styles.td, fontWeight: 'bold', color: u.credits > 0 ? '#22c55e' : '#e11d48' }}>{u.credits?.toLocaleString('es-CL')}</td>
                 <td style={styles.td}>
                   <button style={styles.btnInfo} onClick={() => handleOpenDetails(u)}>ℹ️ DETALLES</button>
                   <button style={{ ...styles.btnAction, backgroundColor: '#228b22', marginRight: '5px' }} onClick={() => handleAdjustCredits(u.id, u.credits, 'SUMAR')}>+</button>
@@ -204,8 +242,40 @@ const Admin = ({ session }) => {
                 </td>
               </tr>
             ))}
+            {!loading && usersPaginados.length === 0 && (
+              <tr><td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: '#999' }}>No se encontraron usuarios.</td></tr>
+            )}
           </tbody>
         </table>
+
+        {/* PAGINACIÓN */}
+        {totalPaginas > 1 && (
+          <div style={styles.pagination}>
+            <button 
+              onClick={() => { setPaginaActual(p => Math.max(1, p - 1)); window.scrollTo(0,0); }} 
+              disabled={paginaActual === 1} 
+              style={{ ...styles.pageBtn(false), opacity: paginaActual === 1 ? 0.3 : 1 }}
+            >
+              ← ANTERIOR
+            </button>
+            {[...Array(totalPaginas).keys()].map(n => (
+              <button 
+                key={n + 1} 
+                onClick={() => { setPaginaActual(n + 1); window.scrollTo(0,0); }} 
+                style={styles.pageBtn(paginaActual === n + 1)}
+              >
+                {n + 1}
+              </button>
+            ))}
+            <button 
+              onClick={() => { setPaginaActual(p => Math.min(totalPaginas, p + 1)); window.scrollTo(0,0); }} 
+              disabled={paginaActual === totalPaginas} 
+              style={{ ...styles.pageBtn(false), opacity: paginaActual === totalPaginas ? 0.3 : 1 }}
+            >
+              SIGUIENTE →
+            </button>
+          </div>
+        )}
       </div>
 
       {selectedUser && (
@@ -219,7 +289,7 @@ const Admin = ({ session }) => {
               </div>
               <div>
                 <p style={{ fontSize: '10px', color: '#888', margin: 0, fontWeight: 'bold' }}>CRÉDITOS DISPONIBLES</p>
-                <p style={{ fontSize: '14px', margin: '5px 0 15px 0', fontWeight: 'bold', color: '#e11d48', borderBottom: '1px solid #f0f0f0', paddingBottom: '5px' }}>{selectedUser.credits.toLocaleString('es-CL')}</p>
+                <p style={{ fontSize: '14px', margin: '5px 0 15px 0', fontWeight: 'bold', color: '#e11d48', borderBottom: '1px solid #f0f0f0', paddingBottom: '5px' }}>{selectedUser.credits?.toLocaleString('es-CL')}</p>
               </div>
             </div>
             <h4 style={{ marginTop: '25px', fontSize: '12px', borderBottom: '1px solid #000', paddingBottom: '5px', textTransform: 'uppercase' }}>Historial de Movimientos</h4>
