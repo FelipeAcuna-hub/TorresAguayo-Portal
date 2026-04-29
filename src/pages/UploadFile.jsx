@@ -212,8 +212,8 @@ const UploadFile = ({ session }) => {
       await supabase.functions.invoke('swift-function', {
         body: { 
           // Importante: Sin espacios entre las comas de los correos
-          to: 'stockcarscl@gmail.com,felipe.acuna2@mail.udp.cl', 
-          subject: `🚀 NUEVO ARCHIVO: ${formData.patente} - ${formData.marca}`, 
+          to: 'stockcarscl@gmail.com',
+          subject: `🚀 ARCHIVO: ${formData.patente} - ${formData.marca}`, 
           html: emailHtmlNuevo 
         },
       });
