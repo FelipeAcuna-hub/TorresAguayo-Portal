@@ -170,36 +170,58 @@ const UploadFile = ({ session }) => {
 
       if (dbError) throw dbError;
 
-      try {
-        const archivosEnviados = [];
-        if (fileId) archivosEnviados.push("ID (Export Console)");
-        if (fileMapa) archivosEnviados.push("MAPA");
-        if (filePass) archivosEnviados.push("PASSWORD");
+      // --- PARTE DEL ENVÍO DE CORREO EN UPLOADFILE.JSX ---
+    // --- NOTIFICACIÓN DE NUEVO ARCHIVO A ADMINISTRADORES ---
+    try {
+      const archivosLista = [];
+      if (fileId) archivosLista.push("ID (Export Console)");
+      if (fileMapa) archivosLista.push("MAPA");
+      if (filePass) archivosLista.push("PASSWORD");
 
-        await supabase.functions.invoke('swift-function', {
-          body: {
-            to: 'stockcarscl@gmail.com, felipe.acuna2@mail.udp.cl',
-            subject: `NUEVO REQUERIMIENTO: ${formData.patente}`,
-            html: `
-              <div style="font-family: sans-serif; color: #333;">
-                <h2 style="color: #e11d48; border-bottom: 2px solid #eee; padding-bottom: 10px;">Nuevo Requerimiento de Archivo</h2>
-                <p><strong>Cliente:</strong> ${session.user.email}</p>
-                <p><strong>Vehículo:</strong> ${formData.marca} ${formData.modelo} (${formData.anio})</p>
-                <p><strong>Patente:</strong> ${formData.patente}</p>
-                <p><strong>Servicio solicitado:</strong> ${servicioSel.name}</p>
-                <p><strong>Archivos enviados:</strong> ${archivosEnviados.join(', ')}</p>
-                <p><strong>Comentarios:</strong> ${formData.comentarios || 'Sin comentarios'}</p>
-                <br/>
-                <div style="text-align: center; margin-top: 20px;">
-                  <a href="https://torresaguayomms.cl/archivos" style="background-color: #000; color: white; padding: 12px 25px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">IR AL PORTAL DE ADMIN</a>
-                </div>
+      const emailHtmlNuevo = `
+        <div style="font-family: 'Helvetica', Arial, sans-serif; background-color: #f9f9f9; padding: 40px 0;">
+          <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+            <div style="background-color: #000000; padding: 20px; text-align: center;">
+              <h1 style="color: #e11d48; margin: 0; font-size: 24px; letter-spacing: 2px;">NUEVA SOLICITUD</h1>
+            </div>
+            <div style="padding: 30px; line-height: 1.6; color: #333;">
+              <h2 style="color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px;">Datos del Requerimiento</h2>
+              <p>Se ha recibido un nuevo archivo para procesar:</p>
+              
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 5px 0;"><strong>Cliente:</strong></td><td>${session.user.email}</td></tr>
+                <tr><td style="padding: 5px 0;"><strong>Patente:</strong></td><td>${formData.patente}</td></tr>
+                <tr><td style="padding: 5px 0;"><strong>Vehículo:</strong></td><td>${formData.marca} ${formData.modelo}</td></tr>
+                <tr><td style="padding: 5px 0;"><strong>Servicio:</strong></td><td>${servicioSel?.name || 'No especificado'}</td></tr>
+                <tr><td style="padding: 5px 0;"><strong>Archivos:</strong></td><td>${archivosLista.join(', ')}</td></tr>
+              </table>
+
+              <div style="background-color: #fff5f6; padding: 15px; border-left: 4px solid #e11d48; margin: 20px 0;">
+                <strong>Comentarios:</strong><br/>
+                ${formData.comentarios || 'Sin comentarios adicionales.'}
               </div>
-            `
-          },
-        });
-      } catch (mailErr) {
-        console.log("Error aviso mail:", mailErr);
-      }
+
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="https://torresaguayomms.cl/archivos" style="background-color: #e11d48; color: white; padding: 12px 25px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">VER EN EL PORTAL DE ADMIN</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      await supabase.functions.invoke('swift-function', {
+        body: { 
+          // Importante: Sin espacios entre las comas de los correos
+          to: 'stockcarscl@gmail.com,felipe.acuna2@mail.udp.cl', 
+          subject: `🚀 NUEVO ARCHIVO: ${formData.patente} - ${formData.marca}`, 
+          html: emailHtmlNuevo 
+        },
+      });
+
+      console.log("Notificación de nuevo archivo enviada con éxito");
+    } catch (mailErr) {
+      console.error("Error enviando notificación inicial:", mailErr);
+    }
 
       alert(`✅ Archivos enviados con éxito.`);
       navigate('/archivos');

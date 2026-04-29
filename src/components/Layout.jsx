@@ -46,68 +46,100 @@ const Layout = ({ session }) => {
     if (!session?.user?.id) return;
 
     const updateBanner = (dbStatus) => {
+      // 1. REVISAMOS EL RELOJ PRIMERO
       const isScheduleOnline = checkAutoOnline();
       
-      // PRIORIDAD 1: Si el administrador apagó el sistema manualmente (BOTÓN ROJO)
-      if (dbStatus.is_online === false) {
-        setStatus({ is_online: false, mensaje: dbStatus.mensaje_offline || "SISTEMA CERRADO TEMPORALMENTE POR ADMINISTRACIÓN" });
-        return;
-      }
+      const now = new Date();
+      const chileTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Santiago"}));
+      const hour = chileTime.getHours();
+      const day = chileTime.getDay();
 
-      // PRIORIDAD 2: Si está prendido en la base de datos, revisamos el reloj automático
-      if (isScheduleOnline) {
-        setStatus({ is_online: true, mensaje: dbStatus.mensaje_online });
-      } else {
-        const now = new Date();
-        const chileTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Santiago"}));
-        const hour = chileTime.getHours();
-        const day = chileTime.getDay(); // 0 es Domingo, 6 es Sábado
+      // 2. LOGICA UNIFICADA
+      // Si el Administrador APAGÓ el botón (is_online es false)
+      if (dbStatus.is_online === false || dbStatus.is_online === "false") {
+        setStatus({ 
+          is_online: false, 
+          mensaje: dbStatus.mensaje_offline || "CERRADO TEMPORALMENTE: Los archivos se procesarán a primera hora." 
+        });
+      } 
+      // Si el Administrador tiene el botón ENCENDIDO, manda el RELOJ
+      else {
+        if (isScheduleOnline) {
+          setStatus({ 
+            is_online: true, 
+            mensaje: dbStatus.mensaje_online || "SISTEMA ONLINE - PROCESANDO ARCHIVOS" 
+          });
+        } else {
+          // Mensajes por horario (Cerrado Automático)
+          let msg = "SISTEMA CERRADO: Los archivos se procesarán a primera hora.";
+          
+          if (day === 0 || day === 6) {
+            msg = "FIN DE SEMANA: Volvemos el lunes a las 09:00 hrs.";
+          } else if (hour >= 13 && hour < 15) {
+            msg = "HORARIO DE COLACIÓN: Volvemos a las 15:00 hrs.";
+          } else {
+            msg = "FUERA DE HORARIO: Los archivos se procesarán a primera hora.";
+          }
 
-        let msg = "SISTEMA CERRADO: Los archivos se procesarán el siguiente día hábil.";
-        
-        if (day === 0 || day === 6) {
-          msg = "FIN DE SEMANA: Volvemos el lunes a las 09:00 hrs.";
-        } else if (hour >= 13 && hour < 15) {
-          msg = "HORARIO DE COLACIÓN: Volvemos a las 15:00 hrs.";
+          setStatus({ is_online: false, mensaje: msg });
         }
-        
-        setStatus({ is_online: false, mensaje: msg });
       }
     };
 
     const initLayout = async () => {
+      // Cargar datos del perfil
       const { data: prof } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
       if (prof) {
         setDbCredits(prof.credits || 0);
         setDisplayName(`${prof.full_name || ''} ${prof.apellido || ''}`.trim().toUpperCase() || "USUARIO");
       }
+      // Cargar configuración de atención
       const { data: conf } = await supabase.from('configuracion_global').select('*').eq('id', 'atencion_cliente').single();
       if (conf) updateBanner(conf);
     };
 
     initLayout();
 
-    // SUSCRIPCIÓN REALTIME MEJORADA
+    // SUSCRIPCIÓN REALTIME (Escucha a la base de datos)
     const channel = supabase.channel('layout_sync_global')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'configuracion_global' }, payload => {
-        console.log("Cambio detectado en config:", payload.new);
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'configuracion_global',
+        filter: 'id=eq.atencion_cliente' 
+      }, payload => {
         updateBanner(payload.new);
       })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${session.user.id}` }, payload => {
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'profiles', 
+        filter: `id=eq.${session.user.id}` 
+      }, payload => {
         setDbCredits(payload.new.credits);
-        setDisplayName(`${payload.new.full_name || ''} ${payload.new.apellido || ''}`.trim().toUpperCase());
       })
       .subscribe();
 
-    const timer = setInterval(() => {
-      supabase.from('configuracion_global').select('*').eq('id', 'atencion_cliente').single().then(({ data }) => {
-        if (data) updateBanner(data);
-      });
-    }, 60000);
+    // ESCUCHA DE EVENTO MANUAL (Para que el cambio sea instantáneo al hacer clic)
+    const handleManualUpdate = () => {
+      supabase.from('configuracion_global')
+        .select('*')
+        .eq('id', 'atencion_cliente')
+        .single()
+        .then(({ data }) => {
+          if (data) updateBanner(data);
+        });
+    };
+
+    window.addEventListener('config-updated', handleManualUpdate);
+
+    // Intervalo de seguridad para el reloj (cada 1 minuto)
+    const timer = setInterval(handleManualUpdate, 60000);
 
     return () => {
       supabase.removeChannel(channel);
       clearInterval(timer);
+      window.removeEventListener('config-updated', handleManualUpdate);
     };
   }, [session]);
 

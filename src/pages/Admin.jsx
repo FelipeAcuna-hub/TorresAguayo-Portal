@@ -1,6 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 
+const checkIsWorkTime = () => {
+  const now = new Date();
+  const chileTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Santiago"}));
+  const hour = chileTime.getHours();
+  const day = chileTime.getDay();
+  
+  const isWorkDay = day >= 1 && day <= 5; // Lunes a Viernes
+  const morningShift = hour >= 9 && hour < 13;
+  const afternoonShift = hour >= 15 && hour < 19;
+
+  return isWorkDay && (morningShift || afternoonShift);
+};
+
 const Admin = ({ session }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -64,12 +77,27 @@ const Admin = ({ session }) => {
   };
 
   const toggleAtencion = async () => {
-    const nuevoEstado = !config.is_online;
-    const { error } = await supabase
-      .from('configuracion_global')
-      .update({ is_online: nuevoEstado })
-      .eq('id', 'atencion_cliente');
-    if (!error) setConfig({ ...config, is_online: nuevoEstado });
+    try {
+      const nuevoEstado = !config.is_online;
+      
+      const { error } = await supabase
+        .from('configuracion_global')
+        .update({ is_online: nuevoEstado })
+        .eq('id', 'atencion_cliente');
+
+      if (error) throw error;
+
+      // Actualizamos el estado local para que el botón cambie de color
+      setConfig({ ...config, is_online: nuevoEstado });
+
+      // IMPORTANTE: Disparamos el evento para que el Layout se actualice al instante
+      window.dispatchEvent(new CustomEvent('config-updated'));
+      
+      console.log("Estado de atención actualizado a:", nuevoEstado);
+    } catch (err) {
+      console.error("Error al cambiar estado:", err.message);
+      alert("No se pudo cambiar el estado: " + err.message);
+    }
   };
 
   const handleOpenDetails = (user) => {
@@ -190,17 +218,58 @@ const Admin = ({ session }) => {
       <div style={styles.switchCard}>
         <div>
           <h3 style={{ margin: 0, fontSize: '14px', textTransform: 'uppercase' }}>Estado de Atención Global</h3>
-          <p style={{ margin: '5px 0 0 0', fontSize: '11px', color: '#888' }}>Cambia el banner de Online/Offline.</p>
+          
+          {/* INDICADOR DE MODO */}
+          <div style={{
+            display: 'inline-block',
+            padding: '4px 10px',
+            borderRadius: '20px',
+            fontSize: '10px',
+            fontWeight: 'bold',
+            marginTop: '8px',
+            backgroundColor: !config.is_online ? '#fee2e2' : '#dcfce7',
+            color: !config.is_online ? '#b91c1c' : '#15803d',
+            border: !config.is_online ? '1px solid #f87171' : '1px solid #4ade80'
+          }}>
+            MODO ACTUAL: {!config.is_online ? "MANUAL (BLOQUEADO)" : "AUTOMÁTICO (POR HORARIO)"}
+          </div>
+
+          <p style={{ margin: '10px 0 0 0', fontSize: '11px', color: '#888', maxWidth: '400px' }}>
+            {config.is_online 
+              ? "El sistema sigue el horario de oficina. Se cerrará solo en colación y noche." 
+              : "Has forzado el cierre manual. El sistema no abrirá hasta que tú lo actives."}
+          </p>
         </div>
+
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <span style={{ color: config.is_online ? '#228b22' : '#e11d48', fontWeight: 'bold', fontSize: '13px' }}>
-            {config.is_online ? '● SISTEMA ONLINE' : '○ SISTEMA CERRADO'}
-          </span>
+          <div style={{ textAlign: 'right' }}>
+            <span style={{ 
+              display: 'block',
+              color: config.is_online ? (checkIsWorkTime() ? '#228b22' : '#e11d48') : '#e11d48', 
+              fontWeight: 'bold', 
+              fontSize: '13px' 
+            }}>
+              {config.is_online 
+                ? (checkIsWorkTime() ? '● SISTEMA ONLINE' : '○ FUERA DE HORARIO') 
+                : '● CERRADO MANUALMENTE'}
+            </span>
+          </div>
           <button
             onClick={toggleAtencion}
-            style={{ backgroundColor: config.is_online ? '#e11d48' : '#228b22', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px', textTransform: 'uppercase' }}
+            style={{ 
+              backgroundColor: config.is_online ? '#e11d48' : '#228b22', 
+              color: 'white', 
+              border: 'none', 
+              padding: '12px 20px', 
+              borderRadius: '4px', 
+              cursor: 'pointer', 
+              fontWeight: 'bold', 
+              fontSize: '11px', 
+              textTransform: 'uppercase',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+            }}
           >
-            {config.is_online ? 'Desactivar Atención' : 'Activar Atención'}
+            {config.is_online ? 'Pasar a Modo Manual (Cerrar)' : 'Pasar a Modo Auto (Abrir)'}
           </button>
         </div>
       </div>
