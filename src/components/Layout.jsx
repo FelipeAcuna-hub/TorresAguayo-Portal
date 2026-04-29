@@ -47,18 +47,31 @@ const Layout = ({ session }) => {
 
     const updateBanner = (dbStatus) => {
       const isScheduleOnline = checkAutoOnline();
-      if (!dbStatus.is_online) {
-        setStatus({ is_online: false, mensaje: dbStatus.mensaje_offline });
+      
+      // PRIORIDAD 1: Si el administrador apagó el sistema manualmente (BOTÓN ROJO)
+      if (dbStatus.is_online === false) {
+        setStatus({ is_online: false, mensaje: dbStatus.mensaje_offline || "SISTEMA CERRADO TEMPORALMENTE POR ADMINISTRACIÓN" });
+        return;
+      }
+
+      // PRIORIDAD 2: Si está prendido en la base de datos, revisamos el reloj automático
+      if (isScheduleOnline) {
+        setStatus({ is_online: true, mensaje: dbStatus.mensaje_online });
       } else {
-        if (isScheduleOnline) {
-          setStatus({ is_online: true, mensaje: dbStatus.mensaje_online });
-        } else {
-          const now = new Date();
-          const hour = new Date(now.toLocaleString("en-US", {timeZone: "America/Santiago"})).getHours();
-          let msg = "SISTEMA CERRADO: Los archivos se procesarán el siguiente día hábil.";
-          if (hour >= 13 && hour < 15) msg = "HORARIO DE COLACIÓN: Volvemos a las 15:00 hrs.";
-          setStatus({ is_online: false, mensaje: msg });
+        const now = new Date();
+        const chileTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Santiago"}));
+        const hour = chileTime.getHours();
+        const day = chileTime.getDay(); // 0 es Domingo, 6 es Sábado
+
+        let msg = "SISTEMA CERRADO: Los archivos se procesarán el siguiente día hábil.";
+        
+        if (day === 0 || day === 6) {
+          msg = "FIN DE SEMANA: Volvemos el lunes a las 09:00 hrs.";
+        } else if (hour >= 13 && hour < 15) {
+          msg = "HORARIO DE COLACIÓN: Volvemos a las 15:00 hrs.";
         }
+        
+        setStatus({ is_online: false, mensaje: msg });
       }
     };
 
@@ -74,8 +87,10 @@ const Layout = ({ session }) => {
 
     initLayout();
 
+    // SUSCRIPCIÓN REALTIME MEJORADA
     const channel = supabase.channel('layout_sync_global')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'configuracion_global' }, payload => {
+        console.log("Cambio detectado en config:", payload.new);
         updateBanner(payload.new);
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${session.user.id}` }, payload => {

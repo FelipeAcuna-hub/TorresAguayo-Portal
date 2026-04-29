@@ -12,9 +12,9 @@ const SERVICIOS_CONFIG = {
     { id: 'b_pb', name: 'POPS AND BANGS (SOLO)', price: 6 }
   ],
   'REPRO DIÉSEL': [
-    { id: 'd_s1', name: 'STAGE 1', price: 14 }, 
-    { id: 'd_s1egr', name: 'STAGE 1 + EGR OFF', price: 15 }, 
-    { id: 'd_s1dpf', name: 'STAGE 1 + DPF OFF + EGR OFF', price: 16 }, 
+    { id: 'd_s1', name: 'STAGE 1', price: 14 },
+    { id: 'd_s1egr', name: 'STAGE 1 + EGR OFF', price: 15 },
+    { id: 'd_s1dpf', name: 'STAGE 1 + DPF OFF + EGR OFF', price: 16 },
     { id: 'd_s1full', name: 'STAGE 1 + DPF + EGR OFF + ADBLUE OFF', price: 19 },
     { id: 'd_s2', name: 'STAGE 2 (POTENCIA + MODS)', price: 16 }
   ],
@@ -28,9 +28,9 @@ const SERVICIOS_CONFIG = {
   'ANULACIONES EURO (CAMIONES)': [
     { id: 'truck_dpf_egr', name: 'DPF OFF + EGR OFF', price: 12 },
     { id: 'truck_adblue_full', name: 'ADBLUE + DPF & EGR OFF', price: 16 },
-    { id: 'truck_egr_only', name: 'EGR OFF', price: 8 }, //egr only
-    { id: 'truck_adbue_only', name: 'ADBLUE OFF', price: 20 },  //adblue solo camiones
-    { id: 'truck_dpf_only', name: 'DPF OFF', price: 12 }, //dpf solo camiones
+    { id: 'truck_egr_only', name: 'EGR OFF', price: 8 },
+    { id: 'truck_adbue_only', name: 'ADBLUE OFF', price: 20 },
+    { id: 'truck_dpf_only', name: 'DPF OFF', price: 12 },
     { id: 'truck_cummins_emissions', name: 'CUMMINS EMISSIONS', price: 35 }
   ],
   'DESACTIVACIONES': [
@@ -47,18 +47,17 @@ const SERVICIOS_CONFIG = {
 
 const UploadFile = ({ session }) => {
   const navigate = useNavigate();
-  const location = useLocation(); 
+  const location = useLocation();
   const years = Array.from({ length: 2026 - 1990 + 1 }, (_, i) => 2026 - i);
 
-  // --- ESTADOS DE ARCHIVOS (CAMBIADO A 3) ---
   const [fileId, setFileId] = useState(null);
   const [fileMapa, setFileMapa] = useState(null);
   const [filePass, setFilePass] = useState(null);
-  
+
   const [loading, setLoading] = useState(false);
   const [categoriaSel, setCategoriaSel] = useState(null);
   const [servicioSel, setServicioSel] = useState(null);
-  
+
   const [formData, setFormData] = useState({
     patente: '', marca: '', modelo: '', anio: '',
     motor: '', hp: '', ecu: '', combustible: '',
@@ -68,26 +67,34 @@ const UploadFile = ({ session }) => {
   useEffect(() => {
     if (location.state?.servicio) {
       const { name, price, id } = location.state.servicio;
-      const categoriaEncontrada = Object.keys(SERVICIOS_CONFIG).find(cat => 
+      const categoriaEncontrada = Object.keys(SERVICIOS_CONFIG).find(cat =>
         SERVICIOS_CONFIG[cat].some(s => s.id === id)
       );
       if (categoriaEncontrada) {
         setCategoriaSel(categoriaEncontrada);
         setServicioSel({ id, name, price });
-        if (categoriaEncontrada === 'REPRO DIÉSEL') setFormData(prev => ({...prev, combustible: 'Diesel'}));
-        if (categoriaEncontrada === 'REPRO GASOLINA') setFormData(prev => ({...prev, combustible: 'Gasolina'}));
+        if (categoriaEncontrada === 'REPRO DIÉSEL') setFormData(prev => ({ ...prev, combustible: 'Diesel' }));
+        if (categoriaEncontrada === 'REPRO GASOLINA') setFormData(prev => ({ ...prev, combustible: 'Gasolina' }));
       }
     }
   }, [location]);
 
   const totalCreditos = servicioSel ? servicioSel.price : 0;
 
-  // FUNCIÓN AUXILIAR DE SUBIDA (PARA REUTILIZAR)
+  const handlePatenteChange = (e) => {
+    const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (val.length <= 6) {
+      setFormData({ ...formData, patente: val });
+    }
+  };
+
+  const isFormValid = formData.patente.length >= 4 && fileId && fileMapa && servicioSel;
+
   const uploadSingleFile = async (file, prefix, folderName) => {
     if (!file) return null;
     const fileNameClean = file.name.replace(/\s+/g, '_');
     const filePath = `${session.user.id}/${folderName}/${prefix}_${fileNameClean}`;
-    
+
     const { error: uploadError } = await supabase.storage
       .from('archivos-vehiculos')
       .upload(filePath, file);
@@ -102,15 +109,11 @@ const UploadFile = ({ session }) => {
   };
 
   const handleSubmit = async () => {
-    if ((!fileId && !fileMapa && !filePass) || !session?.user?.id) {
-      alert("Por favor selecciona al menos un archivo (ID, Mapa o Password)");
+    if (!isFormValid) {
+      alert("Faltan campos obligatorios (Patente, ID o Mapa)");
       return;
     }
-    if (!servicioSel) {
-      alert("Por favor selecciona un servicio");
-      return;
-    }
-  
+
     setLoading(true);
     try {
       const { data: perfil, error: perfilErr } = await supabase
@@ -118,29 +121,27 @@ const UploadFile = ({ session }) => {
         .select('credits')
         .eq('id', session.user.id)
         .single();
-  
+
       if (perfilErr) throw perfilErr;
-  
+
       if (perfil.credits < totalCreditos) {
         alert(`Saldo insuficiente. Tienes ${perfil.credits} créditos y necesitas ${totalCreditos}.`);
         setLoading(false);
         return;
       }
-  
+
       const folderName = Date.now();
-      
-      // SUBIMOS LOS 3 DE FORMA INDEPENDIENTE
       const urlId = await uploadSingleFile(fileId, 'ID', folderName);
       const urlMapa = await uploadSingleFile(fileMapa, 'MAPA', folderName);
       const urlPass = await uploadSingleFile(filePass, 'PASS', folderName);
-  
+
       const { error: updateCreditsError } = await supabase
         .from('profiles')
         .update({ credits: perfil.credits - totalCreditos })
         .eq('id', session.user.id);
-  
+
       if (updateCreditsError) throw updateCreditsError;
-  
+
       await supabase.from('historial_movimientos').insert([
         {
           perfil_id: session.user.id,
@@ -150,38 +151,59 @@ const UploadFile = ({ session }) => {
           fecha: new Date().toISOString(),
         }
       ]);
-  
+
       const { error: dbError } = await supabase.from('archivos').insert({
         user_id: session.user.id,
         patente: formData.patente,
         marca_modelo: `${formData.marca} ${formData.modelo}`.trim(),
         estado: 'pendiente',
-        file_url: urlMapa || urlId || urlPass, // Compatibilidad con chat
+        file_url: urlMapa,
         file_url_id: urlId,
         file_url_mapa: urlMapa,
         file_url_password: urlPass,
-        detalles_tecnicos: { 
-            ...formData, 
-            servicios_solicitados: servicioSel.name,
-            costo_creditos: totalCreditos 
+        detalles_tecnicos: {
+          ...formData,
+          servicios_solicitados: servicioSel.name,
+          costo_creditos: totalCreditos
         }
       });
-  
+
       if (dbError) throw dbError;
-  
+
       try {
+        const archivosEnviados = [];
+        if (fileId) archivosEnviados.push("ID (Export Console)");
+        if (fileMapa) archivosEnviados.push("MAPA");
+        if (filePass) archivosEnviados.push("PASSWORD");
+
         await supabase.functions.invoke('swift-function', {
-          body: { 
-            to: 'scannerstorresaguayo@gmail.com,felipe.acuna2@mail.udp.cl,stockcarscl@gmail.com', 
-            subject: `NUEVO REQUERIMIENTO: ${formData.patente}`, 
-            html: `<p>El cliente ${session.user.email} ha subido nuevos archivos para la patente ${formData.patente}.</p>` 
+          body: {
+            to: 'stockcarscl@gmail.com, felipe.acuna2@mail.udp.cl',
+            subject: `NUEVO REQUERIMIENTO: ${formData.patente}`,
+            html: `
+              <div style="font-family: sans-serif; color: #333;">
+                <h2 style="color: #e11d48; border-bottom: 2px solid #eee; padding-bottom: 10px;">Nuevo Requerimiento de Archivo</h2>
+                <p><strong>Cliente:</strong> ${session.user.email}</p>
+                <p><strong>Vehículo:</strong> ${formData.marca} ${formData.modelo} (${formData.anio})</p>
+                <p><strong>Patente:</strong> ${formData.patente}</p>
+                <p><strong>Servicio solicitado:</strong> ${servicioSel.name}</p>
+                <p><strong>Archivos enviados:</strong> ${archivosEnviados.join(', ')}</p>
+                <p><strong>Comentarios:</strong> ${formData.comentarios || 'Sin comentarios'}</p>
+                <br/>
+                <div style="text-align: center; margin-top: 20px;">
+                  <a href="https://torresaguayomms.cl/archivos" style="background-color: #000; color: white; padding: 12px 25px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">IR AL PORTAL DE ADMIN</a>
+                </div>
+              </div>
+            `
           },
         });
-      } catch (e) { console.log("Error aviso mail"); }
-  
-      alert(`✅ Archivos enviados. Se han descontado ${totalCreditos} créditos.`);
+      } catch (mailErr) {
+        console.log("Error aviso mail:", mailErr);
+      }
+
+      alert(`✅ Archivos enviados con éxito.`);
       navigate('/archivos');
-  
+
     } catch (error) {
       console.error("Error completo:", error);
       alert('Error: ' + error.message);
@@ -196,12 +218,11 @@ const UploadFile = ({ session }) => {
     row: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '20px', marginBottom: '20px' },
     label: { display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '8px', color: '#333', textTransform: 'uppercase' },
     input: { width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' },
-    // GRILLA PARA ARCHIVOS
     gridFiles: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '25px' },
-    fileBox: (hasFile) => ({
-      border: hasFile ? '2px solid #22c55e' : '2px dashed #ddd',
-      padding: '20px', textAlign: 'center', borderRadius: '4px', 
-      backgroundColor: hasFile ? '#f0fdf4' : '#f9f9f9', cursor: 'pointer', transition: '0.3s'
+    fileBox: (hasFile, isRequired) => ({
+      border: hasFile ? '2px solid #22c55e' : (isRequired ? '2px dashed #e11d48' : '2px dashed #ddd'),
+      padding: '20px', textAlign: 'center', borderRadius: '4px',
+      backgroundColor: hasFile ? '#f0fdf4' : (isRequired ? '#fff5f6' : '#f9f9f9'), cursor: 'pointer', transition: '0.3s'
     }),
     button: { backgroundColor: '#e11d48', color: 'white', border: 'none', padding: '15px 40px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px', textTransform: 'uppercase', fontSize: '13px' },
     btnBack: { color: '#666', textDecoration: 'none', fontSize: '13px', marginLeft: '30px', marginTop: '20px', display: 'inline-block', fontWeight: 'bold' },
@@ -212,9 +233,9 @@ const UploadFile = ({ session }) => {
       borderRadius: '4px', cursor: 'pointer', backgroundColor: isSelected ? '#fff5f6' : 'white'
     }),
     badgePrecio: { backgroundColor: '#e11d48', color: 'white', padding: '2px 6px', borderRadius: '3px', fontSize: '11px', fontWeight: 'bold' },
-    resumenBox: { 
-        backgroundColor: '#000', color: 'white', padding: '30px', borderRadius: '4px', 
-        textAlign: 'center', marginTop: '30px', display: 'flex', justifyContent: 'space-around', alignItems: 'center' 
+    resumenBox: {
+      backgroundColor: '#000', color: 'white', padding: '30px', borderRadius: '4px',
+      textAlign: 'center', marginTop: '30px', display: 'flex', justifyContent: 'space-around', alignItems: 'center'
     }
   };
 
@@ -225,14 +246,23 @@ const UploadFile = ({ session }) => {
         <h2 style={{ fontSize: '20px', marginBottom: '30px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
           INFORMACIÓN DEL VEHÍCULO
         </h2>
-        
+
         <div style={styles.row}>
-          <div><label style={styles.label}>Patente</label><input style={styles.input} placeholder="AACC82" value={formData.patente} onChange={e => setFormData({...formData, patente: e.target.value.toUpperCase()})} /></div>
-          <div><label style={styles.label}>Marca</label><input style={styles.input} placeholder="AUDI" value={formData.marca} onChange={e => setFormData({...formData, marca: e.target.value.toUpperCase()})} /></div>
-          <div><label style={styles.label}>Modelo</label><input style={styles.input} placeholder="Q7" value={formData.modelo} onChange={e => setFormData({...formData, modelo: e.target.value.toUpperCase()})} /></div>
+          <div>
+            <label style={styles.label}>Patente (Obligatorio)</label>
+            <input
+              style={{ ...styles.input, borderColor: formData.patente ? '#ccc' : '#e11d48' }}
+              placeholder="AACC82"
+              value={formData.patente}
+              onChange={handlePatenteChange}
+            />
+            <small style={{ fontSize: '9px', color: '#999' }}>Máx. 6 caracteres</small>
+          </div>
+          <div><label style={styles.label}>Marca</label><input style={styles.input} placeholder="AUDI" value={formData.marca} onChange={e => setFormData({ ...formData, marca: e.target.value.toUpperCase() })} /></div>
+          <div><label style={styles.label}>Modelo</label><input style={styles.input} placeholder="Q7" value={formData.modelo} onChange={e => setFormData({ ...formData, modelo: e.target.value.toUpperCase() })} /></div>
           <div>
             <label style={styles.label}>Año</label>
-            <select style={styles.input} value={formData.anio} onChange={e => setFormData({...formData, anio: e.target.value})}>
+            <select style={styles.input} value={formData.anio} onChange={e => setFormData({ ...formData, anio: e.target.value })}>
               <option value="">Seleccionar año</option>
               {years.map(year => (<option key={year} value={year}>{year}</option>))}
             </select>
@@ -240,12 +270,12 @@ const UploadFile = ({ session }) => {
         </div>
 
         <div style={styles.row}>
-          <div><label style={styles.label}>Motor</label><input style={styles.input} placeholder="EA888" value={formData.motor} onChange={e => setFormData({...formData, motor: e.target.value.toUpperCase()})} /></div>
-          <div><label style={styles.label}>HP</label><input style={styles.input} placeholder="200" value={formData.hp} onChange={e => setFormData({...formData, hp: e.target.value.toUpperCase()})} /></div>
-          <div><label style={styles.label}>ECU</label><input style={styles.input} placeholder="Bosch/Delco/etc.." value={formData.ecu} onChange={e => setFormData({...formData, ecu: e.target.value.toUpperCase()})} /></div>
+          <div><label style={styles.label}>Motor</label><input style={styles.input} placeholder="EA888" value={formData.motor} onChange={e => setFormData({ ...formData, motor: e.target.value.toUpperCase() })} /></div>
+          <div><label style={styles.label}>HP</label><input style={styles.input} placeholder="200" value={formData.hp} onChange={e => setFormData({ ...formData, hp: e.target.value.toUpperCase() })} /></div>
+          <div><label style={styles.label}>ECU</label><input style={styles.input} placeholder="Bosch/Delco/etc.." value={formData.ecu} onChange={e => setFormData({ ...formData, ecu: e.target.value.toUpperCase() })} /></div>
           <div>
             <label style={styles.label}>Combustible</label>
-            <select style={styles.input} value={formData.combustible} onChange={e => setFormData({...formData, combustible: e.target.value})}>
+            <select style={styles.input} value={formData.combustible} onChange={e => setFormData({ ...formData, combustible: e.target.value })}>
               <option value="">Seleccionar</option>
               <option value="Gasolina">Gasolina</option>
               <option value="Diesel">Diesel</option>
@@ -256,7 +286,7 @@ const UploadFile = ({ session }) => {
         <h2 style={{ fontSize: '20px', margin: '40px 0 20px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
           SIMULA EL PRECIO DE TU ARCHIVO
         </h2>
-        
+
         <div style={styles.selectorGrid}>
           <div>
             <label style={styles.label}>1. TIPO SERVICIO</label>
@@ -279,7 +309,7 @@ const UploadFile = ({ session }) => {
 
         <div style={{ marginBottom: '25px' }}>
           <label style={styles.label}>Tipo de Módulo</label>
-          <select style={styles.input} value={formData.tipo_modulo} onChange={e => setFormData({...formData, tipo_modulo: e.target.value})}>
+          <select style={styles.input} value={formData.tipo_modulo} onChange={e => setFormData({ ...formData, tipo_modulo: e.target.value })}>
             <option value="">Selecciona</option>
             <option value="ECU">ECU</option>
             <option value="TCU">TCU</option>
@@ -288,49 +318,58 @@ const UploadFile = ({ session }) => {
 
         <div style={{ marginBottom: '25px' }}>
           <label style={styles.label}>Comentarios</label>
-          <textarea style={{ ...styles.input, height: '80px' }} placeholder="..." value={formData.comentarios} onChange={e => setFormData({...formData, comentarios: e.target.value})}></textarea>
+          <textarea style={{ ...styles.input, height: '80px' }} placeholder="..." value={formData.comentarios} onChange={e => setFormData({ ...formData, comentarios: e.target.value })}></textarea>
         </div>
 
         <h2 style={{ fontSize: '20px', margin: '40px 0 20px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
           ADJUNTAR ARCHIVOS
         </h2>
 
-        {/* --- GRILLA DE 3 SUBIDAS INDEPENDIENTES --- */}
         <div style={styles.gridFiles}>
-          <div style={styles.fileBox(!!fileId)} onClick={() => document.getElementById('fileId').click()}>
+          <div style={styles.fileBox(!!fileId, true)} onClick={() => document.getElementById('fileId').click()}>
             <input type="file" id="fileId" style={{ display: 'none' }} onChange={(e) => setFileId(e.target.files[0])} />
             <div style={{ fontSize: '24px', marginBottom: '5px' }}>🆔</div>
-            <div style={{ fontSize: '12px', fontWeight: 'bold', color: fileId ? '#22c55e' : '#e11d48' }}>{fileId ? 'ID LISTO' : 'SUBIR ID (EXPORT CONSOLE)'}</div>
-            <div style={{ fontSize: '10px', color: '#888' }}>{fileId ? fileId.name : '(Requerido)'}</div>
+            <div style={{ fontSize: '12px', fontWeight: 'bold', color: fileId ? '#22c55e' : '#e11d48' }}>{fileId ? 'ID LISTO' : 'SUBIR ID (OBLIGATORIO)'}</div>
+            <div style={{ fontSize: '10px', color: '#888' }}>{fileId ? fileId.name : 'Export Console requerido'}</div>
           </div>
 
-          <div style={styles.fileBox(!!fileMapa)} onClick={() => document.getElementById('fileMapa').click()}>
+          <div style={styles.fileBox(!!fileMapa, true)} onClick={() => document.getElementById('fileMapa').click()}>
             <input type="file" id="fileMapa" style={{ display: 'none' }} onChange={(e) => setFileMapa(e.target.files[0])} />
             <div style={{ fontSize: '24px', marginBottom: '5px' }}>🗺️</div>
-            <div style={{ fontSize: '12px', fontWeight: 'bold', color: fileMapa ? '#22c55e' : '#e11d48' }}>{fileMapa ? 'MAPA LISTO' : 'SUBIR MAPA'}</div>
-            <div style={{ fontSize: '10px', color: '#888' }}>{fileMapa ? fileMapa.name : '(Requerido)'}</div>
+            <div style={{ fontSize: '12px', fontWeight: 'bold', color: fileMapa ? '#22c55e' : '#e11d48' }}>{fileMapa ? 'MAPA LISTO' : 'SUBIR MAPA (OBLIGATORIO)'}</div>
+            <div style={{ fontSize: '10px', color: '#888' }}>{fileMapa ? fileMapa.name : 'Lectura de mapa requerida'}</div>
           </div>
 
-          <div style={styles.fileBox(!!filePass)} onClick={() => document.getElementById('filePass').click()}>
+          <div style={styles.fileBox(!!filePass, false)} onClick={() => document.getElementById('filePass').click()}>
             <input type="file" id="filePass" style={{ display: 'none' }} onChange={(e) => setFilePass(e.target.files[0])} />
             <div style={{ fontSize: '24px', marginBottom: '5px' }}>🔑</div>
-            <div style={{ fontSize: '12px', fontWeight: 'bold', color: filePass ? '#22c55e' : '#e11d48' }}>{filePass ? 'PASS LISTO' : 'SUBIR PASS'}</div>
-            <div style={{ fontSize: '10px', color: '#888' }}>{filePass ? filePass.name : '(Opcional)'}</div>
+            <div style={{ fontSize: '12px', fontWeight: 'bold', color: filePass ? '#22c55e' : '#333' }}>{filePass ? 'PASS LISTO' : 'SUBIR PASS (OPCIONAL)'}</div>
+            <div style={{ fontSize: '10px', color: '#888' }}>{filePass ? filePass.name : 'Solo si el archivo lo requiere'}</div>
           </div>
         </div>
 
         <div style={styles.resumenBox}>
-            <div style={{ textAlign: 'left' }}>
-                <p style={{ margin: 0, fontSize: '12px', color: '#aaa' }}>Créditos a descontar:</p>
-                <h1 style={{ margin: 0, fontSize: '48px', color: '#fff' }}>{totalCreditos}</h1>
-            </div>
-            <button 
-              onClick={handleSubmit}
-              style={{ ...styles.button, opacity: (loading || (!fileId && !fileMapa && !filePass) || totalCreditos === 0) ? 0.6 : 1 }} 
-              disabled={loading || (!fileId && !fileMapa && !filePass) || totalCreditos === 0}
-            >
-              {loading ? 'PROCESANDO...' : 'CARGAR ARCHIVOS'}
-            </button>
+          <div style={{ textAlign: 'left' }}>
+            <p style={{ margin: 0, fontSize: '12px', color: '#aaa' }}>Créditos a descontar:</p>
+            <h1 style={{ margin: 0, fontSize: '48px', color: '#fff' }}>{totalCreditos}</h1>
+          </div>
+          <button
+            onClick={handleSubmit}
+            style={{
+              ...styles.button,
+              opacity: (loading || !isFormValid) ? 0.4 : 1,
+              cursor: (loading || !isFormValid) ? 'not-allowed' : 'pointer',
+              backgroundColor: !isFormValid && !loading ? '#666' : '#e11d48'
+            }}
+            disabled={loading || !isFormValid}
+          >
+            {loading ? 'PROCESANDO...' :
+              !formData.patente ? 'FALTA PATENTE' :
+                !fileId ? 'FALTA ARCHIVO ID' :
+                  !fileMapa ? 'FALTA ARCHIVO MAPA' :
+                    !servicioSel ? 'SELECCIONA SERVICIO' :
+                      'CARGAR ARCHIVOS'}
+          </button>
         </div>
       </div>
     </div>

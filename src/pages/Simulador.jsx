@@ -116,7 +116,7 @@ const Simulador = () => {
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <h3 style={styles.columnTitle}>3. TOTAL</h3>
           <div style={styles.infoBox}>
-            Total de créditos que se descontarán de tu cuenta. (1 Crédito = $1.000 CLP)
+            Total de créditos que se descontarán de tu cuenta. (1 Crédito = $10.000 CLP)
           </div>
           
           <div style={styles.totalBox}>

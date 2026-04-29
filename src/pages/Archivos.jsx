@@ -64,11 +64,11 @@ const Archivos = ({ session }) => {
       const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = blobUrl;
-      
+
       // Limpiamos el nombre del archivo de prefijos y timestamps
       const baseName = url.split('/').pop();
       const cleanName = baseName.replace(/^\d+_/, '').replace(/^(ID_|MAPA_|PASS_|MOD_|EXTRA_)/, '');
-      
+
       link.setAttribute('download', cleanName);
       document.body.appendChild(link);
       link.click();
@@ -145,42 +145,42 @@ const Archivos = ({ session }) => {
     if (campoDestino === 'mod_file_url') {
       nota = window.prompt("Nota de instalación (Opcional):");
     }
-  
+
     try {
       if (!file) return;
       setLoading(true);
-  
-      const fileNameClean = file.name.replace(/\s+/g, '_'); 
+
+      const fileNameClean = file.name.replace(/\s+/g, '_');
       const storagePath = `procesados/${Date.now()}/${fileNameClean}`;
-  
+
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('archivos-vehiculos')
         .upload(storagePath, file);
-  
+
       if (uploadError) throw uploadError;
-  
+
       const { data: { publicUrl } } = supabase.storage
         .from('archivos-vehiculos')
         .getPublicUrl(storagePath);
-  
+
       const updateData = {
         [campoDestino]: publicUrl,
         estado: 'completado'
       };
-  
+
       if (nota) updateData.nota_instalacion = nota;
-  
+
       const { error: dbError } = await supabase
         .from('archivos')
         .update(updateData)
         .eq('id', archivoId);
-  
+
       if (dbError) throw dbError;
-  
+
       await handleStatusChange(archivoId, 'completado', clienteEmail, patente);
       alert(`✅ Subido con éxito: ${fileNameClean}`);
       fetchArchivos();
-  
+
     } catch (error) {
       console.error("Error:", error.message);
       alert("Error al subir.");
@@ -272,7 +272,20 @@ const Archivos = ({ session }) => {
     infoValue: { padding: '8px 0', fontSize: '12px', color: '#444', borderBottom: '1px solid #eee' },
     pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '30px', paddingBottom: '20px' },
     pageBtn: (active) => ({ padding: '8px 16px', cursor: 'pointer', backgroundColor: active ? '#e11d48' : 'white', color: active ? 'white' : '#666', border: '1px solid #ddd', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', transition: '0.2s' }),
-    btnDownload: { border: 'none', fontSize: '9px', padding: '6px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', textDecoration: 'none', textAlign: 'center', color: 'white', display: 'block', width: '100%' }
+    btnDownload: { border: 'none', fontSize: '9px', padding: '6px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', textDecoration: 'none', textAlign: 'center', color: 'white', display: 'block', width: '100%' },
+    btnCancel: {
+      backgroundColor: '#fff',
+      color: '#e11d48',
+      border: '1px solid #e11d48',
+      padding: '6px',
+      fontSize: '9px',
+      fontWeight: 'bold',
+      cursor: 'pointer',
+      borderRadius: '4px',
+      marginTop: '5px',
+      width: '100%',
+      textAlign: 'center'
+    }
   };
 
   const getBadgeColor = (estado) => {
@@ -322,6 +335,7 @@ const Archivos = ({ session }) => {
               <tr>
                 <th style={styles.th}>N° Orden / Fecha</th>
                 {isAdmin && <th style={styles.th}>Empresa</th>}
+                {isAdmin && <th style={styles.th}>Empresa</th>}
                 <th style={styles.th}>Patente</th>
                 <th style={styles.th}>Marca / Modelo</th>
                 <th style={styles.th}>Ficha</th>
@@ -329,6 +343,7 @@ const Archivos = ({ session }) => {
                 <th style={styles.th}>Acción</th>
                 <th style={styles.th}>Acción ADMI</th>
                 <th style={styles.th}>Mensaje Técnico</th>
+                <th style={styles.th}>Eliminar</th>
               </tr>
             </thead>
             <tbody>
@@ -337,8 +352,14 @@ const Archivos = ({ session }) => {
                   <td style={styles.td}>
                     <div style={{ fontWeight: 'bold', color: '#e11d48', fontSize: '14px' }}>#{archivo.numero_orden || '---'}</div>
                     <div style={{ fontSize: '10px', color: '#999' }}>{new Date(archivo.created_at).toLocaleDateString('es-CL')}</div>
+
                   </td>
                   {isAdmin && <td style={{ ...styles.td, fontWeight: 'bold', color: '#e11d48' }}>{archivo.profiles?.company || 'PARTICULAR'}</td>}
+                  {isAdmin && (
+                    <td style={{ ...styles.td, fontSize: '11px', color: '#555' }}>
+                      {archivo.profiles?.email || '---'}
+                    </td>
+                  )}
                   <td style={styles.td}>{archivo.patente}</td>
                   <td style={styles.td}>{archivo.marca_modelo}</td>
                   <td style={styles.td}>
@@ -361,7 +382,7 @@ const Archivos = ({ session }) => {
                       {archivo.file_url_id && <button onClick={() => handleForceDownload(archivo.file_url_id)} style={{ ...styles.btnDownload, background: '#3b82f6' }}>🆔 ID (Export Console)</button>}
                       {archivo.file_url_mapa && <button onClick={() => handleForceDownload(archivo.file_url_mapa)} style={{ ...styles.btnDownload, background: '#8b5cf6' }}>🗺️ MAPA</button>}
                       {archivo.file_url_password && <button onClick={() => handleForceDownload(archivo.file_url_password)} style={{ ...styles.btnDownload, background: '#f59e0b' }}>🔑 PASSWORD</button>}
-                      
+
                       {archivo.file_url && !archivo.file_url_id && !archivo.file_url_mapa && (
                         <button onClick={() => handleForceDownload(archivo.file_url)} style={{ ...styles.btnDownload, background: '#fff', border: '1px solid #ddd', color: '#666' }}>📄 ORIGINAL</button>
                       )}
@@ -410,6 +431,27 @@ const Archivos = ({ session }) => {
                       )}
                     </div>
                   </td>
+                  <td style={{ ...styles.td, textAlign: 'center' }}>
+                    {!isAdmin && archivo.estado === 'pendiente' ? (
+                      <button
+                        onClick={() => handleCancelarSolicitud(archivo)}
+                        style={{
+                          backgroundColor: 'white',
+                          color: '#e11d48',
+                          border: '1px solid #e11d48',
+                          padding: '6px 10px',
+                          fontSize: '10px',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          borderRadius: '4px',
+                        }}
+                      >
+                        ❌ CANCELAR
+                      </button>
+                    ) : (
+                      <span style={{ color: '#ccc', fontSize: '10px' }}>---</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -418,9 +460,9 @@ const Archivos = ({ session }) => {
 
         {totalPaginas > 1 && (
           <div style={styles.pagination}>
-            <button onClick={() => { setPaginaActual(p => Math.max(1, p - 1)); window.scrollTo(0,0); }} disabled={paginaActual === 1} style={{ ...styles.pageBtn(false), opacity: paginaActual === 1 ? 0.3 : 1 }}>← ANTERIOR</button>
-            {[...Array(totalPaginas).keys()].map(n => <button key={n + 1} onClick={() => { setPaginaActual(n + 1); window.scrollTo(0,0); }} style={styles.pageBtn(paginaActual === n + 1)}>{n + 1}</button>)}
-            <button onClick={() => { setPaginaActual(p => Math.min(totalPaginas, p + 1)); window.scrollTo(0,0); }} disabled={paginaActual === totalPaginas} style={{ ...styles.pageBtn(false), opacity: paginaActual === totalPaginas ? 0.3 : 1 }}>SIGUIENTE →</button>
+            <button onClick={() => { setPaginaActual(p => Math.max(1, p - 1)); window.scrollTo(0, 0); }} disabled={paginaActual === 1} style={{ ...styles.pageBtn(false), opacity: paginaActual === 1 ? 0.3 : 1 }}>← ANTERIOR</button>
+            {[...Array(totalPaginas).keys()].map(n => <button key={n + 1} onClick={() => { setPaginaActual(n + 1); window.scrollTo(0, 0); }} style={styles.pageBtn(paginaActual === n + 1)}>{n + 1}</button>)}
+            <button onClick={() => { setPaginaActual(p => Math.min(totalPaginas, p + 1)); window.scrollTo(0, 0); }} disabled={paginaActual === totalPaginas} style={{ ...styles.pageBtn(false), opacity: paginaActual === totalPaginas ? 0.3 : 1 }}>SIGUIENTE →</button>
           </div>
         )}
       </div>

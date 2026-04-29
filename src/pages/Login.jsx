@@ -21,6 +21,11 @@ const Login = () => {
     e.preventDefault();
     try {
       if (isRegistering) {
+        if (!nombre.trim() || !apellido.trim() || !compania.trim()) {
+          alert("Los campos Nombre, Apellido y Compañía son obligatorios para registrarse.");
+          return;
+        }
+
         const { error } = await supabase.auth.signUp({
           email,
           password,
