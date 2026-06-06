@@ -13,9 +13,14 @@ const checkAutoOnline = () => {
 
   const hour = parseInt(chileTime.find(p => p.type === 'hour').value);
   const day = chileTime.find(p => p.type === 'weekday').value;
-  const isWorkDay = !['Saturday', 'Sunday'].includes(day);
+
+  // El sábado pasa a ser considerado un día de trabajo parcial
+  const isWorkDay = !['Sunday'].includes(day); 
+  
+  // Turno mañana (Lunes a Sábado de 9 a 13)
   const morningShift = hour >= 9 && hour < 13;
-  const afternoonShift = hour >= 15 && hour < 19;
+  // Turno tarde (Solo Lunes a Viernes de 15 a 19)
+  const afternoonShift = day !== 'Saturday' && hour >= 15 && hour < 19;
 
   return isWorkDay && (morningShift || afternoonShift);
 };
@@ -46,23 +51,27 @@ const Layout = ({ session }) => {
     if (!session?.user?.id) return;
 
     const updateBanner = (dbStatus) => {
-      // 1. REVISAMOS EL RELOJ PRIMERO
       const isScheduleOnline = checkAutoOnline();
-      
       const now = new Date();
       const chileTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Santiago"}));
       const hour = chileTime.getHours();
       const day = chileTime.getDay();
 
-      // 2. LOGICA UNIFICADA
-      // Si el Administrador APAGÓ el botón (is_online es false)
-      if (dbStatus.is_online === false || dbStatus.is_online === "false") {
+      // ESTADO 1: MANUAL CERRADO (BLOQUEADO TOTAL)
+      if (dbStatus.is_online === 'manual_off' || dbStatus.is_online === false || dbStatus.is_online === "false") {
         setStatus({ 
           is_online: false, 
           mensaje: dbStatus.mensaje_offline || "CERRADO TEMPORALMENTE: Los archivos se procesarán a primera hora." 
         });
       } 
-      // Si el Administrador tiene el botón ENCENDIDO, manda el RELOJ
+      // ESTADO 2: MANUAL ABIERTO (FORZAR ONLINE REQUERIDO, EJ: DOMINGOS)
+      else if (dbStatus.is_online === 'manual_on') {
+        setStatus({
+          is_online: true,
+          mensaje: dbStatus.mensaje_online || "SISTEMA ONLINE (MODO ESPECIAL ADMI) - PROCESANDO ARCHIVOS"
+        });
+      }
+      // ESTADO 3: MODO AUTOMÁTICO (DEPENDE DEL RELOJ)
       else {
         if (isScheduleOnline) {
           setStatus({ 
@@ -70,11 +79,13 @@ const Layout = ({ session }) => {
             mensaje: dbStatus.mensaje_online || "SISTEMA ONLINE - PROCESANDO ARCHIVOS" 
           });
         } else {
-          // Mensajes por horario (Cerrado Automático)
           let msg = "SISTEMA CERRADO: Los archivos se procesarán a primera hora.";
           
-          if (day === 0 || day === 6) {
-            msg = "FIN DE SEMANA: Volvemos el lunes a las 09:00 hrs.";
+          if (day === 0) { 
+            msg = "DOMINGO: Volvemos el lunes a las 09:00 hrs.";
+          } else if (day === 6) {
+            if (hour < 9) msg = "SÁBADO: Abrimos a las 09:00 de la mañana.";
+            else msg = "FIN DE SEMANA: Volvemos el lunes a las 09:00 hrs.";
           } else if (hour >= 13 && hour < 15) {
             msg = "HORARIO DE COLACIÓN: Volvemos a las 15:00 hrs.";
           } else {

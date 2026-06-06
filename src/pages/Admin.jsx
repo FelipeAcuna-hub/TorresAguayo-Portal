@@ -3,15 +3,17 @@ import { supabase } from '../supabaseClient';
 
 const checkIsWorkTime = () => {
   const now = new Date();
-  const chileTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Santiago"}));
+  const chileTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Santiago" }));
   const hour = chileTime.getHours();
-  const day = chileTime.getDay();
-  
-  const isWorkDay = day >= 1 && day <= 5; // Lunes a Viernes
-  const morningShift = hour >= 9 && hour < 13;
-  const afternoonShift = hour >= 15 && hour < 19;
+  const day = chileTime.getDay(); // 0: Domingo, 1: Lunes, ..., 6: Sábado
 
-  return isWorkDay && (morningShift || afternoonShift);
+  // Turno mañana: Lunes a Sábado de 09:00 a 13:00
+  const morningShift = hour >= 9 && hour < 13;
+  // Turno tarde: Solo Lunes a Viernes (1 al 5) de 15:00 a 19:00
+  const afternoonShift = day !== 6 && day !== 0 && hour >= 15 && hour < 19;
+
+  // Está abierto si es de Lunes a Sábado y calza con los turnos (Domingo siempre cerrado)
+  return day !== 0 && (morningShift || afternoonShift);
 };
 
 const Admin = ({ session }) => {
@@ -20,7 +22,8 @@ const Admin = ({ session }) => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [movimientos, setMovimientos] = useState([]);
 
-  const [config, setConfig] = useState({ is_online: true, mensaje_online: '', mensaje_offline: '' });
+  // Inicializado con un valor por defecto seguro
+  const [config, setConfig] = useState({ is_online: 'auto', mensaje_online: '', mensaje_offline: '' });
 
   // --- NUEVOS ESTADOS PARA BÚSQUEDA Y PAGINACIÓN ---
   const [searchTerm, setSearchTerm] = useState('');
@@ -62,9 +65,13 @@ const Admin = ({ session }) => {
   };
 
   const fetchConfig = async () => {
-    const { data } = await supabase
-      .from('configuracion_global').select('*').eq('id', 'atencion_cliente').single();
-    if (data) setConfig(data);
+    try {
+      const { data, error } = await supabase
+        .from('configuracion_global').select('*').eq('id', 'atencion_cliente').single();
+      if (data && !error) setConfig(data);
+    } catch (e) {
+      console.error("Error cargando config inicial:", e);
+    }
   };
 
   const fetchMovimientos = async (userId) => {
@@ -74,30 +81,6 @@ const Admin = ({ session }) => {
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     if (!error) setMovimientos(data || []);
-  };
-
-  const toggleAtencion = async () => {
-    try {
-      const nuevoEstado = !config.is_online;
-      
-      const { error } = await supabase
-        .from('configuracion_global')
-        .update({ is_online: nuevoEstado })
-        .eq('id', 'atencion_cliente');
-
-      if (error) throw error;
-
-      // Actualizamos el estado local para que el botón cambie de color
-      setConfig({ ...config, is_online: nuevoEstado });
-
-      // IMPORTANTE: Disparamos el evento para que el Layout se actualice al instante
-      window.dispatchEvent(new CustomEvent('config-updated'));
-      
-      console.log("Estado de atención actualizado a:", nuevoEstado);
-    } catch (err) {
-      console.error("Error al cambiar estado:", err.message);
-      alert("No se pudo cambiar el estado: " + err.message);
-    }
   };
 
   const handleOpenDetails = (user) => {
@@ -138,7 +121,7 @@ const Admin = ({ session }) => {
             descripcion: desc,
             cantidad: amount,
             tipo: tipoMovimiento,
-            admin_email: session?.user?.email 
+            admin_email: session?.user?.email
           }
         ]);
 
@@ -150,6 +133,25 @@ const Admin = ({ session }) => {
 
     } catch (error) {
       alert("Error: " + error.message);
+    }
+  };
+
+  // FUNCIÓN MAESTRA: Cambia el color EN EL ACTO y luego actualiza Supabase
+  const cambiarEstadoInmediato = async (nuevoEstado) => {
+    // 1. Actualiza la pantalla de inmediato sin esperar al servidor
+    setConfig(prev => ({ ...prev, is_online: nuevoEstado }));
+    
+    // 2. Ejecuta el evento para avisarle al Layout de inmediato
+    window.dispatchEvent(new CustomEvent('config-updated'));
+
+    // 3. Guarda en Supabase en segundo plano
+    try {
+      await supabase
+        .from('configuracion_global')
+        .update({ is_online: nuevoEstado })
+        .eq('id', 'atencion_cliente');
+    } catch (err) {
+      console.error("Error guardando en segundo plano:", err);
     }
   };
 
@@ -171,9 +173,9 @@ const Admin = ({ session }) => {
     main: { flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#f3f4f6', minHeight: '100vh' },
     switchCard: { backgroundColor: 'white', margin: '30px 30px 0 30px', padding: '20px 30px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid #ddd', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' },
     contentCard: { backgroundColor: 'white', margin: '30px', padding: '30px', borderRadius: '4px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' },
-    searchBar: { 
-      display: 'flex', alignItems: 'center', backgroundColor: '#f3f4f6', 
-      padding: '10px 15px', borderRadius: '4px', border: '1px solid #ddd', 
+    searchBar: {
+      display: 'flex', alignItems: 'center', backgroundColor: '#f3f4f6',
+      padding: '10px 15px', borderRadius: '4px', border: '1px solid #ddd',
       marginBottom: '20px', width: '100%', maxWidth: '400px'
     },
     table: { width: '100%', borderCollapse: 'collapse' },
@@ -184,15 +186,21 @@ const Admin = ({ session }) => {
     modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
     modalBox: { backgroundColor: 'white', padding: '30px', borderRadius: '8px', width: '550px', maxHeight: '85vh', overflowY: 'auto' },
     pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '30px' },
-    pageBtn: (active) => ({ 
-      padding: '8px 16px', cursor: 'pointer', backgroundColor: active ? '#e11d48' : 'white', 
-      color: active ? 'white' : '#666', border: '1px solid #ddd', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' 
+    pageBtn: (active) => ({
+      padding: '8px 16px', cursor: 'pointer', backgroundColor: active ? '#e11d48' : 'white',
+      color: active ? 'white' : '#666', border: '1px solid #ddd', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold'
     })
   };
 
   if (!isAdmin) {
     return <div style={{ padding: '50px', textAlign: 'center' }}><h2>Acceso Denegado</h2></div>;
   }
+
+  // Evaluaciones directas del estado actual
+  const currentOnlineState = config?.is_online;
+  const isAutoActive = currentOnlineState === 'auto' || currentOnlineState === true || currentOnlineState === "true";
+  const isManualOnActive = currentOnlineState === 'manual_on';
+  const isManualOffActive = currentOnlineState === 'manual_off' || currentOnlineState === false || currentOnlineState === "false";
 
   return (
     <div style={styles.main}>
@@ -215,74 +223,82 @@ const Admin = ({ session }) => {
         </button>
       </div>
 
-      <div style={styles.switchCard}>
-        <div>
-          <h3 style={{ margin: 0, fontSize: '14px', textTransform: 'uppercase' }}>Estado de Atención Global</h3>
-          
-          {/* INDICADOR DE MODO */}
-          <div style={{
-            display: 'inline-block',
-            padding: '4px 10px',
-            borderRadius: '20px',
-            fontSize: '10px',
-            fontWeight: 'bold',
-            marginTop: '8px',
-            backgroundColor: !config.is_online ? '#fee2e2' : '#dcfce7',
-            color: !config.is_online ? '#b91c1c' : '#15803d',
-            border: !config.is_online ? '1px solid #f87171' : '1px solid #4ade80'
-          }}>
-            MODO ACTUAL: {!config.is_online ? "MANUAL (BLOQUEADO)" : "AUTOMÁTICO (POR HORARIO)"}
+      {/* CARD DE CONTROL GLOBAL REVISADO */}
+      <div style={{ ...styles.switchCard, display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '15px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '14px', textTransform: 'uppercase' }}>Estado de Atención Global</h3>
+            <p style={{ margin: '5px 0 0 0', fontSize: '11px', color: '#888' }}>
+              Selecciona cómo debe operar el banner del sistema de créditos en tiempo real.
+            </p>
           </div>
-
-          <p style={{ margin: '10px 0 0 0', fontSize: '11px', color: '#888', maxWidth: '400px' }}>
-            {config.is_online 
-              ? "El sistema sigue el horario de oficina. Se cerrará solo en colación y noche." 
-              : "Has forzado el cierre manual. El sistema no abrirá hasta que tú lo actives."}
-          </p>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <div style={{ textAlign: 'right' }}>
             <span style={{ 
-              display: 'block',
-              color: config.is_online ? (checkIsWorkTime() ? '#228b22' : '#e11d48') : '#e11d48', 
               fontWeight: 'bold', 
-              fontSize: '13px' 
+              fontSize: '14px',
+              color: isManualOnActive ? '#22c55e' : (isManualOffActive ? '#e11d48' : (checkIsWorkTime() ? '#22c55e' : '#e11d48'))
             }}>
-              {config.is_online 
-                ? (checkIsWorkTime() ? '● SISTEMA ONLINE' : '○ FUERA DE HORARIO') 
-                : '● CERRADO MANUALMENTE'}
+              {isManualOnActive && '🟢 ONLINE FORZADO (MANUAL)'}
+              {isManualOffActive && '🔴 BLOQUEADO MANUALMENTE'}
+              {isAutoActive && (checkIsWorkTime() ? '🟢 AUTOMÁTICO: ONLINE' : '🔴 AUTOMÁTICO: CERRADO')}
             </span>
           </div>
+        </div>
+
+        {/* BOTONERA TRIPLE ASIGNADA A LA FUNCIÓN INMEDIATA */}
+        <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
+          
+          {/* BOTÓN AUTOMÁTICO */}
           <button
-            onClick={toggleAtencion}
-            style={{ 
-              backgroundColor: config.is_online ? '#e11d48' : '#228b22', 
-              color: 'white', 
-              border: 'none', 
-              padding: '12px 20px', 
-              borderRadius: '4px', 
-              cursor: 'pointer', 
-              fontWeight: 'bold', 
-              fontSize: '11px', 
-              textTransform: 'uppercase',
-              boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+            onClick={() => cambiarEstadoInmediato('auto')}
+            style={{
+              flex: 1, padding: '12px', fontSize: '11px', fontWeight: 'bold', border: 'none', borderRadius: '4px', cursor: 'pointer', textTransform: 'uppercase', transition: 'all 0.1s',
+              backgroundColor: isAutoActive ? '#000000' : '#e5e7eb',
+              color: isAutoActive ? '#ffffff' : '#4b5563',
+              boxShadow: isAutoActive ? '0 4px 6px rgba(0,0,0,0.15)' : 'none'
             }}
           >
-            {config.is_online ? 'Pasar a Modo Manual (Cerrar)' : 'Pasar a Modo Auto (Abrir)'}
+            ⏰ Modo Auto (Por Horario)
           </button>
+
+          {/* BOTÓN MANUAL OPEN */}
+          <button
+            onClick={() => cambiarEstadoInmediato('manual_on')}
+            style={{
+              flex: 1, padding: '12px', fontSize: '11px', fontWeight: 'bold', border: 'none', borderRadius: '4px', cursor: 'pointer', textTransform: 'uppercase', transition: 'all 0.1s',
+              backgroundColor: isManualOnActive ? '#22c55e' : '#e5e7eb',
+              color: isManualOnActive ? '#ffffff' : '#4b5563',
+              boxShadow: isManualOnActive ? '0 4px 6px rgba(34,197,94,0.3)' : 'none'
+            }}
+          >
+            🔓 Forzar Online (Para Domingos)
+          </button>
+
+          {/* BOTÓN MANUAL CLOSED */}
+          <button
+            onClick={() => cambiarEstadoInmediato('manual_off')}
+            style={{
+              flex: 1, padding: '12px', fontSize: '11px', fontWeight: 'bold', border: 'none', borderRadius: '4px', cursor: 'pointer', textTransform: 'uppercase', transition: 'all 0.1s',
+              backgroundColor: isManualOffActive ? '#e11d48' : '#e5e7eb',
+              color: isManualOffActive ? '#ffffff' : '#4b5563',
+              boxShadow: isManualOffActive ? '0 4px 6px rgba(225,29,72,0.3)' : 'none'
+            }}
+          >
+            🔒 Forzar Cierre (Manual)
+          </button>
+
         </div>
       </div>
 
       <div style={styles.contentCard}>
         <h2 style={{ fontSize: '18px', marginBottom: '20px', textTransform: 'uppercase' }}>Usuarios y Créditos</h2>
-        
+
         {/* BARRA DE BÚSQUEDA */}
         <div style={styles.searchBar}>
           <span style={{ marginRight: '10px' }}>🔍</span>
-          <input 
-            type="text" 
-            placeholder="Buscar por email o nombre..." 
+          <input
+            type="text"
+            placeholder="Buscar por email o nombre..."
             style={{ border: 'none', outline: 'none', width: '100%', fontSize: '13px', background: 'transparent' }}
             value={searchTerm}
             onChange={(e) => { setSearchTerm(e.target.value); setPaginaActual(1); }}
@@ -320,25 +336,25 @@ const Admin = ({ session }) => {
         {/* PAGINACIÓN */}
         {totalPaginas > 1 && (
           <div style={styles.pagination}>
-            <button 
-              onClick={() => { setPaginaActual(p => Math.max(1, p - 1)); window.scrollTo(0,0); }} 
-              disabled={paginaActual === 1} 
+            <button
+              onClick={() => { setPaginaActual(p => Math.max(1, p - 1)); window.scrollTo(0, 0); }}
+              disabled={paginaActual === 1}
               style={{ ...styles.pageBtn(false), opacity: paginaActual === 1 ? 0.3 : 1 }}
             >
               ← ANTERIOR
             </button>
             {[...Array(totalPaginas).keys()].map(n => (
-              <button 
-                key={n + 1} 
-                onClick={() => { setPaginaActual(n + 1); window.scrollTo(0,0); }} 
+              <button
+                key={n + 1}
+                onClick={() => { setPaginaActual(n + 1); window.scrollTo(0, 0); }}
                 style={styles.pageBtn(paginaActual === n + 1)}
               >
                 {n + 1}
               </button>
             ))}
-            <button 
-              onClick={() => { setPaginaActual(p => Math.min(totalPaginas, p + 1)); window.scrollTo(0,0); }} 
-              disabled={paginaActual === totalPaginas} 
+            <button
+              onClick={() => { setPaginaActual(p => Math.min(totalPaginas, p + 1)); window.scrollTo(0, 0); }}
+              disabled={paginaActual === totalPaginas}
               style={{ ...styles.pageBtn(false), opacity: paginaActual === totalPaginas ? 0.3 : 1 }}
             >
               SIGUIENTE →
