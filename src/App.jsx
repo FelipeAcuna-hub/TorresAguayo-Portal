@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 
-// Importación del componente Layout (El que contiene Sidebar y Header)
 import Layout from './components/Layout'; 
 
-// Importación de tus páginas
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Perfil from './pages/Perfil';
