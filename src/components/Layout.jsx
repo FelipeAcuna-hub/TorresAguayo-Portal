@@ -18,7 +18,7 @@ const checkAutoOnline = () => {
   const isWorkDay = !['Sunday'].includes(day); 
   
   // Turno mañana (Lunes a Sábado de 9 a 13)
-  const morningShift = hour >= 9 && hour < 10;
+  const morningShift = hour >= 9 && hour < 13;
   // Turno tarde (Solo Lunes a Viernes de 15 a 19)
   const afternoonShift = day !== 'Saturday' && hour >= 15 && hour < 19;
 
