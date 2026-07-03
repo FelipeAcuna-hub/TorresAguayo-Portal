@@ -405,7 +405,7 @@ const Archivos = ({ session }) => {
                         <button onClick={() => handleForceDownload(archivo.mod_file_extra_url)} style={{ ...styles.btnDownload, background: '#10b981' }}>📦 DESCARGAR EXTRA</button>
                       ) : isAdmin && (
                         <label style={{ backgroundColor: '#111', color: '#10b981', padding: '5px', fontSize: '9px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #10b981', textAlign: 'center', fontWeight: 'bold' }}>
-                          {loading ? '...' : '➕ SUBIR EXTRA'}
+                          {loading ? '...' : '➕ SUBIR V2'}
                           <input type="file" style={{ display: 'none' }} onChange={(e) => handleUploadModificado(archivo.id, e.target.files[0], archivo.patente, archivo.profiles?.email, 'mod_file_extra_url')} />
                         </label>
                       )}
@@ -461,8 +461,38 @@ const Archivos = ({ session }) => {
         {totalPaginas > 1 && (
           <div style={styles.pagination}>
             <button onClick={() => { setPaginaActual(p => Math.max(1, p - 1)); window.scrollTo(0, 0); }} disabled={paginaActual === 1} style={{ ...styles.pageBtn(false), opacity: paginaActual === 1 ? 0.3 : 1 }}>← ANTERIOR</button>
-            {[...Array(totalPaginas).keys()].map(n => <button key={n + 1} onClick={() => { setPaginaActual(n + 1); window.scrollTo(0, 0); }} style={styles.pageBtn(paginaActual === n + 1)}>{n + 1}</button>)}
-            <button onClick={() => { setPaginaActual(p => Math.min(totalPaginas, p + 1)); window.scrollTo(0, 0); }} disabled={paginaActual === totalPaginas} style={{ ...styles.pageBtn(false), opacity: paginaActual === totalPaginas ? 0.3 : 1 }}>SIGUIENTE →</button>
+            {[...Array(totalPaginas).keys()].map(n => {
+              const numeroPagina = n + 1;
+              const rangoMaximo = 2; // Muestra un máximo de 2 páginas hacia la izquierda y derecha
+
+              // 1. CONDICIÓN: Si es la primera, la última, o está cerca de la página actual, muestra el botón
+              if (
+                numeroPagina === 1 ||
+                numeroPagina === totalPaginas ||
+                (numeroPagina >= paginaActual - rangoMaximo && numeroPagina <= paginaActual + rangoMaximo)
+              ) {
+                return (
+                  <button
+                    key={numeroPagina}
+                    onClick={() => { setPaginaActual(numeroPagina); window.scrollTo(0, 0); }}
+                    style={styles.pageBtn(paginaActual === numeroPagina)}
+                  >
+                    {numeroPagina}
+                  </button>
+                );
+              }
+
+              // 2. CONDICIÓN: Coloca los puntos suspensivos "..." justo en el límite del rango para ocultar los bloques intermedios
+              if (
+                numeroPagina === paginaActual - rangoMaximo - 1 ||
+                numeroPagina === paginaActual + rangoMaximo + 1
+              ) {
+                return <span key={numeroPagina} style={{ color: '#666', padding: '0 5px', fontWeight: 'bold' }}>...</span>;
+              }
+
+              // Si está muy lejos, se salta el número para mantener limpia la botonera
+              return null;
+            })}            <button onClick={() => { setPaginaActual(p => Math.min(totalPaginas, p + 1)); window.scrollTo(0, 0); }} disabled={paginaActual === totalPaginas} style={{ ...styles.pageBtn(false), opacity: paginaActual === totalPaginas ? 0.3 : 1 }}>SIGUIENTE →</button>
           </div>
         )}
       </div>
@@ -484,7 +514,10 @@ const Archivos = ({ session }) => {
                     ['Motor', archivoDetalle.detalles_tecnicos?.motor],
                     ['HP', archivoDetalle.detalles_tecnicos?.hp],
                     ['Fuel', archivoDetalle.detalles_tecnicos?.combustible],
-                    ['ECU', archivoDetalle.detalles_tecnicos?.ecu],
+                    ['ECU / DCU / TCU / DSG',
+                      archivoDetalle.detalles_tecnicos?.tipo_modulo
+                        ? `${archivoDetalle.detalles_tecnicos.tipo_modulo} (${archivoDetalle.detalles_tecnicos?.ecu || 'Sin especificar'})`
+                        : archivoDetalle.detalles_tecnicos?.ecu],
                     ['Services', archivoDetalle.detalles_tecnicos?.servicios_solicitados],
                     ['Credits', archivoDetalle.detalles_tecnicos?.costo_creditos]
                   ].map(([label, value]) => (
@@ -499,6 +532,14 @@ const Archivos = ({ session }) => {
                 <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#e11d48' }}>COMMENTS:</div>
                 <p style={{ margin: 0, fontSize: '12px', fontStyle: 'italic' }}>{archivoDetalle.detalles_tecnicos?.comentarios || 'No comments provided.'}</p>
               </div>
+              {archivoDetalle.detalles_tecnicos?.codigosfalla && (
+                <div style={{ marginTop: '15px', backgroundColor: '#fff5f6', padding: '15px', borderLeft: '4px solid #e11d48' }}>
+                  <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#e11d48' }}>CÓDIGOS DE FALLA (DTC):</div>
+                  <p style={{ margin: '5px 0 0 0', fontSize: '12px', fontStyle: 'italic', color: '#333', whiteSpace: 'pre-wrap', fontWeight: '500' }}>
+                    {archivoDetalle.detalles_tecnicos.codigosfalla}
+                  </p>
+                </div>
+              )}
             </div>
             <div style={{ padding: '15px', textAlign: 'right' }}>
               <button onClick={() => setArchivoDetalle(null)} style={{ backgroundColor: '#000', color: 'white', border: 'none', padding: '8px 25px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>CLOSE</button>

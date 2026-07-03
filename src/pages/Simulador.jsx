@@ -38,7 +38,7 @@ const Simulador = () => {
     { id: 'truck_adbue_only', name: 'ADBLUE OFF', price: 20 },  //adblue solo camiones
     { id: 'truck_dpf_only', name: 'DPF OFF', price: 12 }, //dpf solo camiones
     { id: 'truck_cummins_emissions', name: 'CUMMINS EMISSIONS', price: 35 }
-  ],
+    ],
     'DESACTIVACIONES': [
       { id: 'dtc', name: 'DTC OFF', price: 3 },
       { id: 'lambda', name: 'LAMBDA OFF', price: 6 },
@@ -48,6 +48,13 @@ const Simulador = () => {
       { id: 'decat_off', name: 'DECAT OFF', price: 6 },
       { id: 'tva_off', name: 'TVA OFF', price: 6 },
       { id: 'flaps_swirls', name: 'FLAPS/SWIRLS', price: 6 }
+    ],
+    'SPECIAL ECU MD1 MG1 SID212-212EVO SID213-213EVO' : [
+    { id: 'adblue',  name: 'ADBLUE + DPF + EGR OFF', price: 16 },
+    { id: 'gpf', name: 'GPF OFF', price: 15 },
+    { id: 'dpfoff_egr', name: 'DPF + EGR OFF', price: 12 },
+    { id: 'stage1', name: 'STAGE 1 (INCLUYE VMAX OFF)', price: 22 },
+    { id: 'unlock_service', name: 'UNLOCK SERVICE + (ADBLUE OFF) + (DPF OFF)+ (EGR OFF) ', price: 25 }
     ]
   };
 

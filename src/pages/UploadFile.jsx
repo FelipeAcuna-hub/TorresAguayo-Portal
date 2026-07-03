@@ -42,7 +42,15 @@ const SERVICIOS_CONFIG = {
     { id: 'decat_off', name: 'DECAT OFF', price: 6 },
     { id: 'tva_off', name: 'TVA OFF', price: 6 },
     { id: 'flaps_swirls', name: 'FLAPS/SWIRLS', price: 6 }
+  ],
+  'SPECIAL ECU MD1 MG1 SID212-212EVO SID213-213EVO' : [
+    { id: 'adblue',  name: 'ADBLUE + DPF + EGR OFF', price: 16 },
+    { id: 'gpf', name: 'GPF OFF', price: 15 },
+    { id: 'dpfoff_egr', name: 'DPF + EGR OFF', price: 12 },
+    { id: 'stage1', name: 'STAGE 1 (INCLUYE VMAX OFF)', price: 22 },
+    { id: 'unlock_service', name: 'UNLOCK SERVICE + (ADBLUE OFF) + (DPF OFF)+ (EGR OFF) ', price: 25 }
   ]
+
 };
 
 const UploadFile = ({ session }) => {
@@ -61,7 +69,7 @@ const UploadFile = ({ session }) => {
   const [formData, setFormData] = useState({
     patente: '', marca: '', modelo: '', anio: '',
     motor: '', hp: '', ecu: '', combustible: '',
-    tipo_modulo: '', comentarios: ''
+    tipo_modulo: '', comentarios: '', codigosfalla: '',
   });
 
   useEffect(() => {
@@ -201,6 +209,11 @@ const UploadFile = ({ session }) => {
                 ${formData.comentarios || 'Sin comentarios adicionales.'}
               </div>
 
+              <div style="background-color: #fff5f6; padding: 15px; border-left: 4px solid #e11d48; margin: 20px 0;">
+                <strong>Codigos de Falla:</strong><br/>
+                ${formData.codigosfalla || 'Sin codigos adicionales.'}
+              </div>
+
               <div style="text-align: center; margin-top: 30px;">
                 <a href="https://torresaguayomms.cl/archivos" style="background-color: #e11d48; color: white; padding: 12px 25px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">VER EN EL PORTAL DE ADMIN</a>
               </div>
@@ -294,7 +307,7 @@ const UploadFile = ({ session }) => {
         <div style={styles.row}>
           <div><label style={styles.label}>Motor</label><input style={styles.input} placeholder="EA888" value={formData.motor} onChange={e => setFormData({ ...formData, motor: e.target.value.toUpperCase() })} /></div>
           <div><label style={styles.label}>HP</label><input style={styles.input} placeholder="200" value={formData.hp} onChange={e => setFormData({ ...formData, hp: e.target.value.toUpperCase() })} /></div>
-          <div><label style={styles.label}>ECU</label><input style={styles.input} placeholder="Bosch/Delco/etc.." value={formData.ecu} onChange={e => setFormData({ ...formData, ecu: e.target.value.toUpperCase() })} /></div>
+          <div><label style={styles.label}>ECU / DCU / TCU / DSG</label><input style={styles.input} placeholder="Bosch/Delco/etc.." value={formData.ecu} onChange={e => setFormData({ ...formData, ecu: e.target.value.toUpperCase() })} /></div>
           <div>
             <label style={styles.label}>Combustible</label>
             <select style={styles.input} value={formData.combustible} onChange={e => setFormData({ ...formData, combustible: e.target.value })}>
@@ -334,13 +347,20 @@ const UploadFile = ({ session }) => {
           <select style={styles.input} value={formData.tipo_modulo} onChange={e => setFormData({ ...formData, tipo_modulo: e.target.value })}>
             <option value="">Selecciona</option>
             <option value="ECU">ECU</option>
+            <option value="DCU">DCU</option>
             <option value="TCU">TCU</option>
+            <option value="DSG">DSG</option>
           </select>
         </div>
 
-        <div style={{ marginBottom: '25px' }}>
+        <div style={{ marginBottom: '15px' }}>
           <label style={styles.label}>Comentarios</label>
-          <textarea style={{ ...styles.input, height: '80px' }} placeholder="..." value={formData.comentarios} onChange={e => setFormData({ ...formData, comentarios: e.target.value })}></textarea>
+          <textarea style={{ ...styles.input, height: '45px' }} placeholder="..." value={formData.comentarios} onChange={e => setFormData({ ...formData, comentarios: e.target.value })}></textarea>
+        </div>
+
+        <div style={{ marginBottom: '25px' }}>
+          <label style={styles.label}>Codigos de Falla (DTC)</label>
+          <textarea style={{ ...styles.input, height: '80px' }} placeholder="Ejemplo P2463" value={formData.codigosfalla} onChange={e => setFormData({ ...formData, codigosfalla: e.target.value })}></textarea>
         </div>
 
         <h2 style={{ fontSize: '20px', margin: '40px 0 20px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>

@@ -164,10 +164,10 @@ const DashboardTorresAguayo = ({ session }) => {
             Plataforma <span style={{ color: '#e11d48' }}>Reseller</span>
           </h1>
           <h2 style={{ fontSize: '24px', color: '#e11d48', margin: '2px 0 0 0', fontStyle: 'italic', fontWeight: 'bold' }}>
-            Dealer Online
+            Online File Services
           </h2>
           <p style={{ color: '#9ca3af', fontSize: '11px', marginTop: '15px', letterSpacing: '2px', fontWeight: 'bold' }}>
-            TORRES AGUAYO MOTORSPORT — CHILE
+            TORRESAGUAYO — CHILE - LATAM
           </p>
         </div>
       </section>
@@ -234,7 +234,7 @@ const DashboardTorresAguayo = ({ session }) => {
           <p style={{ fontSize: '13px', color: '#555', margin: '5px 0' }}><strong>Email:</strong> scannerstorresaguayo@gmail.com</p>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <h4 style={{ fontSize: '12px', color: '#000', marginBottom: '15px', textTransform: 'uppercase' }}>Torres Aguayo Motorsport</h4>
+          <h4 style={{ fontSize: '12px', color: '#000', marginBottom: '15px', textTransform: 'uppercase' }}>TorresAguayo Service</h4>
           <p style={{ fontSize: '11px', color: '#999', margin: '5px 0' }}>© 2026 Reservados todos los derechos.</p>
           <p style={{ fontSize: '10px', color: '#ccc', marginTop: '15px' }}>v1.0.4 - Developer: Felipe Acuña</p>
         </div>

@@ -115,11 +115,40 @@ const Historial = ({ session }) => {
         >
           Anterior
         </button>
-        {[...Array(total).keys()].map(n => (
-          <button key={n+1} onClick={() => setPage(n+1)} style={styles.pageBtn(current === n+1)}>
-            {n+1}
-          </button>
-        ))}
+        
+        {/* NUEVA LOGICA DE CONTRACCIÓN INYECTADA */}
+        {[...Array(total).keys()].map(n => {
+          const numeroPagina = n + 1;
+          const rangoMaximo = 2; // Controla cuántas páginas se ven a los lados
+  
+          // 1. CONDICIÓN: Si es la primera, la última, o está cerca de la actual, dibuja el botón
+          if (
+            numeroPagina === 1 || 
+            numeroPagina === total || 
+            (numeroPagina >= current - rangoMaximo && numeroPagina <= current + rangoMaximo)
+          ) {
+            return (
+              <button 
+                key={numeroPagina} 
+                onClick={() => setPage(numeroPagina)} 
+                style={styles.pageBtn(current === numeroPagina)}
+              >
+                {numeroPagina}
+              </button>
+            );
+          }
+  
+          // 2. CONDICIÓN: Si está justo en el límite exterior del rango, dibuja los "..."
+          if (
+            numeroPagina === current - rangoMaximo - 1 || 
+            numeroPagina === current + rangoMaximo + 1
+          ) {
+            return <span key={numeroPagina} style={{ color: '#666', padding: '0 5px', fontWeight: 'bold' }}>...</span>;
+          }
+  
+          return null;
+        })}
+  
         <button 
           onClick={() => setPage(p => Math.min(total, p + 1))} 
           disabled={current === total}
