@@ -46,7 +46,7 @@ const SERVICIOS_CONFIG = {
   'SPECIAL ECU MD1 MG1 SID212-212EVO SID213-213EVO' : [
     { id: 'adblue',  name: 'ADBLUE + DPF + EGR OFF', price: 16 },
     { id: 'gpf', name: 'GPF OFF', price: 15 },
-    { id: 'dpfoff_egr', name: 'DPF + EGR OFF', price: 12 },
+    { id: 'dpfoff_egr', name: 'DPF + EGR OFF', price: 15 },
     { id: 'stage1', name: 'STAGE 1 (INCLUYE VMAX OFF)', price: 22 },
     { id: 'unlock_service', name: 'UNLOCK SERVICE + (ADBLUE OFF) + (DPF OFF)+ (EGR OFF) ', price: 25 }
   ]
