@@ -273,6 +273,7 @@ const Archivos = ({ session }) => {
     pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '30px', paddingBottom: '20px' },
     pageBtn: (active) => ({ padding: '8px 16px', cursor: 'pointer', backgroundColor: active ? '#e11d48' : 'white', color: active ? 'white' : '#666', border: '1px solid #ddd', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', transition: '0.2s' }),
     btnDownload: { border: 'none', fontSize: '9px', padding: '6px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', textDecoration: 'none', textAlign: 'center', color: 'white', display: 'block', width: '100%' },
+    timeText: { color: '#888', fontSize: '10px', marginTop: '3px' }, // NUEVO ESTILO: Para mostrar la hora con estilo gris ordenado
     btnCancel: {
       backgroundColor: '#fff',
       color: '#e11d48',
@@ -347,113 +348,119 @@ const Archivos = ({ session }) => {
               </tr>
             </thead>
             <tbody>
-              {archivosPaginados.map((archivo) => (
-                <tr key={archivo.id}>
-                  <td style={styles.td}>
-                    <div style={{ fontWeight: 'bold', color: '#e11d48', fontSize: '14px' }}>#{archivo.numero_orden || '---'}</div>
-                    <div style={{ fontSize: '10px', color: '#999' }}>{new Date(archivo.created_at).toLocaleDateString('es-CL')}</div>
-
-                  </td>
-                  {isAdmin && <td style={{ ...styles.td, fontWeight: 'bold', color: '#e11d48' }}>{archivo.profiles?.company || 'PARTICULAR'}</td>}
-                  {isAdmin && (
-                    <td style={{ ...styles.td, fontSize: '11px', color: '#555' }}>
-                      {archivo.profiles?.email || '---'}
+              {archivosPaginados.map((archivo) => {
+                const fechaObj = new Date(archivo.created_at);
+                return (
+                  <tr key={archivo.id}>
+                    <td style={styles.td}>
+                      <div style={{ fontWeight: 'bold', color: '#e11d48', fontSize: '14px' }}>#{archivo.numero_orden || '---'}</div>
+                      <div>{fechaObj.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
+                      {/* NUEVO: Se renderiza la hora exacta abajo de la fecha en la celda */}
+                      <div style={styles.timeText}>
+                        {fechaObj.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })} hrs
+                      </div>
                     </td>
-                  )}
-                  <td style={styles.td}>{archivo.patente}</td>
-                  <td style={styles.td}>{archivo.marca_modelo}</td>
-                  <td style={styles.td}>
-                    <button onClick={() => setArchivoDetalle(archivo)} style={{ backgroundColor: '#000', color: '#fff', border: 'none', padding: '4px 8px', fontSize: '9px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px' }}>DETALLES</button>
-                  </td>
-                  <td style={styles.td}>
-                    {isAdmin ? (
-                      <select style={{ ...styles.selectAdmin, color: getBadgeColor(archivo.estado), borderColor: getBadgeColor(archivo.estado) }} value={archivo.estado} onChange={(e) => handleStatusChange(archivo.id, e.target.value, archivo.profiles?.email, archivo.patente)}>
-                        <option value="pendiente">Pendiente</option>
-                        <option value="en revision">En Revisión</option>
-                        <option value="completado">Completado</option>
-                        <option value="cancelado">Cancelado</option>
-                      </select>
-                    ) : <span style={{ ...styles.statusBadge, backgroundColor: getBadgeColor(archivo.estado) }}>{archivo.estado}</span>}
-                  </td>
-
-                  {/* --- COLUMNA ACCIÓN (USUARIO) --- */}
-                  <td style={styles.td}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', minWidth: '110px' }}>
-                      {archivo.file_url_id && <button onClick={() => handleForceDownload(archivo.file_url_id)} style={{ ...styles.btnDownload, background: '#3b82f6' }}>🆔 ID (Export Console)</button>}
-                      {archivo.file_url_mapa && <button onClick={() => handleForceDownload(archivo.file_url_mapa)} style={{ ...styles.btnDownload, background: '#8b5cf6' }}>🗺️ MAPA</button>}
-                      {archivo.file_url_password && <button onClick={() => handleForceDownload(archivo.file_url_password)} style={{ ...styles.btnDownload, background: '#f59e0b' }}>🔑 PASSWORD</button>}
-
-                      {archivo.file_url && !archivo.file_url_id && !archivo.file_url_mapa && (
-                        <button onClick={() => handleForceDownload(archivo.file_url)} style={{ ...styles.btnDownload, background: '#fff', border: '1px solid #ddd', color: '#666' }}>📄 ORIGINAL</button>
-                      )}
-                    </div>
-                  </td>
-
-                  {/* --- COLUMNA ACCIÓN ADMI (ADMINISTRADOR) --- */}
-                  <td style={styles.td}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', minWidth: '110px' }}>
-                      {archivo.mod_file_url ? (
-                        <button onClick={() => handleForceDownload(archivo.mod_file_url)} style={{ ...styles.btnDownload, background: '#22c55e' }}>🚀 DESCARGAR MOD</button>
-                      ) : isAdmin && (
-                        <label style={{ backgroundColor: '#000', color: '#22c55e', padding: '5px', fontSize: '9px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #22c55e', textAlign: 'center', fontWeight: 'bold' }}>
-                          {loading ? '...' : '📤 SUBIR MOD'}
-                          <input type="file" style={{ display: 'none' }} onChange={(e) => handleUploadModificado(archivo.id, e.target.files[0], archivo.patente, archivo.profiles?.email, 'mod_file_url')} />
-                        </label>
-                      )}
-
-                      {archivo.mod_file_extra_url ? (
-                        <button onClick={() => handleForceDownload(archivo.mod_file_extra_url)} style={{ ...styles.btnDownload, background: '#10b981' }}>📦 DESCARGAR EXTRA</button>
-                      ) : isAdmin && (
-                        <label style={{ backgroundColor: '#111', color: '#10b981', padding: '5px', fontSize: '9px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #10b981', textAlign: 'center', fontWeight: 'bold' }}>
-                          {loading ? '...' : '➕ SUBIR V2'}
-                          <input type="file" style={{ display: 'none' }} onChange={(e) => handleUploadModificado(archivo.id, e.target.files[0], archivo.patente, archivo.profiles?.email, 'mod_file_extra_url')} />
-                        </label>
-                      )}
-                    </div>
-                  </td>
-
-                  <td style={{ ...styles.td, minWidth: '180px' }}>
-                    <div style={{
-                      fontSize: '11px', padding: '10px',
-                      backgroundColor: archivo.notas_instalacion ? '#fffbeb' : '#f9f9f9',
-                      border: '1px solid ' + (archivo.notas_instalacion ? '#fef3c7' : '#eee'),
-                      borderRadius: '4px', color: '#333', minHeight: '50px'
-                    }}>
-                      {archivo.notas_instalacion ? (
-                        <><div style={{ fontWeight: 'bold', color: '#92400e', marginBottom: '4px', fontSize: '9px' }}>📝 INSTRUCCIONES:</div>{archivo.notas_instalacion}</>
-                      ) : (
-                        <span style={{ color: '#aaa', fontStyle: 'italic' }}>No se han subido intrucciones...</span>
-                      )}
-                      {isAdmin && (
-                        <button onClick={() => handleGuardarNota(archivo.id, archivo.notas_instalacion)} style={{ display: 'block', marginTop: '8px', backgroundColor: '#e11d48', color: 'white', border: 'none', padding: '3px 7px', fontSize: '9px', fontWeight: 'bold', borderRadius: '2px', cursor: 'pointer' }}>
-                          {archivo.notas_instalacion ? 'EDITAR MENSAJE' : '+ ESCRIBIR NOTA'}
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                  <td style={{ ...styles.td, textAlign: 'center' }}>
-                    {!isAdmin && archivo.estado === 'pendiente' ? (
-                      <button
-                        onClick={() => handleCancelarSolicitud(archivo)}
-                        style={{
-                          backgroundColor: 'white',
-                          color: '#e11d48',
-                          border: '1px solid #e11d48',
-                          padding: '6px 10px',
-                          fontSize: '10px',
-                          fontWeight: 'bold',
-                          cursor: 'pointer',
-                          borderRadius: '4px',
-                        }}
-                      >
-                        ❌ CANCELAR
-                      </button>
-                    ) : (
-                      <span style={{ color: '#ccc', fontSize: '10px' }}>---</span>
+                    {isAdmin && <td style={{ ...styles.td, fontWeight: 'bold', color: '#e11d48' }}>{archivo.profiles?.company || 'PARTICULAR'}</td>}
+                    {isAdmin && (
+                      <td style={{ ...styles.td, fontSize: '11px', color: '#555' }}>
+                        {archivo.profiles?.email || '---'}
+                      </td>
                     )}
-                  </td>
-                </tr>
-              ))}
+                    <td style={styles.td}>{archivo.patente}</td>
+                    <td style={styles.td}>{archivo.marca_modelo}</td>
+                    <td style={styles.td}>
+                      <button onClick={() => setArchivoDetalle(archivo)} style={{ backgroundColor: '#000', color: '#fff', border: 'none', padding: '4px 8px', fontSize: '9px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px' }}>DETALLES</button>
+                    </td>
+                    <td style={styles.td}>
+                      {isAdmin ? (
+                        <select style={{ ...styles.selectAdmin, color: getBadgeColor(archivo.estado), borderColor: getBadgeColor(archivo.estado) }} value={archivo.estado} onChange={(e) => handleStatusChange(archivo.id, e.target.value, archivo.profiles?.email, archivo.patente)}>
+                          <option value="pendiente">Pendiente</option>
+                          <option value="en revision">En Revisión</option>
+                          <option value="completado">Completado</option>
+                          <option value="cancelado">Cancelado</option>
+                        </select>
+                      ) : <span style={{ ...styles.statusBadge, backgroundColor: getBadgeColor(archivo.estado) }}>{archivo.estado}</span>}
+                    </td>
+
+                    {/* --- COLUMNA ACCIÓN (USUARIO) --- */}
+                    <td style={styles.td}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', minWidth: '110px' }}>
+                        {archivo.file_url_id && <button onClick={() => handleForceDownload(archivo.file_url_id)} style={{ ...styles.btnDownload, background: '#3b82f6' }}>🆔 ID (Export Console)</button>}
+                        {archivo.file_url_mapa && <button onClick={() => handleForceDownload(archivo.file_url_mapa)} style={{ ...styles.btnDownload, background: '#8b5cf6' }}>🗺️ MAPA</button>}
+                        {archivo.file_url_password && <button onClick={() => handleForceDownload(archivo.file_url_password)} style={{ ...styles.btnDownload, background: '#f59e0b' }}>🔑 PASSWORD</button>}
+
+                        {archivo.file_url && !archivo.file_url_id && !archivo.file_url_mapa && (
+                          <button onClick={() => handleForceDownload(archivo.file_url)} style={{ ...styles.btnDownload, background: '#fff', border: '1px solid #ddd', color: '#666' }}>📄 ORIGINAL</button>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* --- COLUMNA ACCIÓN ADMI (ADMINISTRADOR) --- */}
+                    <td style={styles.td}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', minWidth: '110px' }}>
+                        {archivo.mod_file_url ? (
+                          <button onClick={() => handleForceDownload(archivo.mod_file_url)} style={{ ...styles.btnDownload, background: '#22c55e' }}>🚀 DESCARGAR MOD</button>
+                        ) : isAdmin && (
+                          <label style={{ backgroundColor: '#000', color: '#22c55e', padding: '5px', fontSize: '9px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #22c55e', textAlign: 'center', fontWeight: 'bold' }}>
+                            {loading ? '...' : '📤 SUBIR MOD'}
+                            <input type="file" style={{ display: 'none' }} onChange={(e) => handleUploadModificado(archivo.id, e.target.files[0], archivo.patente, archivo.profiles?.email, 'mod_file_url')} />
+                          </label>
+                        )}
+
+                        {archivo.mod_file_extra_url ? (
+                          <button onClick={() => handleForceDownload(archivo.mod_file_extra_url)} style={{ ...styles.btnDownload, background: '#10b981' }}>📦 DESCARGAR EXTRA</button>
+                        ) : isAdmin && (
+                          <label style={{ backgroundColor: '#111', color: '#10b981', padding: '5px', fontSize: '9px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #10b981', textAlign: 'center', fontWeight: 'bold' }}>
+                            {loading ? '...' : '➕ SUBIR V2'}
+                            <input type="file" style={{ display: 'none' }} onChange={(e) => handleUploadModificado(archivo.id, e.target.files[0], archivo.patente, archivo.profiles?.email, 'mod_file_extra_url')} />
+                          </label>
+                        )}
+                      </div>
+                    </td>
+
+                    <td style={{ ...styles.td, minWidth: '180px' }}>
+                      <div style={{
+                        fontSize: '11px', padding: '10px',
+                        backgroundColor: archivo.notas_instalacion ? '#fffbeb' : '#f9f9f9',
+                        border: '1px solid ' + (archivo.notas_instalacion ? '#fef3c7' : '#eee'),
+                        borderRadius: '4px', color: '#333', minHeight: '50px'
+                      }}>
+                        {archivo.notas_instalacion ? (
+                          <><div style={{ fontWeight: 'bold', color: '#92400e', marginBottom: '4px', fontSize: '9px' }}>📝 INSTRUCCIONES:</div>{archivo.notas_instalacion}</>
+                        ) : (
+                          <span style={{ color: '#aaa', fontStyle: 'italic' }}>No se han subido intrucciones...</span>
+                        )}
+                        {isAdmin && (
+                          <button onClick={() => handleGuardarNota(archivo.id, archivo.notas_instalacion)} style={{ display: 'block', marginTop: '8px', backgroundColor: '#e11d48', color: 'white', border: 'none', padding: '3px 7px', fontSize: '9px', fontWeight: 'bold', borderRadius: '2px', cursor: 'pointer' }}>
+                            {archivo.notas_instalacion ? 'EDITAR MENSAJE' : '+ ESCRIBIR NOTA'}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                    <td style={{ ...styles.td, textAlign: 'center' }}>
+                      {!isAdmin && archivo.estado === 'pendiente' ? (
+                        <button
+                          onClick={() => handleCancelarSolicitud(archivo)}
+                          style={{
+                            backgroundColor: 'white',
+                            color: '#e11d48',
+                            border: '1px solid #e11d48',
+                            padding: '6px 10px',
+                            fontSize: '10px',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            borderRadius: '4px',
+                          }}
+                        >
+                          ❌ CANCELAR
+                        </button>
+                      ) : (
+                        <span style={{ color: '#ccc', fontSize: '10px' }}>---</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
