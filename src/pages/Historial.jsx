@@ -22,7 +22,7 @@ const Historial = ({ session }) => {
     ADMIN_EMAILS.includes(session?.user?.email?.toLowerCase());
 
   // --- FUNCIÓN DE CARGA DE DATOS COMPLETA ---
-  // CAMBIO: Dependencias optimizadas para evitar re-creaciones de la función
+  // CAMBIO: Se agregaron los campos "email" dentro del select de perfiles relacionales
   const fetchDatos = useCallback(async () => {
     try {
       setLoading(true);
@@ -33,7 +33,7 @@ const Historial = ({ session }) => {
       // 1. CARGAR RECARGAS Y RETIROS (Tabla: movimientos)
       let queryMovs = supabase
         .from('movimientos')
-        .select('*, profiles:user_id(company)')
+        .select('*, profiles:user_id(company, email)')
         .order('created_at', { ascending: false });
 
       if (!isAdmin) {
@@ -46,7 +46,7 @@ const Historial = ({ session }) => {
       // 2. CARGAR CANJES (Tabla: historial_movimientos)
       let queryCanjes = supabase
         .from('historial_movimientos')
-        .select('*, profiles:perfil_id(company)')
+        .select('*, profiles:perfil_id(company, email)')
         .order('fecha', { ascending: false });
 
       if (!isAdmin) {
@@ -64,9 +64,9 @@ const Historial = ({ session }) => {
     } finally {
       setLoading(false);
     }
-  }, [session?.user?.id, isAdmin]); // CAMBIO: Dependemos del ID, no del objeto session entero
+  }, [session?.user?.id, isAdmin]);
 
-  // CAMBIO: useEffect ahora solo se dispara cuando el ID de usuario cambia realmente
+  // useEffect se dispara cuando el ID de usuario cambia
   useEffect(() => {
     if (session?.user?.id) {
       fetchDatos();
@@ -90,6 +90,8 @@ const Historial = ({ session }) => {
     tituloSeccion: { fontSize: '18px', margin: 0, textTransform: 'uppercase', color: '#000', fontWeight: 'bold' },
     refreshBtn: { backgroundColor: '#000', color: '#fff', border: 'none', padding: '8px 15px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', transition: 'opacity 0.2s' },
     companyText: { color: '#e11d48', fontWeight: 'bold', fontSize: '12px' },
+    emailText: { color: '#666', fontSize: '12px' }, // NUEVO: Estilo para el correo del cliente
+    timeText: { color: '#888', fontSize: '11px', marginTop: '2px' }, // NUEVO: Estilo para la hora abajo de la fecha
     adminBadge: { backgroundColor: '#f9f9f9', padding: '4px 8px', borderRadius: '3px', fontSize: '11px', color: '#666', border: '1px solid #eee', fontStyle: 'italic' },
     pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '25px' },
     pageBtn: (active) => ({
@@ -183,29 +185,38 @@ const Historial = ({ session }) => {
             <tr>
               <th style={styles.th}>FECHA</th>
               {isAdmin && <th style={styles.th}>EMPRESA</th>}
+              {isAdmin && <th style={styles.th}>CORREO CLIENTE</th>} {/* NUEVA COLUMNA */}
               <th style={styles.th}>DESCRIPCIÓN</th>
               {isAdmin && <th style={styles.th}>ADMIN</th>}
               <th style={{ ...styles.th, textAlign: 'right' }}>CANTIDAD</th>
             </tr>
           </thead>
           <tbody>
-            {movsPaginados.map(m => (
-              <tr key={m.id}>
-                <td style={styles.td}>
-                  {new Date(m.created_at).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                </td>
-                {isAdmin && <td style={styles.td}><span style={styles.companyText}>{m.profiles?.company || 'PARTICULAR'}</span></td>}
-                <td style={styles.td}>{m.descripcion}</td>
-                {isAdmin && (
+            {movsPaginados.map(m => {
+              const fechaObj = new Date(m.created_at);
+              return (
+                <tr key={m.id}>
                   <td style={styles.td}>
-                    <span style={styles.adminBadge}>{m.admin_email || 'Sistema'}</span>
+                    <div>{fechaObj.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
+                    {/* HORA ABAJO DE LA FECHA */}
+                    <div style={styles.timeText}>
+                      {fechaObj.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })} hrs
+                    </div>
                   </td>
-                )}
-                <td style={{ ...styles.td, textAlign: 'right', fontWeight: 'bold', color: m.tipo === 'gasto' ? '#e11d48' : '#228b22' }}>
-                  {m.tipo === 'gasto' ? '-' : '+'}{m.cantidad.toLocaleString('es-CL')}
-                </td>
-              </tr>
-            ))}
+                  {isAdmin && <td style={styles.td}><span style={styles.companyText}>{m.profiles?.company || 'PARTICULAR'}</span></td>}
+                  {isAdmin && <td style={styles.td}><span style={styles.emailText}>{m.profiles?.email || 'Sin correo'}</span></td>} {/* NUEVA CELDA CORREO */}
+                  <td style={styles.td}>{m.descripcion}</td>
+                  {isAdmin && (
+                    <td style={styles.td}>
+                      <span style={styles.adminBadge}>{m.admin_email || 'Sistema'}</span>
+                    </td>
+                  )}
+                  <td style={{ ...styles.td, textAlign: 'right', fontWeight: 'bold', color: m.tipo === 'gasto' ? '#e11d48' : '#228b22' }}>
+                    {m.tipo === 'gasto' ? '-' : '+'}{m.cantidad.toLocaleString('es-CL')}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         {renderPagination(pagMovimientos, totalPagMovs, setPagMovimientos)}
@@ -232,23 +243,32 @@ const Historial = ({ session }) => {
             <tr>
               <th style={styles.th}>FECHA</th>
               {isAdmin && <th style={styles.th}>EMPRESA</th>}
+              {isAdmin && <th style={styles.th}>CORREO CLIENTE</th>} {/* NUEVA COLUMNA */}
               <th style={styles.th}>DETALLE</th>
               <th style={{ ...styles.th, textAlign: 'right' }}>CANTIDAD</th>
             </tr>
           </thead>
           <tbody>
-            {canjesPaginados.map(c => (
-              <tr key={c.id}>
-                <td style={styles.td}>
-                  {new Date(c.fecha).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                </td>
-                {isAdmin && <td style={styles.td}><span style={styles.companyText}>{c.profiles?.company || 'PARTICULAR'}</span></td>}
-                <td style={styles.td}>{c.descripcion}</td>
-                <td style={{ ...styles.td, textAlign: 'right', fontWeight: 'bold', color: '#e11d48' }}>
-                  -{c.cantidad.toLocaleString('es-CL')}
-                </td>
-              </tr>
-            ))}
+            {canjesPaginados.map(c => {
+              const fechaObj = new Date(c.fecha);
+              return (
+                <tr key={c.id}>
+                  <td style={styles.td}>
+                    <div>{fechaObj.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
+                    {/* HORA ABAJO DE LA FECHA */}
+                    <div style={styles.timeText}>
+                      {fechaObj.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })} hrs
+                    </div>
+                  </td>
+                  {isAdmin && <td style={styles.td}><span style={styles.companyText}>{c.profiles?.company || 'PARTICULAR'}</span></td>}
+                  {isAdmin && <td style={styles.td}><span style={styles.emailText}>{c.profiles?.email || 'Sin correo'}</span></td>} {/* NUEVA CELDA CORREO */}
+                  <td style={styles.td}>{c.descripcion}</td>
+                  <td style={{ ...styles.td, textAlign: 'right', fontWeight: 'bold', color: '#e11d48' }}>
+                    -{c.cantidad.toLocaleString('es-CL')}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         {renderPagination(pagCanjes, totalPagCanjes, setPagCanjes)}
