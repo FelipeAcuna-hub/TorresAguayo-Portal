@@ -298,8 +298,15 @@ const Archivos = ({ session }) => {
   };
 
   const filteredArchivos = archivos.filter(a => {
-    const matchSearch = !searchTerm || a.numero_orden?.toString() === searchTerm || a.patente?.toLowerCase().includes(searchTerm.toLowerCase());
+    const term = searchTerm.trim().toLowerCase();
+  
+    const matchOrden = a.numero_orden?.toString() === term;
+    const matchPatente = a.patente?.toLowerCase().includes(term);
+    const matchEmail = a.profiles?.email?.toLowerCase().includes(term);
+  
+    const matchSearch = !term || matchOrden || matchPatente || matchEmail;
     const matchStatus = statusFilter === 'todos' || a.estado === statusFilter;
+  
     return matchSearch && matchStatus;
   });
 
