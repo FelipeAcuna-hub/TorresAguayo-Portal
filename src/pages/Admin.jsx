@@ -30,11 +30,12 @@ const Admin = ({ session }) => {
   const [paginaActual, setPaginaActual] = useState(1);
   const [itemsPorPagina] = useState(10);
 
-  // --- CONFIGURACIÓN DE LOS 3 ADMINISTRADORES ---
+  // --- CONFIGURACIÓN DE LOS ADMINISTRADORES ---
   const ADMIN_EMAILS = [
     'scannerstorresaguayo@gmail.com',
     'felipe.acuna2@mail.udp.cl',
-    'stockcarscl@gmail.com'
+    'stockcarscl@gmail.com',
+    'torresaguayocl@gmail.com'
   ];
 
   const isAdmin =
