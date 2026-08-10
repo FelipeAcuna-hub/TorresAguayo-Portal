@@ -5,7 +5,7 @@ const Creditos = ({ session }) => {
   const [customAmount, setCustomAmount] = useState('');
 
   // --- CONFIGURACIÓN WHATSAPP ---
-  const WHATSAPP_NUMBER = "56995161488"; // <-- TU NÚMERO
+  const WHATSAPP_NUMBER = "56984996539"; // <-- TU NÚMERO
 
   const handleWhatsAppBuy = (qty) => {
     const numQty = parseInt(qty);

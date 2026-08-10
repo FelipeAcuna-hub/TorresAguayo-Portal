@@ -230,7 +230,7 @@ const DashboardTorresAguayo = ({ session }) => {
         </div>
         <div>
           <h4 style={{ fontSize: '12px', color: '#e11d48', marginBottom: '15px', textTransform: 'uppercase' }}>📞 Contacto Técnico</h4>
-          <p style={{ fontSize: '13px', color: '#555', margin: '5px 0' }}><strong>WhatsApp:</strong> +56 9 9516 1488 || +56 9 8499 6539</p>
+          <p style={{ fontSize: '13px', color: '#555', margin: '5px 0' }}><strong>WhatsApp:</strong> +56 9 8499 6539</p>
           <p style={{ fontSize: '13px', color: '#555', margin: '5px 0' }}><strong>Email:</strong> scannerstorresaguayo@gmail.com</p>
         </div>
         <div style={{ textAlign: 'right' }}>

@@ -41,7 +41,7 @@ const Tickets = ({ session }) => {
 
   // --- FUNCIÓN WHATSAPP ---
   const abrirWhatsappSoporte = () => {
-    const telefonoSoporte = "56995161488";
+    const telefonoSoporte = "56984996539";
     const texto = encodeURIComponent("Hola *Torres Aguayo MMS* 🏎️, necesito soporte técnico con un ticket.");
     window.open(`https://wa.me/${telefonoSoporte}?text=${texto}`, '_blank');
   };
