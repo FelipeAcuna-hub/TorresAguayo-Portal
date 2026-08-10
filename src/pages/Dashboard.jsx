@@ -5,7 +5,6 @@ import logoTorres from '../magic_torresaguayo.svg';
 import logoStageX from '../magicstagex.svg';
 import logoFlex from '../magicflex.svg';
 import logoMagic from '../magicmotors.svg';
-import logoStockcars from '../logoStockcars.png';
 
 // --- PARTE 1: FUNCIÓN DE CÁLCULO DE HORARIO CHILENO (INTACTA) ---
 const checkAutoOnline = () => {
@@ -201,8 +200,7 @@ const DashboardTorresAguayo = ({ session }) => {
             { id: 1, src: logoTorres, name: 'Torres Aguayo' },
             { id: 2, src: logoMagic, name: 'Magic' },
             { id: 3, src: logoStageX, name: 'StageX' },
-            { id: 4, src: logoFlex, name: 'Flex' },
-            { id: 5, src: logoStockcars, name: 'StockCars' }
+            { id: 4, src: logoFlex, name: 'Flex' }
           ].map((logo) => (
             <img
               key={logo.id}
