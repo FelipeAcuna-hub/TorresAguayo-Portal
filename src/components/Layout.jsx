@@ -14,15 +14,19 @@ const checkAutoOnline = () => {
   const hour = parseInt(chileTime.find(p => p.type === 'hour').value);
   const day = chileTime.find(p => p.type === 'weekday').value;
 
-  // El sábado pasa a ser considerado un día de trabajo parcial
-  const isWorkDay = !['Sunday'].includes(day); 
-  
-  // Turno mañana (Lunes a Sábado de 9 a 13)
-  const morningShift = hour >= 9 && hour < 13;
-  // Turno tarde (Solo Lunes a Viernes de 15 a 19)
-  const afternoonShift = day !== 'Saturday' && hour >= 15 && hour < 19;
+  if (day === 'Sunday') return false;
 
-  return isWorkDay && (morningShift || afternoonShift);
+  // Sábado: turno reducido de 10 a 12
+  if (day === 'Saturday') {
+    return hour >= 10 && hour < 12;
+  }
+
+  // Turno mañana (Lunes a Viernes de 9 a 13)
+  const morningShift = hour >= 9 && hour < 13;
+  // Turno tarde (Lunes a Viernes de 15 a 19)
+  const afternoonShift = hour >= 15 && hour < 19;
+
+  return morningShift || afternoonShift;
 };
 
 const Layout = ({ session }) => {
@@ -85,7 +89,7 @@ const Layout = ({ session }) => {
           if (day === 0) { 
             msg = "DOMINGO: Volvemos el lunes a las 09:00 hrs.";
           } else if (day === 6) {
-            if (hour < 9) msg = "SÁBADO: Abrimos a las 09:00 de la mañana.";
+            if (hour < 10) msg = "SÁBADO: Abrimos a las 10:00 de la mañana.";
             else msg = "FIN DE SEMANA: Volvemos el lunes a las 09:00 hrs.";
           } else if (hour >= 13 && hour < 15) {
             msg = "HORARIO DE COLACIÓN: Volvemos a las 15:00 hrs.";

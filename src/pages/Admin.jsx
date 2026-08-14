@@ -7,13 +7,16 @@ const checkIsWorkTime = () => {
   const hour = chileTime.getHours();
   const day = chileTime.getDay(); // 0: Domingo, 1: Lunes, ..., 6: Sábado
 
-  // Turno mañana: Lunes a Sábado de 09:00 a 13:00
-  const morningShift = hour >= 9 && hour < 13;
-  // Turno tarde: Solo Lunes a Viernes (1 al 5) de 15:00 a 19:00
-  const afternoonShift = day !== 6 && day !== 0 && hour >= 15 && hour < 19;
+  if (day === 0) return false;
+  // Sábado: turno reducido de 10 a 12
+  if (day === 6) return hour >= 10 && hour < 12;
 
-  // Está abierto si es de Lunes a Sábado y calza con los turnos (Domingo siempre cerrado)
-  return day !== 0 && (morningShift || afternoonShift);
+  // Turno mañana: Lunes a Viernes de 09:00 a 13:00
+  const morningShift = hour >= 9 && hour < 13;
+  // Turno tarde: Lunes a Viernes de 15:00 a 19:00
+  const afternoonShift = hour >= 15 && hour < 19;
+
+  return morningShift || afternoonShift;
 };
 
 const Admin = ({ session }) => {
