@@ -100,7 +100,7 @@ const UploadFile = ({ session }) => {
 
   const uploadSingleFile = async (file, prefix, folderName) => {
     if (!file) return null;
-    const fileNameClean = file.name.replace(/\s+/g, '_');
+    const fileNameClean = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
     const filePath = `${session.user.id}/${folderName}/${prefix}_${fileNameClean}`;
 
     const { error: uploadError } = await supabase.storage

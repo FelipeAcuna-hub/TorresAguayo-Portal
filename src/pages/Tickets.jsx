@@ -61,7 +61,7 @@ const Tickets = ({ session }) => {
     try {
       setUploadingFile(true);
       const nombreOriginal = file.name;
-      const fileName = `${Date.now()}_${nombreOriginal.replace(/\s+/g, '_')}`;
+      const fileName = `${Date.now()}_${nombreOriginal.replace(/[^a-zA-Z0-9.\-_]/g, '_')}`;
       const filePath = `tickets/${selectedTicket.id}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage

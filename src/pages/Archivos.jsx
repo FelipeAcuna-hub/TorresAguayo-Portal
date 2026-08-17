@@ -151,7 +151,7 @@ const Archivos = ({ session }) => {
       if (!file) return;
       setLoading(true);
 
-      const fileNameClean = file.name.replace(/\s+/g, '_');
+      const fileNameClean = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
       const storagePath = `procesados/${Date.now()}/${fileNameClean}`;
 
       const { data: uploadData, error: uploadError } = await supabase.storage
