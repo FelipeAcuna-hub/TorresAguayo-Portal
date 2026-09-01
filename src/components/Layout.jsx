@@ -54,6 +54,10 @@ const Layout = ({ session }) => {
     ADMIN_EMAILS.includes(session?.user?.email?.toLowerCase());
 
   const isMobile = window.innerWidth < 768;
+  // Detecta viewports "chicos" en CSS px (ej: Windows con escala 125%/150%,
+  // donde 1920x1080 físico se ve como ~1536x864 de espacio real para el navegador)
+  // para usar un layout más compacto sin achicar la pantalla cómoda (Mac, Windows al 100%).
+  const isCompact = window.innerWidth >= 768 && window.innerWidth <= 1600;
   const puedeUsar = isAdmin || isApproved;
 
   useEffect(() => {
@@ -181,7 +185,7 @@ const Layout = ({ session }) => {
     },
     // Estilo para el contenedor del logo ajustado para imágenes
     logoContainer: {
-      padding: '24px',
+      padding: isCompact ? '12px' : '24px',
       borderBottom: '1px solid #333',
       textDecoration: 'none',
       display: 'flex',
@@ -191,8 +195,8 @@ const Layout = ({ session }) => {
       flexShrink: 0,
       background: 'radial-gradient(circle at center, rgba(110,19,0,0.55) 0%, rgba(110,19,0,0.22) 40%, transparent 72%)'
     },
-    navItem: { padding: '15px 24px', cursor: 'pointer', color: '#9ca3af', listStyle: 'none', textDecoration: 'none', display: 'flex', alignItems: 'center', fontSize: '13px', transition: 'background-color 0.2s ease, color 0.2s ease, padding-left 0.2s ease' },
-    navItemActive: { padding: '15px 24px', color: 'white', background: 'linear-gradient(135deg, #D9241D 0%, #300804 100%)', listStyle: 'none', fontWeight: 'bold', display: 'flex', alignItems: 'center', fontSize: '13px', transition: 'background 0.2s ease' },
+    navItem: { padding: isCompact ? '9px 24px' : '15px 24px', cursor: 'pointer', color: '#9ca3af', listStyle: 'none', textDecoration: 'none', display: 'flex', alignItems: 'center', fontSize: isCompact ? '12px' : '13px', transition: 'background-color 0.2s ease, color 0.2s ease, padding-left 0.2s ease' },
+    navItemActive: { padding: isCompact ? '9px 24px' : '15px 24px', color: 'white', background: 'linear-gradient(135deg, #D9241D 0%, #300804 100%)', listStyle: 'none', fontWeight: 'bold', display: 'flex', alignItems: 'center', fontSize: isCompact ? '12px' : '13px', transition: 'background 0.2s ease' },
     main: { flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', minHeight: 0 },
     header: {
       background: isDark ? 'linear-gradient(90deg, #2a0d08 0%, #120401 55%, #000000 100%)' : 'white',
@@ -235,7 +239,7 @@ const Layout = ({ session }) => {
           <img
             src={logoScanner}
             alt="TORRES AGUAYO"
-            style={{ width: '100%', maxHeight: '200px', objectFit: 'contain' }}
+            style={{ width: '100%', maxHeight: isCompact ? '110px' : '200px', objectFit: 'contain' }}
           />
         </Link>
 
@@ -287,7 +291,7 @@ const Layout = ({ session }) => {
             </Link>
           )}
 
-          <Link to="/simulador" style={{ textDecoration: 'none', marginTop: '20px', display: 'block' }} onClick={() => setIsMenuOpen(false)}>
+          <Link to="/simulador" style={{ textDecoration: 'none', marginTop: isCompact ? '12px' : '20px', display: 'block' }} onClick={() => setIsMenuOpen(false)}>
             <li className="nav-link-item" style={{ ...styles.navItem, fontSize: '11px', color: '#666' }}>
               <span style={{ marginRight: '12px' }}><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-calculator-fill" viewBox="0 0 16 16">
                 <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2zm2 .5v2a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 0-.5-.5h-7a.5.5 0 0 0-.5.5m0 4v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5M4.5 9a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5zM4 12.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5M7.5 6a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5zM7 9.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5m.5 2.5a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5zM10 6.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5m.5 2.5a.5.5 0 0 0-.5.5v4a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 0-.5-.5z" />
@@ -296,7 +300,7 @@ const Layout = ({ session }) => {
           </Link>
 
           {isAdmin && (
-            <Link to="/admin" style={{ textDecoration: 'none', marginTop: '10px', display: 'block' }} onClick={() => setIsMenuOpen(false)}>
+            <Link to="/admin" style={{ textDecoration: 'none', marginTop: isCompact ? '6px' : '10px', display: 'block' }} onClick={() => setIsMenuOpen(false)}>
               <li className="nav-link-item" style={location.pathname === "/admin" ? styles.navItemActive : styles.navItem}>
                 <span style={{ marginRight: '12px' }}><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person-check" viewBox="0 0 16 16">
                   <path d="M12.5 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7m1.679-4.493-1.335 2.226a.75.75 0 0 1-1.174.144l-.774-.773a.5.5 0 0 1 .708-.708l.547.548 1.17-1.951a.5.5 0 1 1 .858.514M11 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0M8 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4" />
@@ -306,22 +310,22 @@ const Layout = ({ session }) => {
             </Link>
           )}
         </ul>
-        <div style={{ borderTop: '1px solid #333', padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px', flexShrink: 0 }}>
+        <div style={{ borderTop: '1px solid #333', padding: isCompact ? '12px' : '20px', display: 'flex', flexDirection: 'column', gap: isCompact ? '7px' : '10px', flexShrink: 0 }}>
           <button
             className="theme-toggle-btn"
             onClick={toggleTheme}
-            style={{ width: '100%', backgroundColor: 'transparent', color: '#9ca3af', border: '1px solid #333', padding: '10px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px', fontSize: '11px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+            style={{ width: '100%', backgroundColor: 'transparent', color: '#9ca3af', border: '1px solid #333', padding: isCompact ? '7px' : '10px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px', fontSize: '11px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
           >
             {isDark ? '☀️ Modo Claro' : '🌙 Modo Oscuro'}
           </button>
           <button
             className="theme-toggle-btn"
             onClick={toggleSound}
-            style={{ width: '100%', backgroundColor: 'transparent', color: '#9ca3af', border: '1px solid #333', padding: '10px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px', fontSize: '11px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+            style={{ width: '100%', backgroundColor: 'transparent', color: '#9ca3af', border: '1px solid #333', padding: isCompact ? '7px' : '10px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px', fontSize: '11px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
           >
             {soundEnabled ? '🔊 Sonido Activado' : '🔇 Sonido Desactivado'}
           </button>
-          <button className="logout-btn" onClick={() => supabase.auth.signOut()} style={{ width: '100%', backgroundColor: 'transparent', color: '#D9241D', border: '1px solid #D9241D', padding: '12px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px', fontSize: '11px', textTransform: 'uppercase' }}>SALIR</button>
+          <button className="logout-btn" onClick={() => supabase.auth.signOut()} style={{ width: '100%', backgroundColor: 'transparent', color: '#D9241D', border: '1px solid #D9241D', padding: isCompact ? '9px' : '12px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px', fontSize: '11px', textTransform: 'uppercase' }}>SALIR</button>
         </div>
       </aside>
 
