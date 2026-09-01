@@ -344,16 +344,14 @@ const Archivos = ({ session }) => {
     serviceBadge: {
       display: 'inline-block',
       padding: '5px 12px',
-      borderRadius: '20px',
+      borderRadius: '14px',
       fontSize: '10px',
       fontWeight: '700',
       color: '#fff',
       backgroundColor: isDark ? '#3a3a3a' : '#000',
       border: isDark ? '1px solid #6a6a6a' : 'none',
-      whiteSpace: 'nowrap',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      maxWidth: isCompact ? '105px' : '170px',
+      overflowWrap: 'break-word',
+      maxWidth: isCompact ? '140px' : '200px',
       verticalAlign: 'middle',
       letterSpacing: '0.2px'
     },
@@ -531,9 +529,9 @@ const Archivos = ({ session }) => {
                       </div>
                     </td>
                     {isAdmin && (
-                      <td style={{ ...styles.td, maxWidth: isCompact ? '115px' : '220px' }}>
-                        <div style={{ fontWeight: 'bold', color: '#D9241D', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={archivo.profiles?.company}>{archivo.profiles?.company || 'PARTICULAR'}</div>
-                        <div style={{ fontSize: isCompact ? '10px' : '11px', color: s.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={archivo.profiles?.email}>{archivo.profiles?.email || '---'}</div>
+                      <td style={{ ...styles.td, maxWidth: isCompact ? '130px' : '220px' }}>
+                        <div style={{ fontWeight: 'bold', color: '#D9241D', overflowWrap: 'break-word' }}>{archivo.profiles?.company || 'PARTICULAR'}</div>
+                        <div style={{ fontSize: isCompact ? '10px' : '11px', color: s.textMuted, overflowWrap: 'break-word' }}>{archivo.profiles?.email || '---'}</div>
                       </td>
                     )}
                     <td style={styles.td}>
