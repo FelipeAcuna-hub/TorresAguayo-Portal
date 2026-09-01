@@ -172,7 +172,7 @@ const Layout = ({ session }) => {
   const styles = {
     container: { display: 'flex', width: '100vw', background: isDark ? DARK_GRADIENT : '#f3f4f6', fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", margin: 0, padding: 0, position: 'fixed', top: 0, left: 0, overflow: 'hidden' },
     sidebar: {
-      width: '260px',
+      width: isCompact ? '215px' : '260px',
       background: 'linear-gradient(180deg, #000000 0%, #000000 50%, #150500 75%, #2e0803 100%)',
       color: 'white',
       display: 'flex',
@@ -195,8 +195,8 @@ const Layout = ({ session }) => {
       flexShrink: 0,
       background: 'radial-gradient(circle at center, rgba(110,19,0,0.55) 0%, rgba(110,19,0,0.22) 40%, transparent 72%)'
     },
-    navItem: { padding: isCompact ? '9px 22px' : '15px 24px', cursor: 'pointer', color: '#9ca3af', listStyle: 'none', textDecoration: 'none', display: 'flex', alignItems: 'center', fontSize: isCompact ? '12px' : '13px', transition: 'background-color 0.2s ease, color 0.2s ease, padding-left 0.2s ease' },
-    navItemActive: { padding: isCompact ? '9px 22px' : '15px 24px', color: 'white', background: 'linear-gradient(135deg, #D9241D 0%, #300804 100%)', listStyle: 'none', fontWeight: 'bold', display: 'flex', alignItems: 'center', fontSize: isCompact ? '12px' : '13px', transition: 'background 0.2s ease' },
+    navItem: { padding: isCompact ? '9px 14px' : '15px 24px', cursor: 'pointer', color: '#9ca3af', listStyle: 'none', textDecoration: 'none', display: 'flex', alignItems: 'center', fontSize: isCompact ? '12px' : '13px', transition: 'background-color 0.2s ease, color 0.2s ease, padding-left 0.2s ease' },
+    navItemActive: { padding: isCompact ? '9px 14px' : '15px 24px', color: 'white', background: 'linear-gradient(135deg, #D9241D 0%, #300804 100%)', listStyle: 'none', fontWeight: 'bold', display: 'flex', alignItems: 'center', fontSize: isCompact ? '12px' : '13px', transition: 'background 0.2s ease' },
     main: { flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', minHeight: 0 },
     header: {
       background: isDark ? 'linear-gradient(90deg, #2a0d08 0%, #120401 55%, #000000 100%)' : 'white',
