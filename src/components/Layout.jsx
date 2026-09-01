@@ -188,6 +188,7 @@ const Layout = ({ session }) => {
       justifyContent: 'center',
       alignItems: 'center',
       position: 'relative',
+      flexShrink: 0,
       background: 'radial-gradient(circle at center, rgba(110,19,0,0.55) 0%, rgba(110,19,0,0.22) 40%, transparent 72%)'
     },
     navItem: { padding: '15px 24px', cursor: 'pointer', color: '#9ca3af', listStyle: 'none', textDecoration: 'none', display: 'flex', alignItems: 'center', fontSize: '13px', transition: 'background-color 0.2s ease, color 0.2s ease, padding-left 0.2s ease' },
@@ -238,7 +239,7 @@ const Layout = ({ session }) => {
           />
         </Link>
 
-        <ul style={{ padding: 0, margin: 0, listStyle: 'none', flex: 1 }}>
+        <ul style={{ padding: 0, margin: 0, listStyle: 'none', flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <Link to="/" style={{ textDecoration: 'none' }} onClick={() => setIsMenuOpen(false)}>
             <li className="nav-link-item" style={location.pathname === "/" ? styles.navItemActive : styles.navItem}>
               <span style={{ marginRight: '12px' }}><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-house-fill" viewBox="0 0 16 16">
@@ -305,7 +306,7 @@ const Layout = ({ session }) => {
             </Link>
           )}
         </ul>
-        <div style={{ borderTop: '1px solid #333', padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ borderTop: '1px solid #333', padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px', flexShrink: 0 }}>
           <button
             className="theme-toggle-btn"
             onClick={toggleTheme}
