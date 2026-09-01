@@ -673,12 +673,13 @@ const Archivos = ({ session }) => {
                       </div>
                     </td>
 
-                    <td style={{ ...styles.td, minWidth: isCompact ? '105px' : '180px' }}>
+                    <td style={{ ...styles.td, minWidth: isCompact ? '105px' : '180px', maxWidth: isCompact ? '170px' : '280px', width: isCompact ? '170px' : undefined }}>
                       <div style={{
                         fontSize: isCompact ? '9px' : '11px', padding: isCompact ? '6px' : '10px',
                         backgroundColor: archivo.notas_instalacion ? '#fffbeb' : s.inputBg,
                         border: '1px solid ' + (archivo.notas_instalacion ? '#fef3c7' : s.border),
-                        borderRadius: '4px', color: archivo.notas_instalacion ? '#333' : s.text, minHeight: isCompact ? '36px' : '50px'
+                        borderRadius: '4px', color: archivo.notas_instalacion ? '#333' : s.text, minHeight: isCompact ? '36px' : '50px',
+                        overflowWrap: 'break-word'
                       }}>
                         {archivo.notas_instalacion ? (
                           <><div style={{ display: 'flex', alignItems: 'center', fontWeight: 'bold', color: '#92400e', marginBottom: '4px', fontSize: '9px' }}>
