@@ -331,11 +331,11 @@ const Archivos = ({ session }) => {
 
   const styles = {
     mainContent: { flex: 1, display: 'flex', flexDirection: 'column', background: isDark ? DARK_GRADIENT : '#f3f4f6', width: '100%', minHeight: '100vh' },
-    tableCard: { backgroundColor: s.cardBg, margin: '10px', padding: '15px', borderRadius: '4px', boxShadow: isDark ? 'none' : '0 2px 10px rgba(0,0,0,0.05)', border: `1px solid ${s.border}` },
+    tableCard: { backgroundColor: s.cardBg, margin: '10px', padding: '15px 10px', borderRadius: '4px', boxShadow: isDark ? 'none' : '0 2px 10px rgba(0,0,0,0.05)', border: `1px solid ${s.border}` },
     responsiveContainer: { width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch', marginBottom: '20px' },
-    table: { width: '100%', borderCollapse: 'collapse', marginTop: '20px', minWidth: '800px' },
-    th: { textAlign: 'left', padding: '12px', borderBottom: `2px solid ${s.rowBorder}`, fontSize: '10px', color: s.textMuted, textTransform: 'uppercase', fontWeight: 'bold' },
-    td: { padding: '12px', borderBottom: `1px solid ${s.rowBorder}`, fontSize: '12px', color: s.text },
+    table: { width: '100%', borderCollapse: 'collapse', marginTop: '20px', minWidth: '640px' },
+    th: { textAlign: 'left', padding: '8px 6px', borderBottom: `2px solid ${s.rowBorder}`, fontSize: '9px', color: s.textMuted, textTransform: 'uppercase', fontWeight: 'bold' },
+    td: { padding: '8px 6px', borderBottom: `1px solid ${s.rowBorder}`, fontSize: '11px', color: s.text },
     statusBadge: { padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', color: 'white', textTransform: 'uppercase', whiteSpace: 'nowrap' },
     serviceBadge: {
       display: 'inline-block',
@@ -349,7 +349,7 @@ const Archivos = ({ session }) => {
       whiteSpace: 'nowrap',
       overflow: 'hidden',
       textOverflow: 'ellipsis',
-      maxWidth: '170px',
+      maxWidth: '140px',
       verticalAlign: 'middle',
       letterSpacing: '0.2px'
     },
@@ -518,8 +518,8 @@ const Archivos = ({ session }) => {
                 const fechaObj = new Date(archivo.created_at);
                 return (
                   <tr className="file-row" style={{ animationDelay: `${Math.min(index, 8) * 0.04}s` }} key={archivo.id}>
-                    <td style={{ ...styles.td, minWidth: '110px' }}>
-                      <div style={{ display: 'inline-block', fontWeight: 'bold', color: '#fff', backgroundColor: '#D9241D', fontSize: '14px', padding: '3px 9px', borderRadius: '6px', marginBottom: '6px' }}>#{archivo.numero_orden || '---'}</div>
+                    <td style={{ ...styles.td, minWidth: '92px' }}>
+                      <div style={{ display: 'inline-block', fontWeight: 'bold', color: '#fff', backgroundColor: '#D9241D', fontSize: '13px', padding: '2px 7px', borderRadius: '6px', marginBottom: '5px' }}>#{archivo.numero_orden || '---'}</div>
                       <div style={{ whiteSpace: 'nowrap' }}>{fechaObj.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
                       {/* NUEVO: Se renderiza la hora exacta abajo de la fecha en la celda */}
                       <div style={styles.timeText}>
@@ -527,9 +527,9 @@ const Archivos = ({ session }) => {
                       </div>
                     </td>
                     {isAdmin && (
-                      <td style={styles.td}>
-                        <div style={{ fontWeight: 'bold', color: '#D9241D' }}>{archivo.profiles?.company || 'PARTICULAR'}</div>
-                        <div style={{ fontSize: '11px', color: s.textMuted }}>{archivo.profiles?.email || '---'}</div>
+                      <td style={{ ...styles.td, maxWidth: '150px' }}>
+                        <div style={{ fontWeight: 'bold', color: '#D9241D', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={archivo.profiles?.company}>{archivo.profiles?.company || 'PARTICULAR'}</div>
+                        <div style={{ fontSize: '10px', color: s.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={archivo.profiles?.email}>{archivo.profiles?.email || '---'}</div>
                       </td>
                     )}
                     <td style={styles.td}>
@@ -564,7 +564,7 @@ const Archivos = ({ session }) => {
 
                     {/* --- COLUMNA ACCIÓN (USUARIO) --- */}
                     <td style={styles.td}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', minWidth: '110px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '92px' }}>
                         {archivo.file_url_id && renderDownloadBtn(archivo.file_url_id, (
                           <>
                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-journal-text" viewBox="0 0 16 16" style={{ flexShrink: 0 }}>
@@ -600,7 +600,7 @@ const Archivos = ({ session }) => {
 
                     {/* --- COLUMNA ACCIÓN ADMI (ADMINISTRADOR) --- */}
                     <td style={styles.td}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', minWidth: '110px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '92px' }}>
                         {archivo.mod_file_url ? (
                           renderDownloadBtn(archivo.mod_file_url, (
                             <>
@@ -671,12 +671,12 @@ const Archivos = ({ session }) => {
                       </div>
                     </td>
 
-                    <td style={{ ...styles.td, minWidth: '180px' }}>
+                    <td style={{ ...styles.td, minWidth: '140px' }}>
                       <div style={{
-                        fontSize: '11px', padding: '10px',
+                        fontSize: '10px', padding: '8px',
                         backgroundColor: archivo.notas_instalacion ? '#fffbeb' : s.inputBg,
                         border: '1px solid ' + (archivo.notas_instalacion ? '#fef3c7' : s.border),
-                        borderRadius: '4px', color: archivo.notas_instalacion ? '#333' : s.text, minHeight: '50px'
+                        borderRadius: '4px', color: archivo.notas_instalacion ? '#333' : s.text, minHeight: '44px'
                       }}>
                         {archivo.notas_instalacion ? (
                           <><div style={{ display: 'flex', alignItems: 'center', fontWeight: 'bold', color: '#92400e', marginBottom: '4px', fontSize: '9px' }}>
