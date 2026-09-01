@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate, Link } from 'react-router-dom';
-// IMPORTAMOS EL LOGO SVG DESDE SRC
-import logoImg from '../magic_torresaguayo.svg';
+import { DARK_GRADIENT } from '../ThemeContext';
+// IMPORTAMOS EL LOGO DESDE SRC
+import logoImg from '../logo_stockcars.png';
 
 const Login = () => {
   const [isRegistering, setIsRegistering] = useState(false);
@@ -41,26 +42,11 @@ const Login = () => {
         if (error) throw error;
         alert('Registro exitoso. Un administrador revisará tu solicitud y te notificará por email cuando tu acceso sea activado.');
       } else {
-        const { data: { user }, error: loginError } = await supabase.auth.signInWithPassword({ email, password });
-        
+        const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+
         if (loginError) throw loginError;
 
-        if (user) {
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('is_approved')
-            .eq('id', user.id)
-            .single();
-
-          if (profileError) throw profileError;
-
-          if (profile && !profile.is_approved) {
-            await supabase.auth.signOut();
-            alert("⚠️ Acceso en espera: Tu cuenta aún no ha sido aprobada por el administrador.");
-            return;
-          }
-          navigate('/'); 
-        }
+        navigate('/');
       }
     } catch (error) {
       alert(error.message);
@@ -70,7 +56,7 @@ const Login = () => {
   const styles = {
     container: {
       height: '100vh', width: '100vw', display: 'flex', justifyContent: 'center',
-      alignItems: 'center', backgroundColor: '#0a0a0a', fontFamily: 'sans-serif',
+      alignItems: 'center', background: DARK_GRADIENT, fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
       margin: 0, padding: 0, position: 'absolute', top: 0, left: 0
     },
     loginBox: {
@@ -102,11 +88,11 @@ const Login = () => {
       cursor: 'pointer', color: '#666', fontSize: '16px', display: 'flex', alignItems: 'center'
     },
     button: {
-      width: '100%', backgroundColor: '#e11d48', color: 'white', padding: '14px',
+      width: '100%', backgroundColor: '#D9241D', color: 'white', padding: '14px',
       border: 'none', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px', marginTop: '10px'
     },
     toggleText: { textAlign: 'center', marginTop: '20px', fontSize: '13px', color: '#888' },
-    link: { color: '#e11d48', cursor: 'pointer', fontWeight: 'bold', marginLeft: '5px', textDecoration: 'none' },
+    link: { color: '#D9241D', cursor: 'pointer', fontWeight: 'bold', marginLeft: '5px', textDecoration: 'none' },
     forgotPass: { 
       display: 'block', textAlign: 'right', marginTop: '8px', fontSize: '11px', 
       color: '#666', textDecoration: 'none', transition: '0.3s' 

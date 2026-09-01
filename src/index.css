@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Tipografía estilo Apple (San Francisco) en todo el sitio.
+   -apple-system / BlinkMacSystemFont hacen que Mac/iOS usen la fuente
+   nativa del sistema; en otros sistemas cae de forma elegante a su
+   propia fuente del sistema (Segoe UI, Roboto, etc.). */
+html, body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
 /* Efecto para que las letras crezcan suavemente */
 /* 1. Mantén tu base igual */
 .nav-item {

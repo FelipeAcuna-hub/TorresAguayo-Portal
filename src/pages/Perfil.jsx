@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
+import { useTheme, DARK_GRADIENT, getSurfaceTokens } from '../ThemeContext';
 
 const Perfil = ({ session }) => {
   const [loading, setLoading] = useState(false);
-  
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const s = getSurfaceTokens(isDark);
+
   // --- ESTADOS UNIFICADOS PARA CONTRASEÑA ---
   const [newPassword, setNewPassword] = useState("");
   const [mostrarPassword, setMostrarPassword] = useState(false);
@@ -69,7 +73,7 @@ const Perfil = ({ session }) => {
       });
       if (error) throw error;
       alert("✅ ¡Contraseña actualizada con éxito!");
-      setNewPassword(""); 
+      setNewPassword("");
     } catch (error) {
       alert("Error al cambiar contraseña: " + error.message);
     } finally {
@@ -107,18 +111,20 @@ const Perfil = ({ session }) => {
   };
 
   const styles = {
-    mainContent: { flex: 1, padding: '0', backgroundColor: '#f3f4f6' },
-    formCard: { backgroundColor: 'white', margin: '30px', padding: '40px', borderRadius: '4px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' },
-    sectionTitle: { fontSize: '18px', fontWeight: 'bold', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px', color: '#333' },
+    mainContent: { flex: 1, padding: '0', background: isDark ? DARK_GRADIENT : '#f3f4f6' },
+    formCard: { backgroundColor: s.cardBg, margin: '30px', padding: '40px', borderRadius: '4px', boxShadow: isDark ? 'none' : '0 2px 10px rgba(0,0,0,0.05)', border: `1px solid ${s.border}` },
+    sectionTitle: { fontSize: '18px', fontWeight: 'bold', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px', color: s.text },
     inputGroup: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', marginBottom: '40px' },
-    label: { display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#333', marginBottom: '8px', textTransform: 'uppercase' },
-    input: { width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }
+    label: { display: 'block', fontSize: '11px', fontWeight: 'bold', color: s.textMuted, marginBottom: '8px', textTransform: 'uppercase' },
+    input: { width: '100%', padding: '12px', border: `1px solid ${s.inputBorder}`, borderRadius: '4px', fontSize: '14px', boxSizing: 'border-box', outline: 'none', backgroundColor: s.inputBg, color: s.text }
   };
 
   return (
     <div style={styles.mainContent}>
       <form onSubmit={handleUpdate} style={styles.formCard}>
-        <div style={styles.sectionTitle}>👤 INFORMACIÓN PERSONAL</div>
+        <div style={styles.sectionTitle}><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person-fill" viewBox="0 0 16 16">
+          <path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6" />
+        </svg>  INFORMACIÓN PERSONAL</div>
         <div style={styles.inputGroup}>
           <div>
             <label style={styles.label}>NOMBRE</label>
@@ -150,7 +156,9 @@ const Perfil = ({ session }) => {
           </div>
         </div>
 
-        <div style={styles.sectionTitle}>📄 INFORMACIÓN DE FACTURACIÓN</div>
+        <div style={styles.sectionTitle}><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-envelope-paper-fill" viewBox="0 0 16 16">
+          <path fill-rule="evenodd" d="M6.5 9.5 3 7.5v-6A1.5 1.5 0 0 1 4.5 0h7A1.5 1.5 0 0 1 13 1.5v6l-3.5 2L8 8.75zM1.059 3.635 2 3.133v3.753L0 5.713V5.4a2 2 0 0 1 1.059-1.765M16 5.713l-2 1.173V3.133l.941.502A2 2 0 0 1 16 5.4zm0 1.16-5.693 3.337L16 13.372v-6.5Zm-8 3.199 7.941 4.412A2 2 0 0 1 14 16H2a2 2 0 0 1-1.941-1.516zm-8 3.3 5.693-3.162L0 6.873v6.5Z" />
+        </svg>  INFORMACIÓN DE FACTURACIÓN</div>
         <div style={styles.inputGroup}>
           <div>
             <label style={styles.label}>COMPAÑÍA</label>
@@ -174,12 +182,14 @@ const Perfil = ({ session }) => {
           </div>
         </div>
 
-        <div style={styles.sectionTitle}>🔑 ACCESO</div>
+        <div style={styles.sectionTitle}><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-key-fill" viewBox="0 0 16 16">
+          <path d="M3.5 11.5a3.5 3.5 0 1 1 3.163-5H14L15.5 8 14 9.5l-1-1-1 1-1-1-1 1-1-1-1 1H6.663a3.5 3.5 0 0 1-3.163 2M2.5 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2" />
+        </svg>  ACCESO</div>
         <div style={styles.inputGroup}>
           <div>
             <label style={styles.label}>E-MAIL</label>
             <input
-              style={{ ...styles.input, backgroundColor: '#f9f9f9' }}
+              style={{ ...styles.input, backgroundColor: s.headerBg }}
               type="email"
               value={session?.user?.email}
               disabled
@@ -220,7 +230,7 @@ const Perfil = ({ session }) => {
               onClick={handlePasswordChange}
               style={{
                 fontSize: '11px',
-                color: '#e11d48',
+                color: '#D9241D',
                 cursor: 'pointer',
                 marginTop: '8px',
                 fontWeight: 'bold',

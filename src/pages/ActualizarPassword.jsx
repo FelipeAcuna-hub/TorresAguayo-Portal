@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
+import { DARK_GRADIENT } from '../ThemeContext';
 
 const ActualizarPassword = () => {
   const [password, setPassword] = useState('');
@@ -38,7 +39,7 @@ const ActualizarPassword = () => {
   const styles = {
     container: {
       height: '100vh', width: '100vw', display: 'flex', justifyContent: 'center',
-      alignItems: 'center', backgroundColor: '#0a0a0a', fontFamily: 'sans-serif'
+      alignItems: 'center', background: DARK_GRADIENT, fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
     },
     box: {
       backgroundColor: '#111', padding: '40px', borderRadius: '8px', width: '100%',
@@ -52,7 +53,7 @@ const ActualizarPassword = () => {
       borderRadius: '4px', color: 'white', outline: 'none', boxSizing: 'border-box', marginBottom: '20px'
     },
     button: {
-      width: '100%', backgroundColor: '#e11d48', color: 'white', padding: '14px',
+      width: '100%', backgroundColor: '#D9241D', color: 'white', padding: '14px',
       border: 'none', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px'
     }
   };

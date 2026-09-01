@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
+import { useTheme, DARK_GRADIENT, getSurfaceTokens } from '../ThemeContext';
 
 const Historial = ({ session }) => {
   const [movimientos, setMovimientos] = useState([]);
   const [canjes, setCanjes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const s = getSurfaceTokens(isDark);
 
   // --- ESTADOS DE PAGINACIÓN ---
   const [pagMovimientos, setPagMovimientos] = useState(1);
@@ -12,10 +16,10 @@ const Historial = ({ session }) => {
   const itemsPorPagina = 4;
 
   const ADMIN_EMAILS = [
-    'scannerstorresaguayo@gmail.com',
+    'stockcarscl@gmail.com',
     'felipe.acuna2@mail.udp.cl',
     'stockcarscl@gmail.com',
-    'torresaguayocl@gmail.com'
+    'stockcarscl@gmail.com'
   ];
 
   const isAdmin =
@@ -82,25 +86,25 @@ const Historial = ({ session }) => {
   const canjesPaginados = canjes.slice((pagCanjes - 1) * itemsPorPagina, pagCanjes * itemsPorPagina);
 
   const styles = {
-    mainContent: { flex: 1, padding: '0', backgroundColor: '#f3f4f6', minHeight: '100vh' },
-    card: { backgroundColor: 'white', margin: '30px', padding: '40px', borderRadius: '4px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', minHeight: '200px' },
-    headerFlex: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', borderBottom: '2px solid #e11d48', paddingBottom: '10px' },
+    mainContent: { flex: 1, padding: '0', background: isDark ? DARK_GRADIENT : '#f3f4f6', minHeight: '100vh' },
+    card: { backgroundColor: s.cardBg, margin: '30px', padding: '40px', borderRadius: '4px', boxShadow: isDark ? 'none' : '0 2px 10px rgba(0,0,0,0.05)', border: `1px solid ${s.border}`, minHeight: '200px' },
+    headerFlex: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', borderBottom: '2px solid #D9241D', paddingBottom: '10px' },
     table: { width: '100%', borderCollapse: 'collapse' },
-    th: { textAlign: 'left', padding: '15px 12px', borderBottom: '2px solid #eee', fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '1px' },
-    td: { padding: '15px 12px', borderBottom: '1px solid #eee', fontSize: '14px', color: '#333' },
-    tituloSeccion: { fontSize: '18px', margin: 0, textTransform: 'uppercase', color: '#000', fontWeight: 'bold' },
-    refreshBtn: { backgroundColor: '#000', color: '#fff', border: 'none', padding: '8px 15px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', transition: 'opacity 0.2s' },
-    companyText: { color: '#e11d48', fontWeight: 'bold', fontSize: '12px' },
-    emailText: { color: '#666', fontSize: '12px' }, // NUEVO: Estilo para el correo del cliente
-    timeText: { color: '#888', fontSize: '11px', marginTop: '2px' }, // NUEVO: Estilo para la hora abajo de la fecha
-    adminBadge: { backgroundColor: '#f9f9f9', padding: '4px 8px', borderRadius: '3px', fontSize: '11px', color: '#666', border: '1px solid #eee', fontStyle: 'italic' },
+    th: { textAlign: 'left', padding: '15px 12px', borderBottom: `2px solid ${s.rowBorder}`, fontSize: '11px', color: s.textMuted, textTransform: 'uppercase', letterSpacing: '1px' },
+    td: { padding: '15px 12px', borderBottom: `1px solid ${s.rowBorder}`, fontSize: '14px', color: s.text },
+    tituloSeccion: { fontSize: '18px', margin: 0, textTransform: 'uppercase', color: s.text, fontWeight: 'bold' },
+    refreshBtn: { backgroundColor: isDark ? '#D9241D' : '#000', color: '#fff', border: 'none', padding: '8px 15px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', transition: 'opacity 0.2s' },
+    companyText: { color: '#D9241D', fontWeight: 'bold', fontSize: '12px' },
+    emailText: { color: s.textMuted, fontSize: '12px' }, // NUEVO: Estilo para el correo del cliente
+    timeText: { color: s.textFaint, fontSize: '11px', marginTop: '2px' }, // NUEVO: Estilo para la hora abajo de la fecha
+    adminBadge: { backgroundColor: s.inputBg, padding: '4px 8px', borderRadius: '3px', fontSize: '11px', color: s.textMuted, border: `1px solid ${s.border}`, fontStyle: 'italic' },
     pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '25px' },
     pageBtn: (active) => ({
       padding: '6px 12px',
       cursor: 'pointer',
-      backgroundColor: active ? '#e11d48' : 'white',
-      color: active ? 'white' : '#666',
-      border: '1px solid #ddd',
+      backgroundColor: active ? '#D9241D' : s.cardBg,
+      color: active ? 'white' : s.textMuted,
+      border: `1px solid ${s.border}`,
       borderRadius: '2px',
       fontSize: '12px',
       fontWeight: 'bold',
@@ -146,7 +150,7 @@ const Historial = ({ session }) => {
             numeroPagina === current - rangoMaximo - 1 || 
             numeroPagina === current + rangoMaximo + 1
           ) {
-            return <span key={numeroPagina} style={{ color: '#666', padding: '0 5px', fontWeight: 'bold' }}>...</span>;
+            return <span key={numeroPagina} style={{ color: s.textMuted, padding: '0 5px', fontWeight: 'bold' }}>...</span>;
           }
   
           return null;
@@ -221,7 +225,7 @@ const Historial = ({ session }) => {
           </tbody>
         </table>
         {renderPagination(pagMovimientos, totalPagMovs, setPagMovimientos)}
-        {!loading && movimientos.length === 0 && <p style={{ textAlign: 'center', color: '#999', marginTop: '20px' }}>No hay registros disponibles.</p>}
+        {!loading && movimientos.length === 0 && <p style={{ textAlign: 'center', color: s.textMuted, marginTop: '20px' }}>No hay registros disponibles.</p>}
       </div>
 
       {/* --- SECCIÓN 2: CANJES --- */}
@@ -273,7 +277,7 @@ const Historial = ({ session }) => {
           </tbody>
         </table>
         {renderPagination(pagCanjes, totalPagCanjes, setPagCanjes)}
-        {!loading && canjes.length === 0 && <p style={{ textAlign: 'center', color: '#999', marginTop: '20px' }}>No hay canjes registrados.</p>}
+        {!loading && canjes.length === 0 && <p style={{ textAlign: 'center', color: s.textMuted, marginTop: '20px' }}>No hay canjes registrados.</p>}
       </div>
     </div>
   );

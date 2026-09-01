@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { Link } from 'react-router-dom';
+import { DARK_GRADIENT } from '../ThemeContext';
 
 const RecuperarPassword = () => {
   const [email, setEmail] = useState('');
@@ -24,7 +25,7 @@ const RecuperarPassword = () => {
   const styles = {
     container: {
       height: '100vh', width: '100vw', display: 'flex', justifyContent: 'center',
-      alignItems: 'center', backgroundColor: '#0a0a0a', fontFamily: 'sans-serif',
+      alignItems: 'center', background: DARK_GRADIENT, fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
       margin: 0, padding: 0, position: 'absolute', top: 0, left: 0
     },
     box: {
@@ -39,17 +40,17 @@ const RecuperarPassword = () => {
       borderRadius: '4px', color: 'white', outline: 'none', boxSizing: 'border-box', fontSize: '14px', marginBottom: '20px'
     },
     button: {
-      width: '100%', backgroundColor: '#e11d48', color: 'white', padding: '14px',
+      width: '100%', backgroundColor: '#D9241D', color: 'white', padding: '14px',
       border: 'none', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px', marginTop: '10px'
     },
-    link: { color: '#e11d48', cursor: 'pointer', fontWeight: 'bold', textDecoration: 'none', fontSize: '13px' }
+    link: { color: '#D9241D', cursor: 'pointer', fontWeight: 'bold', textDecoration: 'none', fontSize: '13px' }
   };
 
   return (
     <div style={styles.container}>
       <div style={styles.box}>
         <div style={styles.logo}>
-          TORRES<span style={{ color: '#e11d48' }}>AGUAYO</span>
+          STOCK<span style={{ color: '#D9241D' }}>CARS</span>
         </div>
         <div style={styles.subtitle}>Recuperar acceso al portal</div>
 

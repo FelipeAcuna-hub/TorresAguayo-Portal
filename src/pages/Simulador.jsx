@@ -1,9 +1,20 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTheme, DARK_GRADIENT, getSurfaceTokens, playTone } from '../ThemeContext';
 
 const Simulador = () => {
   const navigate = useNavigate();
-  
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const s = getSurfaceTokens(isDark);
+
+  // --- SONIDITOS MINIMALISTAS AL PASAR EL CURSOR Y AL SELECCIONAR (respeta el silencio) ---
+  const playHoverTick = () => playTone(900, 0.05, 0.06);
+  const playSelectSound = () => {
+    playTone(750, 0.05, 0.08, 0);
+    playTone(1150, 0.07, 0.08, 0.05);
+  };
+
   // 1. ESTADOS PARA FILTRADO DINÁMICO
   const [categoriaSel, setCategoriaSel] = useState(null);
   const [servicioSel, setServicioSel] = useState(null);
@@ -34,21 +45,24 @@ const Simulador = () => {
     'ANULACIONES EURO (CAMIONES)': [
     { id: 'truck_dpf_egr', name: 'DPF OFF + EGR OFF', price: 12 },
     { id: 'truck_adblue_full', name: 'ADBLUE + DPF & EGR OFF', price: 16 },
-    { id: 'truck_egr_only', name: 'EGR OFF', price: 8 }, //egr only
-    { id: 'truck_adbue_only', name: 'ADBLUE OFF', price: 20 },  //adblue solo camiones
-    { id: 'truck_dpf_only', name: 'DPF OFF', price: 12 }, //dpf solo camiones
+    { id: 'truck_dpf_egr_adblue', name: 'ADBLUE + DPF & EGR OFF + DCU OFF', price: 22 },
+    { id: 'truck_egr_only', name: 'EGR OFF', price: 8 },
+    { id: 'truck_adbue_only', name: 'SCR ONLY OFF', price: 20 },
+    { id: 'truck_dpf_only', name: 'DPF OFF', price: 12 },
     { id: 'truck_cummins_emissions', name: 'CUMMINS EMISSIONS', price: 35 }
-    ],
-    'DESACTIVACIONES': [
-      { id: 'dtc', name: 'DTC OFF', price: 3 },
-      { id: 'lambda', name: 'LAMBDA OFF', price: 6 },
-      { id: 'immo', name: 'IMMO OFF', price: 6 },
-      { id: 'vmax', name: 'VMAX OFF (LIMITADOR DE VELOCIDAD)', price: 8 },
-      { id: 'immo_toyota', name: 'IMMO OFF SPECIAL (TOYOTA)', price: 8 },
-      { id: 'decat_off', name: 'DECAT OFF', price: 6 },
-      { id: 'tva_off', name: 'TVA OFF', price: 6 },
-      { id: 'flaps_swirls', name: 'FLAPS/SWIRLS', price: 6 }
-    ],
+  ],
+   'DESACTIVACIONES': [
+    { id: 'dtc', name: 'DTC OFF', price: 3 },
+    { id: 'lambda', name: 'LAMBDA OFF', price: 6 },
+    { id: 'immo', name: 'IMMO OFF', price: 6 },
+    { id: 'vmax', name: 'VMAX OFF (LIMITADOR DE VELOCIDAD)', price: 8 },
+    { id: 'immo_toyota', name: 'IMMO OFF SPECIAL (TOYOTA)', price: 8 },
+    { id: 'decat_off', name: 'DECAT OFF', price: 6 },
+    { id: 'tva_off', name: 'TVA OFF', price: 6 },
+    { id: 'flaps_swirls', name: 'FLAPS/SWIRLS', price: 6 },
+    { id: 'encriptacion', name: 'ENC', price: 4},
+    { id: 'halfengine', name: 'HALF ENGINE MODE OFF', price: 12}
+  ],
     'SPECIAL ECU MD1 MG1 SID212-212EVO SID213-213EVO' : [
     { id: 'adblue',  name: 'ADBLUE + DPF + EGR OFF', price: 16 },
     { id: 'gpf', name: 'GPF OFF', price: 15 },
@@ -61,94 +75,150 @@ const Simulador = () => {
   const totalPrice = servicioSel ? servicioSel.price : 0;
 
   const styles = {
-    mainContent: { padding: '40px', flex: 1, backgroundColor: '#f3f4f6', minHeight: '100vh' },
-    title: { fontSize: '28px', fontWeight: 'bold', marginBottom: '30px', display: 'flex', alignItems: 'center', gap: '15px' },
-    grid: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '40px' },
-    columnTitle: { fontSize: '20px', fontWeight: 'bold', marginBottom: '20px' },
-    card: { backgroundColor: 'white', padding: '15px 20px', borderRadius: '4px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', border: '1px solid #ddd', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', transition: '0.3s' },
-    cardSelected: { borderColor: '#e11d48', backgroundColor: '#fff5f6', borderLeft: '5px solid #e11d48' },
-    priceBadge: { backgroundColor: '#e11d48', color: 'white', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold', fontSize: '14px' },
-    totalBox: { backgroundColor: 'black', color: 'white', padding: '30px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px' },
-    btnCargar: { backgroundColor: '#b91c1c', color: 'white', padding: '15px 40px', border: 'none', borderRadius: '50px', fontWeight: 'bold', fontSize: '18px', cursor: 'pointer', alignSelf: 'flex-end', marginTop: '40px' },
-    infoBox: { backgroundColor: '#fef9c3', padding: '20px', borderRadius: '4px', border: '1px solid #fde047', color: '#854d0e', fontSize: '13px', lineHeight: '1.5' }
+    mainContent: { padding: '40px', flex: 1, background: isDark ? DARK_GRADIENT : '#f7f7f8', minHeight: '100vh' },
+    container: { maxWidth: '1100px', margin: '0 auto' },
+    header: { marginBottom: '32px' },
+    title: { fontSize: '24px', fontWeight: '800', margin: 0, letterSpacing: '-0.4px', color: isDark ? '#fff' : '#111', display: 'flex', alignItems: 'center', gap: '10px' },
+    subtitle: { color: isDark ? '#e0b0a4' : '#888', fontSize: '14px', marginTop: '6px' },
+    grid: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px' },
+    colHeader: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' },
+    stepBadge: (active) => ({
+      width: '26px', height: '26px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: '12px', fontWeight: '800', color: active ? 'white' : s.textFaint,
+      backgroundColor: active ? '#D9241D' : s.headerBg, flexShrink: 0
+    }),
+    columnTitle: { fontSize: '13px', fontWeight: '800', color: isDark ? '#fff' : '#111', textTransform: 'uppercase', letterSpacing: '0.4px' },
+    card: (selected) => ({
+      backgroundColor: selected ? (isDark ? 'rgba(225,29,72,0.12)' : '#fff5f6') : s.cardBg,
+      padding: '15px 18px',
+      borderRadius: '14px',
+      marginBottom: '10px',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      cursor: 'pointer',
+      border: selected ? '1.5px solid #e11d48' : `1px solid ${s.border}`,
+      boxShadow: selected ? '0 6px 16px -6px rgba(225,29,72,0.25)' : (isDark ? 'none' : '0 1px 4px rgba(0,0,0,0.03)'),
+    }),
+    priceBadge: { backgroundColor: '#D9241D', color: 'white', padding: '4px 11px', borderRadius: '999px', fontWeight: '800', fontSize: '12px', flexShrink: 0, marginLeft: '10px' },
+    infoBox: { backgroundColor: '#f0f4ff', padding: '16px 18px', borderRadius: '14px', marginBottom: '20px', fontSize: '12px', color: '#3b4b8a', lineHeight: '1.5', border: '1px solid #e2e8fc' },
+    infoBoxWarn: { backgroundColor: '#fffaeb', padding: '16px 18px', borderRadius: '14px', border: '1px solid #fde68a', color: '#92650b', fontSize: '12px', lineHeight: '1.5' },
+    emptyState: { color: isDark ? '#e0b0a4' : '#bbb', textAlign: 'center', marginTop: '40px', fontSize: '13px', fontStyle: 'italic' },
+    totalBox: { backgroundColor: '#111', color: 'white', padding: '28px', borderRadius: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '18px' },
+    totalLabel: { fontSize: '13px', fontWeight: '700', color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.5px' },
+    totalValue: { fontSize: '38px', fontWeight: '800', backgroundColor: '#D9241D', padding: '6px 22px', borderRadius: '14px', letterSpacing: '-0.5px' },
+    btnCargar: { backgroundColor: '#D9241D', color: 'white', padding: '16px 0', width: '100%', border: 'none', borderRadius: '999px', fontWeight: '800', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.3px', cursor: 'pointer', marginTop: '24px' },
   };
 
   return (
     <div style={styles.mainContent}>
-      <div style={styles.title}>🔲 Simula el precio de tu archivo</div>
+      <style>{`
+        @keyframes simFadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .sim-col { animation: simFadeUp 0.35s ease both; }
+        .sim-card { transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease; }
+        .sim-card:hover { transform: translateY(-3px); box-shadow: 0 10px 20px -8px rgba(0,0,0,0.12); }
+        .sim-btn { transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease; }
+        .sim-btn:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(225,29,72,0.35); }
+        .total-value { transition: transform 0.2s ease; }
+        @media (max-width: 900px) {
+          .sim-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
 
-      <div style={styles.grid}>
-        {/* 1. SELECCIÓN DE CATEGORÍA */}
-        <div>
-          <h3 style={styles.columnTitle}>1. TIPO SERVICIO</h3>
-          <div style={{ backgroundColor: '#d1eaf0', padding: '15px', borderRadius: '4px', marginBottom: '20px', fontSize: '13px', color: '#1e5a69' }}>
-            Selecciona la categoría principal.
-          </div>
-          {Object.keys(SERVICIOS_CONFIG).map(cat => (
-            <div 
-              key={cat} 
-              style={{ ...styles.card, ...(categoriaSel === cat ? styles.cardSelected : {}) }}
-              onClick={() => {
-                setCategoriaSel(cat);
-                setServicioSel(null); 
-              }}
-            >
-              <span style={{ fontWeight: 'bold' }}>› {cat}</span>
-            </div>
-          ))}
+      <div style={styles.container}>
+        <div style={styles.header}>
+          <h1 style={styles.title}>🔲 Simula el precio de tu archivo</h1>
+          <p style={styles.subtitle}>Elige el servicio que necesitas y descubre cuántos créditos vas a usar.</p>
         </div>
 
-        {/* 2. OPCIONES ESPECÍFICAS */}
-        <div>
-          <h3 style={styles.columnTitle}>2. OPCIONES</h3>
-          {categoriaSel ? (
-            SERVICIOS_CONFIG[categoriaSel].map(s => (
-              <div 
-                key={s.id} 
-                style={{ ...styles.card, ...(servicioSel?.id === s.id ? styles.cardSelected : {}) }}
-                onClick={() => setServicioSel(s)}
+        <div className="sim-grid" style={styles.grid}>
+          {/* 1. SELECCIÓN DE CATEGORÍA */}
+          <div className="sim-col" style={{ animationDelay: '0s' }}>
+            <div style={styles.colHeader}>
+              <span style={styles.stepBadge(true)}>1</span>
+              <span style={styles.columnTitle}>Tipo servicio</span>
+            </div>
+            <div style={styles.infoBox}>
+              Selecciona la categoría principal.
+            </div>
+            {Object.keys(SERVICIOS_CONFIG).map(cat => (
+              <div
+                className="sim-card"
+                key={cat}
+                style={styles.card(categoriaSel === cat)}
+                onMouseEnter={playHoverTick}
+                onClick={() => {
+                  playSelectSound();
+                  setCategoriaSel(cat);
+                  setServicioSel(null);
+                }}
               >
-                <span style={{ fontWeight: 'bold', fontSize: '12px', maxWidth: '75%' }}>{s.name}</span>
-                <span style={styles.priceBadge}>+{s.price}</span>
+                <span style={{ fontWeight: '700', fontSize: '12.5px', color: s.text }}>› {cat}</span>
               </div>
-            ))
-          ) : (
-            <div style={{ color: '#999', textAlign: 'center', marginTop: '50px', fontStyle: 'italic' }}>
-              Selecciona una categoría a la izquierda para ver las opciones...
+            ))}
+          </div>
+
+          {/* 2. OPCIONES ESPECÍFICAS */}
+          <div className="sim-col" style={{ animationDelay: '0.08s' }}>
+            <div style={styles.colHeader}>
+              <span style={styles.stepBadge(!!categoriaSel)}>2</span>
+              <span style={styles.columnTitle}>Opciones</span>
             </div>
-          )}
-        </div>
-
-        {/* 3. TOTAL Y REDIRECCIÓN */}
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <h3 style={styles.columnTitle}>3. TOTAL</h3>
-          <div style={styles.infoBox}>
-            Total de créditos que se descontarán de tu cuenta. (1 Crédito = $10.000 CLP)
+            {categoriaSel ? (
+              SERVICIOS_CONFIG[categoriaSel].map(svc => (
+                <div
+                  className="sim-card"
+                  key={svc.id}
+                  style={styles.card(servicioSel?.id === svc.id)}
+                  onMouseEnter={playHoverTick}
+                  onClick={() => { playSelectSound(); setServicioSel(svc); }}
+                >
+                  <span style={{ fontWeight: '700', fontSize: '12px', color: s.text }}>{svc.name}</span>
+                  <span style={styles.priceBadge}>+{svc.price}</span>
+                </div>
+              ))
+            ) : (
+              <div style={styles.emptyState}>
+                Selecciona una categoría a la izquierda para ver las opciones...
+              </div>
+            )}
           </div>
-          
-          <div style={styles.totalBox}>
-            <span style={{ fontSize: '32px', fontWeight: 'bold' }}>Créditos</span>
-            <span style={{ fontSize: '48px', fontWeight: 'bold', backgroundColor: '#b91c1c', padding: '0 20px', borderRadius: '8px' }}>
-              {totalPrice}
-            </span>
-          </div>
 
-          <button 
-            style={{ ...styles.btnCargar, opacity: servicioSel ? 1 : 0.5 }} 
-            onClick={() => {
-              if (servicioSel) {
-                // REDIRECCIÓN CON ESTADO: Enviamos el nombre y el precio
-                navigate('/upload', { 
-                  state: { 
-                    servicio: servicioSel
-                  } 
-                });
-              }
-            }}
-            disabled={!servicioSel}
-          >
-            CARGAR MI ARCHIVO
-          </button>
+          {/* 3. TOTAL Y REDIRECCIÓN */}
+          <div className="sim-col" style={{ display: 'flex', flexDirection: 'column', animationDelay: '0.16s' }}>
+            <div style={styles.colHeader}>
+              <span style={styles.stepBadge(!!servicioSel)}>3</span>
+              <span style={styles.columnTitle}>Total</span>
+            </div>
+            <div style={styles.infoBoxWarn}>
+              Total de créditos que se descontarán de tu cuenta. (1 crédito = $10.000 CLP)
+            </div>
+
+            <div style={styles.totalBox}>
+              <span style={styles.totalLabel}>Créditos</span>
+              <span className="total-value" style={styles.totalValue}>
+                {totalPrice}
+              </span>
+            </div>
+
+            <button
+              className="sim-btn"
+              style={{ ...styles.btnCargar, opacity: servicioSel ? 1 : 0.4, cursor: servicioSel ? 'pointer' : 'not-allowed' }}
+              onClick={() => {
+                if (servicioSel) {
+                  // REDIRECCIÓN CON ESTADO: Enviamos el nombre y el precio
+                  navigate('/upload', {
+                    state: {
+                      servicio: servicioSel
+                    }
+                  });
+                }
+              }}
+              disabled={!servicioSel}
+            >
+              Cargar mi archivo
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -1,21 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
+import { useTheme, DARK_GRADIENT, getSurfaceTokens, playTone } from '../ThemeContext';
 
 const Archivos = ({ session }) => {
   const [archivos, setArchivos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [subiendoKey, setSubiendoKey] = useState(null);
   const [archivoDetalle, setArchivoDetalle] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [downloadProgress, setDownloadProgress] = useState({});
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const s = getSurfaceTokens(isDark);
+
+  // --- SONIDITOS MINIMALISTAS DE DESCARGA (usan la utilidad compartida, respeta el silencio) ---
+  const playDownloadStartSound = () => playTone(650, 0.05, 0.1);
+  const playDownloadDoneSound = () => {
+    playTone(700, 0.06, 0.12, 0);
+    playTone(1050, 0.09, 0.12, 0.07);
+  };
 
   const [paginaActual, setPaginaActual] = useState(1);
   const [itemsPorPagina] = useState(8);
   const [statusFilter, setStatusFilter] = useState('todos');
 
   const ADMIN_EMAILS = [
-    'scannerstorresaguayo@gmail.com',
+    'stockcarscl@gmail.com',
     'felipe.acuna2@mail.udp.cl',
     'stockcarscl@gmail.com',
-    'torresaguayocl@gmail.com'
+    'stockcarscl@gmail.com'
   ];
 
   const isAdmin =
@@ -56,12 +69,38 @@ const Archivos = ({ session }) => {
     fetchArchivos();
   }, [session, isAdmin]);
 
-  // --- FUNCIÓN PARA DESCARGA LIMPIA FORZADA ---
+  // --- FUNCIÓN PARA DESCARGA LIMPIA FORZADA (con barra de progreso real) ---
   const handleForceDownload = async (url) => {
-    if (!url) return;
+    if (!url || downloadProgress[url] !== undefined) return;
+
+    playDownloadStartSound();
+    setDownloadProgress(prev => ({ ...prev, [url]: 0 }));
+
     try {
       const response = await fetch(url);
-      const blob = await response.blob();
+      if (!response.ok || !response.body) throw new Error('Descarga fallida');
+
+      const totalBytes = parseInt(response.headers.get('Content-Length') || '0', 10);
+      const reader = response.body.getReader();
+      const chunks = [];
+      let recibidos = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        recibidos += value.length;
+
+        setDownloadProgress(prev => ({
+          ...prev,
+          [url]: totalBytes ? Math.min(99, Math.round((recibidos / totalBytes) * 100)) : 66
+        }));
+      }
+
+      setDownloadProgress(prev => ({ ...prev, [url]: 100 }));
+      playDownloadDoneSound();
+
+      const blob = new Blob(chunks);
       const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = blobUrl;
@@ -75,11 +114,44 @@ const Archivos = ({ session }) => {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(blobUrl);
+
+      setTimeout(() => {
+        setDownloadProgress(prev => {
+          const next = { ...prev };
+          delete next[url];
+          return next;
+        });
+      }, 500);
     } catch (e) {
       console.error("Error en descarga:", e);
-      // Fallback si falla el blob
+      setDownloadProgress(prev => {
+        const next = { ...prev };
+        delete next[url];
+        return next;
+      });
+      // Fallback si falla el streaming
       window.open(url, '_blank');
     }
+  };
+
+  // --- BOTÓN DE DESCARGA CON BARRA DE PROGRESO ---
+  const gradientBg = (color) => `linear-gradient(135deg, ${color} 0%, #000000 170%)`;
+
+  const renderDownloadBtn = (url, label, background, extraStyle = {}) => {
+    const progreso = downloadProgress[url];
+    const descargando = progreso !== undefined;
+    const isFlat = background === '#fff' || background === '#ffffff';
+    return (
+      <button
+        className="action-btn dl-btn"
+        onClick={() => handleForceDownload(url)}
+        disabled={descargando}
+        style={{ ...styles.btnDownload, background: isFlat ? background : gradientBg(background), cursor: descargando ? 'default' : 'pointer', ...extraStyle }}
+      >
+        {descargando && <span className="dl-progress-fill" style={{ width: `${progreso}%` }} />}
+        <span className="dl-btn-label">{descargando ? `⬇ ${progreso}%` : label}</span>
+      </button>
+    );
   };
 
   const handleCancelarSolicitud = async (archivo) => {
@@ -147,9 +219,12 @@ const Archivos = ({ session }) => {
       nota = window.prompt("Nota de instalación (Opcional):");
     }
 
+    if (!file) return;
+    const uploadKey = `${archivoId}_${campoDestino}`;
+
     try {
-      if (!file) return;
       setLoading(true);
+      setSubiendoKey(uploadKey);
 
       const fileNameClean = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
       const storagePath = `procesados/${Date.now()}/${fileNameClean}`;
@@ -187,6 +262,7 @@ const Archivos = ({ session }) => {
       alert("Error al subir.");
     } finally {
       setLoading(false);
+      setSubiendoKey(null);
     }
   };
 
@@ -254,27 +330,70 @@ const Archivos = ({ session }) => {
   };
 
   const styles = {
-    mainContent: { flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#f3f4f6', width: '100%', minHeight: '100vh' },
-    tableCard: { backgroundColor: 'white', margin: '10px', padding: '15px', borderRadius: '4px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' },
+    mainContent: { flex: 1, display: 'flex', flexDirection: 'column', background: isDark ? DARK_GRADIENT : '#f3f4f6', width: '100%', minHeight: '100vh' },
+    tableCard: { backgroundColor: s.cardBg, margin: '10px', padding: '15px', borderRadius: '4px', boxShadow: isDark ? 'none' : '0 2px 10px rgba(0,0,0,0.05)', border: `1px solid ${s.border}` },
     responsiveContainer: { width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch', marginBottom: '20px' },
     table: { width: '100%', borderCollapse: 'collapse', marginTop: '20px', minWidth: '800px' },
-    th: { textAlign: 'left', padding: '12px', borderBottom: '2px solid #eee', fontSize: '10px', color: '#666', textTransform: 'uppercase', fontWeight: 'bold' },
-    td: { padding: '12px', borderBottom: '1px solid #eee', fontSize: '12px' },
+    th: { textAlign: 'left', padding: '12px', borderBottom: `2px solid ${s.rowBorder}`, fontSize: '10px', color: s.textMuted, textTransform: 'uppercase', fontWeight: 'bold' },
+    td: { padding: '12px', borderBottom: `1px solid ${s.rowBorder}`, fontSize: '12px', color: s.text },
     statusBadge: { padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', color: 'white', textTransform: 'uppercase', whiteSpace: 'nowrap' },
-    selectAdmin: { padding: '5px', fontSize: '10px', fontWeight: 'bold', borderRadius: '4px', border: '1px solid #ddd', cursor: 'pointer', outline: 'none', backgroundColor: 'white' },
-    searchBar: { display: 'flex', alignItems: 'center', backgroundColor: '#f3f4f6', padding: '6px 12px', borderRadius: '4px', border: '1px solid #ddd' },
-    statusSelector: { padding: '6px 12px', borderRadius: '4px', border: '1px solid #ddd', fontSize: '12px', outline: 'none', backgroundColor: '#fff', cursor: 'pointer', fontWeight: 'bold', color: '#333', marginRight: '10px' },
+    serviceBadge: {
+      display: 'inline-block',
+      padding: '5px 12px',
+      borderRadius: '20px',
+      fontSize: '10px',
+      fontWeight: '700',
+      color: '#fff',
+      backgroundColor: isDark ? '#3a3a3a' : '#000',
+      border: isDark ? '1px solid #6a6a6a' : 'none',
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      maxWidth: '170px',
+      verticalAlign: 'middle',
+      letterSpacing: '0.2px'
+    },
+    // --- ESTILO DE PATENTE CHILENA ---
+    plateBox: {
+      display: 'inline-flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#ffffff',
+      border: '2px solid #111',
+      borderRadius: '5px',
+      padding: '3px 10px 2px',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+      lineHeight: 1
+    },
+    plateText: {
+      color: '#111',
+      fontWeight: '900',
+      fontSize: '15px',
+      fontFamily: "'Arial Narrow', Arial, sans-serif",
+      letterSpacing: '1.5px'
+    },
+    plateCountry: {
+      color: '#111',
+      fontWeight: '700',
+      fontSize: '6px',
+      letterSpacing: '2px',
+      marginTop: '1px'
+    },
+    selectAdmin: { padding: '5px', fontSize: '10px', fontWeight: 'bold', borderRadius: '4px', border: `1px solid ${s.inputBorder}`, cursor: 'pointer', outline: 'none', backgroundColor: s.inputBg },
+    searchBar: { display: 'flex', alignItems: 'center', backgroundColor: s.inputBg, padding: '6px 12px', borderRadius: '4px', border: `1px solid ${s.inputBorder}` },
+    statusSelector: { padding: '6px 12px', borderRadius: '4px', border: `1px solid ${s.inputBorder}`, fontSize: '12px', outline: 'none', backgroundColor: s.inputBg, cursor: 'pointer', fontWeight: 'bold', color: s.text, marginRight: '10px' },
     modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' },
-    modalContent: { backgroundColor: 'white', width: '100%', maxWidth: '500px', borderRadius: '4px', overflow: 'hidden', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' },
-    modalHeader: { backgroundColor: '#000', color: '#e11d48', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #e11d48' },
+    modalContent: { backgroundColor: s.cardBg, width: '100%', maxWidth: '500px', borderRadius: '4px', overflow: 'hidden', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' },
+    modalHeader: { backgroundColor: '#000', color: '#D9241D', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #D9241D' },
     modalBody: { padding: '25px', maxHeight: '75vh', overflowY: 'auto' },
     infoTable: { width: '100%', borderCollapse: 'collapse', marginBottom: '20px' },
-    infoLabel: { padding: '8px 0', fontWeight: 'bold', fontSize: '11px', color: '#000', borderBottom: '1px solid #eee', textTransform: 'uppercase', width: '40%' },
-    infoValue: { padding: '8px 0', fontSize: '12px', color: '#444', borderBottom: '1px solid #eee' },
+    infoLabel: { padding: '8px 0', fontWeight: 'bold', fontSize: '11px', color: s.text, borderBottom: `1px solid ${s.rowBorder}`, textTransform: 'uppercase', width: '40%' },
+    infoValue: { padding: '8px 0', fontSize: '12px', color: s.textMuted, borderBottom: `1px solid ${s.rowBorder}` },
     pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '30px', paddingBottom: '20px' },
-    pageBtn: (active) => ({ padding: '8px 16px', cursor: 'pointer', backgroundColor: active ? '#e11d48' : 'white', color: active ? 'white' : '#666', border: '1px solid #ddd', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', transition: '0.2s' }),
+    pageBtn: (active) => ({ padding: '8px 16px', cursor: 'pointer', backgroundColor: active ? '#D9241D' : s.cardBg, color: active ? 'white' : s.textMuted, border: `1px solid ${s.border}`, borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', transition: '0.2s' }),
     btnDownload: { border: 'none', fontSize: '9px', padding: '6px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', textDecoration: 'none', textAlign: 'center', color: 'white', display: 'block', width: '100%' },
-    timeText: { color: '#888', fontSize: '10px', marginTop: '3px' }, // NUEVO ESTILO: Para mostrar la hora con estilo gris ordenado
+    timeText: { color: s.textFaint, fontSize: '10px', marginTop: '3px' }, // NUEVO ESTILO: Para mostrar la hora con estilo gris ordenado
     btnCancel: {
       backgroundColor: '#fff',
       color: '#e11d48',
@@ -318,22 +437,61 @@ const Archivos = ({ session }) => {
 
   return (
     <div style={styles.mainContent}>
+      <style>{`
+        @keyframes rowFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        .file-row { animation: rowFadeIn 0.3s ease both; transition: background-color 0.15s ease; }
+        .file-row:hover { background-color: ${s.rowHover}; transition: background-color 0.15s ease; }
+        .action-btn { transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease; }
+        .action-btn:hover { transform: translateY(-2px); filter: brightness(1.08); box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+        .upload-label { display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+        .upload-label.uploading { cursor: wait; animation: uploadPulse 1.1s ease-in-out infinite; }
+        @keyframes uploadPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+        @keyframes uploadSpin { to { transform: rotate(360deg); } }
+        .upload-spinner {
+          width: 9px; height: 9px; flex-shrink: 0; border-radius: 50%;
+          border: 2px solid currentColor; border-top-color: transparent;
+          animation: uploadSpin 0.6s linear infinite;
+        }
+        .badge-pop { transition: transform 0.15s ease; }
+        .badge-pop:hover { transform: scale(1.06); }
+        @keyframes overlayFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modalPopIn { from { opacity: 0; transform: scale(0.95) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        .modal-overlay-anim { animation: overlayFadeIn 0.2s ease; }
+        .modal-content-anim { animation: modalPopIn 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+        .search-input-wrap { transition: box-shadow 0.2s ease, border-color 0.2s ease; }
+        .search-input-wrap:focus-within { border-color: #e11d48; box-shadow: 0 0 0 3px rgba(225,29,72,0.12); }
+        .status-select { transition: border-color 0.2s ease; }
+        .status-select:hover { border-color: #e11d48; }
+        .page-btn:hover:not(:disabled) { transform: translateY(-2px); border-color: #e11d48; }
+        .dl-btn { position: relative; overflow: hidden; }
+        .dl-progress-fill {
+          position: absolute;
+          top: 0; left: 0; bottom: 0;
+          background-image: linear-gradient(135deg, rgba(255,255,255,0.35) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0.35) 75%, transparent 75%, transparent);
+          background-size: 14px 14px;
+          animation: dlStripes 0.6s linear infinite;
+          transition: width 0.15s ease;
+          z-index: 0;
+        }
+        @keyframes dlStripes { from { background-position: 0 0; } to { background-position: 14px 0; } }
+        .dl-btn-label { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: 3px; }
+      `}</style>
       <div style={styles.tableCard}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-          <div style={{ backgroundColor: '#e11d48', color: 'white', padding: '5px 12px', fontSize: '10px', fontWeight: 'bold' }}>
+          <div style={{ backgroundColor: '#D9241D', color: 'white', padding: '5px 12px', fontSize: '10px', fontWeight: 'bold' }}>
             {isAdmin ? "MODO ADMINISTRADOR" : "PORTAL OFICIAL"}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            <select style={styles.statusSelector} value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPaginaActual(1); }}>
+            <select className="status-select" style={styles.statusSelector} value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPaginaActual(1); }}>
               <option value="todos">ESTADO (TODOS)</option>
               <option value="pendiente">PENDIENTES</option>
               <option value="en revision">EN REVISIÓN</option>
               <option value="completado">COMPLETADOS</option>
             </select>
-            <div style={styles.searchBar}>
+            <div className="search-input-wrap" style={styles.searchBar}>
               <span style={{ fontSize: '12px', marginRight: '8px' }}>🔍</span>
-              <input type="text" placeholder="Buscar..." style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', width: '150px' }} value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setPaginaActual(1); }} />
+              <input type="text" placeholder="Buscar..." style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', width: '150px', color: s.text }} value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setPaginaActual(1); }} />
             </div>
           </div>
         </div>
@@ -344,11 +502,11 @@ const Archivos = ({ session }) => {
               <tr>
                 <th style={styles.th}>N° Orden / Fecha</th>
                 {isAdmin && <th style={styles.th}>Empresa</th>}
-                {isAdmin && <th style={styles.th}>Empresa</th>}
                 <th style={styles.th}>Patente</th>
                 <th style={styles.th}>Marca / Modelo</th>
                 <th style={styles.th}>Ficha</th>
                 <th style={styles.th}>Estado</th>
+                <th style={styles.th}>Servicio</th>
                 <th style={styles.th}>Acción</th>
                 <th style={styles.th}>Acción ADMI</th>
                 <th style={styles.th}>Mensaje Técnico</th>
@@ -356,28 +514,33 @@ const Archivos = ({ session }) => {
               </tr>
             </thead>
             <tbody>
-              {archivosPaginados.map((archivo) => {
+              {archivosPaginados.map((archivo, index) => {
                 const fechaObj = new Date(archivo.created_at);
                 return (
-                  <tr key={archivo.id}>
-                    <td style={styles.td}>
-                      <div style={{ fontWeight: 'bold', color: '#e11d48', fontSize: '14px' }}>#{archivo.numero_orden || '---'}</div>
-                      <div>{fechaObj.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
+                  <tr className="file-row" style={{ animationDelay: `${Math.min(index, 8) * 0.04}s` }} key={archivo.id}>
+                    <td style={{ ...styles.td, minWidth: '110px' }}>
+                      <div style={{ display: 'inline-block', fontWeight: 'bold', color: '#fff', backgroundColor: '#D9241D', fontSize: '14px', padding: '3px 9px', borderRadius: '6px', marginBottom: '6px' }}>#{archivo.numero_orden || '---'}</div>
+                      <div style={{ whiteSpace: 'nowrap' }}>{fechaObj.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
                       {/* NUEVO: Se renderiza la hora exacta abajo de la fecha en la celda */}
                       <div style={styles.timeText}>
-                        {fechaObj.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })} hrs
+                        {fechaObj.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }).replace('a. m.', 'a.m.').replace('p. m.', 'p.m.')} hrs
                       </div>
                     </td>
-                    {isAdmin && <td style={{ ...styles.td, fontWeight: 'bold', color: '#e11d48' }}>{archivo.profiles?.company || 'PARTICULAR'}</td>}
                     {isAdmin && (
-                      <td style={{ ...styles.td, fontSize: '11px', color: '#555' }}>
-                        {archivo.profiles?.email || '---'}
+                      <td style={styles.td}>
+                        <div style={{ fontWeight: 'bold', color: '#D9241D' }}>{archivo.profiles?.company || 'PARTICULAR'}</div>
+                        <div style={{ fontSize: '11px', color: s.textMuted }}>{archivo.profiles?.email || '---'}</div>
                       </td>
                     )}
-                    <td style={styles.td}>{archivo.patente}</td>
+                    <td style={styles.td}>
+                      <div style={styles.plateBox}>
+                        <span style={styles.plateText}>{archivo.patente}</span>
+                        <span style={styles.plateCountry}>CHILE</span>
+                      </div>
+                    </td>
                     <td style={styles.td}>{archivo.marca_modelo}</td>
                     <td style={styles.td}>
-                      <button onClick={() => setArchivoDetalle(archivo)} style={{ backgroundColor: '#000', color: '#fff', border: 'none', padding: '4px 8px', fontSize: '9px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px' }}>DETALLES</button>
+                      <button className="action-btn" onClick={() => setArchivoDetalle(archivo)} style={{ backgroundColor: isDark ? '#3a3a3a' : '#000', color: '#fff', border: isDark ? '1px solid #6a6a6a' : 'none', padding: '4px 8px', fontSize: '9px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px' }}>DETALLES</button>
                     </td>
                     <td style={styles.td}>
                       {isAdmin ? (
@@ -387,18 +550,50 @@ const Archivos = ({ session }) => {
                           <option value="completado">Completado</option>
                           <option value="cancelado">Cancelado</option>
                         </select>
-                      ) : <span style={{ ...styles.statusBadge, backgroundColor: getBadgeColor(archivo.estado) }}>{archivo.estado}</span>}
+                      ) : <span className="badge-pop" style={{ ...styles.statusBadge, backgroundColor: getBadgeColor(archivo.estado) }}>{archivo.estado}</span>}
+                    </td>
+
+                    {/* --- COLUMNA SERVICIO --- */}
+                    <td style={styles.td}>
+                      {archivo.detalles_tecnicos?.servicios_solicitados ? (
+                        <span className="badge-pop" style={styles.serviceBadge} title={archivo.detalles_tecnicos.servicios_solicitados}>
+                          {archivo.detalles_tecnicos.servicios_solicitados}
+                        </span>
+                      ) : <span style={{ color: s.textFaint, fontSize: '11px' }}>---</span>}
                     </td>
 
                     {/* --- COLUMNA ACCIÓN (USUARIO) --- */}
                     <td style={styles.td}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', minWidth: '110px' }}>
-                        {archivo.file_url_id && <button onClick={() => handleForceDownload(archivo.file_url_id)} style={{ ...styles.btnDownload, background: '#3b82f6' }}>🆔 ID (Export Console)</button>}
-                        {archivo.file_url_mapa && <button onClick={() => handleForceDownload(archivo.file_url_mapa)} style={{ ...styles.btnDownload, background: '#8b5cf6' }}>🗺️ MAPA</button>}
-                        {archivo.file_url_password && <button onClick={() => handleForceDownload(archivo.file_url_password)} style={{ ...styles.btnDownload, background: '#f59e0b' }}>🔑 PASSWORD</button>}
+                        {archivo.file_url_id && renderDownloadBtn(archivo.file_url_id, (
+                          <>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-journal-text" viewBox="0 0 16 16" style={{ flexShrink: 0 }}>
+                              <path d="M5 10.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5m0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5" />
+                              <path d="M3 0h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-1h1v1a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v1H1V2a2 2 0 0 1 2-2" />
+                              <path d="M1 5v-.5a.5.5 0 0 1 1 0V5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1zm0 3v-.5a.5.5 0 0 1 1 0V8h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1zm0 3v-.5a.5.5 0 0 1 1 0v.5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1z" />
+                            </svg>
+                            ID (Export Console)
+                          </>
+                        ), '#2f606b')}
+                        {archivo.file_url_mapa && renderDownloadBtn(archivo.file_url_mapa, (
+                          <>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-map-fill" viewBox="0 0 16 16" style={{ flexShrink: 0, transform: 'translateX(-6px)' }}>
+                              <path fillRule="evenodd" d="M16 .5a.5.5 0 0 0-.598-.49L10.5.99 5.598.01a.5.5 0 0 0-.196 0l-5 1A.5.5 0 0 0 0 1.5v14a.5.5 0 0 0 .598.49l4.902-.98 4.902.98a.5.5 0 0 0 .196 0l5-1A.5.5 0 0 0 16 14.5zM5 14.09V1.11l.5-.1.5.1v12.98l-.402-.08a.5.5 0 0 0-.196 0zm5 .8V1.91l.402.08a.5.5 0 0 0 .196 0L11 1.91v12.98l-.5.1z" />
+                            </svg>
+                            MAPA
+                          </>
+                        ), '#113047')}
+                        {archivo.file_url_password && renderDownloadBtn(archivo.file_url_password, (
+                          <>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-key-fill" viewBox="0 0 16 16" style={{ flexShrink: 0, transform: 'translateX(-6px)' }}>
+                              <path d="M3.5 11.5a3.5 3.5 0 1 1 3.163-5H14L15.5 8 14 9.5l-1-1-1 1-1-1-1 1-1-1-1 1H6.663a3.5 3.5 0 0 1-3.163 2M2.5 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2" />
+                            </svg>
+                            PASSWORD
+                          </>
+                        ), '#f59e0b')}
 
                         {archivo.file_url && !archivo.file_url_id && !archivo.file_url_mapa && (
-                          <button onClick={() => handleForceDownload(archivo.file_url)} style={{ ...styles.btnDownload, background: '#fff', border: '1px solid #ddd', color: '#666' }}>📄 ORIGINAL</button>
+                          renderDownloadBtn(archivo.file_url, '📄 ORIGINAL', '#fff', { border: '1px solid #ddd', color: '#666' })
                         )}
                       </div>
                     </td>
@@ -407,20 +602,70 @@ const Archivos = ({ session }) => {
                     <td style={styles.td}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', minWidth: '110px' }}>
                         {archivo.mod_file_url ? (
-                          <button onClick={() => handleForceDownload(archivo.mod_file_url)} style={{ ...styles.btnDownload, background: '#22c55e' }}>🚀 DESCARGAR MOD</button>
+                          renderDownloadBtn(archivo.mod_file_url, (
+                            <>
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-rocket-takeoff-fill" viewBox="0 0 16 16" style={{ flexShrink: 0 }}>
+                                <path d="M12.17 9.53c2.307-2.592 3.278-4.684 3.641-6.218.21-.887.214-1.58.16-2.065a3.6 3.6 0 0 0-.108-.563 2 2 0 0 0-.078-.23V.453c-.073-.164-.168-.234-.352-.295a2 2 0 0 0-.16-.045 4 4 0 0 0-.57-.093c-.49-.044-1.19-.03-2.08.188-1.536.374-3.618 1.343-6.161 3.604l-2.4.238h-.006a2.55 2.55 0 0 0-1.524.734L.15 7.17a.512.512 0 0 0 .433.868l1.896-.271c.28-.04.592.013.955.132.232.076.437.16.655.248l.203.083c.196.816.66 1.58 1.275 2.195.613.614 1.376 1.08 2.191 1.277l.082.202c.089.218.173.424.249.657.118.363.172.676.132.956l-.271 1.9a.512.512 0 0 0 .867.433l2.382-2.386c.41-.41.668-.949.732-1.526zm.11-3.699c-.797.8-1.93.961-2.528.362-.598-.6-.436-1.733.361-2.532.798-.799 1.93-.96 2.528-.361s.437 1.732-.36 2.531Z" />
+                                <path d="M5.205 10.787a7.6 7.6 0 0 0 1.804 1.352c-1.118 1.007-4.929 2.028-5.054 1.903-.126-.127.737-4.189 1.839-5.18.346.69.837 1.35 1.411 1.925" />
+                              </svg>
+                              DESCARGAR MOD
+                            </>
+                          ), '#22c55e')
                         ) : isAdmin && (
-                          <label style={{ backgroundColor: '#000', color: '#22c55e', padding: '5px', fontSize: '9px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #22c55e', textAlign: 'center', fontWeight: 'bold' }}>
-                            {loading ? '...' : '📤 SUBIR MOD'}
+                          <label className={`action-btn upload-label${subiendoKey === `${archivo.id}_mod_file_url` ? ' uploading' : ''}`} style={{ background: 'linear-gradient(135deg, #062e1a 0%, #000000 100%)', color: '#22c55e', padding: '5px', fontSize: '9px', cursor: subiendoKey === `${archivo.id}_mod_file_url` ? 'wait' : 'pointer', borderRadius: '4px', border: '1px solid #22c55e', textAlign: 'center', fontWeight: 'bold' }}>
+                            {subiendoKey === `${archivo.id}_mod_file_url` ? <><span className="upload-spinner" />SUBIENDO...</> : '📤 SUBIR MOD'}
                             <input type="file" style={{ display: 'none' }} onChange={(e) => handleUploadModificado(archivo.id, e.target.files[0], archivo.patente, archivo.profiles?.email, 'mod_file_url')} />
                           </label>
                         )}
 
                         {archivo.mod_file_extra_url ? (
-                          <button onClick={() => handleForceDownload(archivo.mod_file_extra_url)} style={{ ...styles.btnDownload, background: '#10b981' }}>📦 DESCARGAR EXTRA</button>
+                          renderDownloadBtn(archivo.mod_file_extra_url, (
+                            <>
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-rocket-fill" viewBox="0 0 16 16" style={{ flexShrink: 0 }}>
+                                <path d="M10.175 1.991c.81 1.312 1.583 3.43 1.778 6.819l1.5 1.83A2.5 2.5 0 0 1 14 12.202V15.5a.5.5 0 0 1-.9.3l-1.125-1.5c-.166-.222-.42-.4-.752-.57-.214-.108-.414-.192-.627-.282l-.196-.083C9.7 13.793 8.85 14 8 14s-1.7-.207-2.4-.635q-.101.044-.198.084c-.211.089-.411.173-.625.281-.332.17-.586.348-.752.57L2.9 15.8a.5.5 0 0 1-.9-.3v-3.298a2.5 2.5 0 0 1 .548-1.562l.004-.005L4.049 8.81c.197-3.323.969-5.434 1.774-6.756.466-.767.94-1.262 1.31-1.57a3.7 3.7 0 0 1 .601-.41A.55.55 0 0 1 8 0c.101 0 .17.027.25.064q.056.025.145.075c.118.066.277.167.463.315.373.297.85.779 1.317 1.537M9.5 6c0-1.105-.672-2-1.5-2s-1.5.895-1.5 2S7.172 8 8 8s1.5-.895 1.5-2" />
+                                <path d="M8 14.5c.5 0 .999-.046 1.479-.139L8.4 15.8a.5.5 0 0 1-.8 0l-1.079-1.439c.48.093.98.139 1.479.139" />
+                              </svg>
+                              DESCARGAR V2
+                            </>
+                          ), '#10b981')
                         ) : isAdmin && (
-                          <label style={{ backgroundColor: '#111', color: '#10b981', padding: '5px', fontSize: '9px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #10b981', textAlign: 'center', fontWeight: 'bold' }}>
-                            {loading ? '...' : '➕ SUBIR V2'}
+                          <label className={`action-btn upload-label${subiendoKey === `${archivo.id}_mod_file_extra_url` ? ' uploading' : ''}`} style={{ background: 'linear-gradient(135deg, #04241d 0%, #000000 100%)', color: '#10b981', padding: '5px', fontSize: '9px', cursor: subiendoKey === `${archivo.id}_mod_file_extra_url` ? 'wait' : 'pointer', borderRadius: '4px', border: '1px solid #10b981', textAlign: 'center', fontWeight: 'bold' }}>
+                            {subiendoKey === `${archivo.id}_mod_file_extra_url` ? <><span className="upload-spinner" />SUBIENDO...</> : '➕ SUBIR V2'}
                             <input type="file" style={{ display: 'none' }} onChange={(e) => handleUploadModificado(archivo.id, e.target.files[0], archivo.patente, archivo.profiles?.email, 'mod_file_extra_url')} />
+                          </label>
+                        )}
+
+                        {archivo.mod_file_v3_url ? (
+                          renderDownloadBtn(archivo.mod_file_v3_url, (
+                            <>
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-rocket-fill" viewBox="0 0 16 16" style={{ flexShrink: 0 }}>
+                                <path d="M10.175 1.991c.81 1.312 1.583 3.43 1.778 6.819l1.5 1.83A2.5 2.5 0 0 1 14 12.202V15.5a.5.5 0 0 1-.9.3l-1.125-1.5c-.166-.222-.42-.4-.752-.57-.214-.108-.414-.192-.627-.282l-.196-.083C9.7 13.793 8.85 14 8 14s-1.7-.207-2.4-.635q-.101.044-.198.084c-.211.089-.411.173-.625.281-.332.17-.586.348-.752.57L2.9 15.8a.5.5 0 0 1-.9-.3v-3.298a2.5 2.5 0 0 1 .548-1.562l.004-.005L4.049 8.81c.197-3.323.969-5.434 1.774-6.756.466-.767.94-1.262 1.31-1.57a3.7 3.7 0 0 1 .601-.41A.55.55 0 0 1 8 0c.101 0 .17.027.25.064q.056.025.145.075c.118.066.277.167.463.315.373.297.85.779 1.317 1.537M9.5 6c0-1.105-.672-2-1.5-2s-1.5.895-1.5 2S7.172 8 8 8s1.5-.895 1.5-2" />
+                                <path d="M8 14.5c.5 0 .999-.046 1.479-.139L8.4 15.8a.5.5 0 0 1-.8 0l-1.079-1.439c.48.093.98.139 1.479.139" />
+                              </svg>
+                              DESCARGAR V3
+                            </>
+                          ), '#0ea5e9')
+                        ) : isAdmin && (
+                          <label className={`action-btn upload-label${subiendoKey === `${archivo.id}_mod_file_v3_url` ? ' uploading' : ''}`} style={{ background: 'linear-gradient(135deg, #082e3f 0%, #000000 100%)', color: '#0ea5e9', padding: '5px', fontSize: '9px', cursor: subiendoKey === `${archivo.id}_mod_file_v3_url` ? 'wait' : 'pointer', borderRadius: '4px', border: '1px solid #0ea5e9', textAlign: 'center', fontWeight: 'bold' }}>
+                            {subiendoKey === `${archivo.id}_mod_file_v3_url` ? <><span className="upload-spinner" />SUBIENDO...</> : '➕ SUBIR V3'}
+                            <input type="file" style={{ display: 'none' }} onChange={(e) => handleUploadModificado(archivo.id, e.target.files[0], archivo.patente, archivo.profiles?.email, 'mod_file_v3_url')} />
+                          </label>
+                        )}
+
+                        {archivo.mod_file_eeprom_url ? (
+                          renderDownloadBtn(archivo.mod_file_eeprom_url, (
+                            <>
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-cpu-fill" viewBox="0 0 16 16" style={{ flexShrink: 0 }}>
+                                <path d="M6.5 6a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5z" />
+                                <path d="M5.5.5a.5.5 0 0 0-1 0V2A2.5 2.5 0 0 0 2 4.5H.5a.5.5 0 0 0 0 1H2v1H.5a.5.5 0 0 0 0 1H2v1H.5a.5.5 0 0 0 0 1H2v1H.5a.5.5 0 0 0 0 1H2A2.5 2.5 0 0 0 4.5 14v1.5a.5.5 0 0 0 1 0V14h1v1.5a.5.5 0 0 0 1 0V14h1v1.5a.5.5 0 0 0 1 0V14h1v1.5a.5.5 0 0 0 1 0V14a2.5 2.5 0 0 0 2.5-2.5h1.5a.5.5 0 0 0 0-1H14v-1h1.5a.5.5 0 0 0 0-1H14v-1h1.5a.5.5 0 0 0 0-1H14v-1h1.5a.5.5 0 0 0 0-1H14A2.5 2.5 0 0 0 11.5 2V.5a.5.5 0 0 0-1 0V2h-1V.5a.5.5 0 0 0-1 0V2h-1V.5a.5.5 0 0 0-1 0V2h-1zm1 4.5h3A1.5 1.5 0 0 1 11 6.5v3A1.5 1.5 0 0 1 9.5 11h-3A1.5 1.5 0 0 1 5 9.5v-3A1.5 1.5 0 0 1 6.5 5" />
+                              </svg>
+                              DESCARGAR EEPROM
+                            </>
+                          ), '#9c2247')
+                        ) : isAdmin && (
+                          <label className={`action-btn upload-label${subiendoKey === `${archivo.id}_mod_file_eeprom_url` ? ' uploading' : ''}`} style={{ background: 'linear-gradient(135deg, #340a1c 0%, #000000 100%)', color: '#ffb3c9', padding: '5px', fontSize: '9px', cursor: subiendoKey === `${archivo.id}_mod_file_eeprom_url` ? 'wait' : 'pointer', borderRadius: '4px', border: '1px solid #9c2247', textAlign: 'center', fontWeight: 'bold' }}>
+                            {subiendoKey === `${archivo.id}_mod_file_eeprom_url` ? <><span className="upload-spinner" />SUBIENDO...</> : '➕ SUBIR EEPROM'}
+                            <input type="file" style={{ display: 'none' }} onChange={(e) => handleUploadModificado(archivo.id, e.target.files[0], archivo.patente, archivo.profiles?.email, 'mod_file_eeprom_url')} />
                           </label>
                         )}
                       </div>
@@ -429,17 +674,23 @@ const Archivos = ({ session }) => {
                     <td style={{ ...styles.td, minWidth: '180px' }}>
                       <div style={{
                         fontSize: '11px', padding: '10px',
-                        backgroundColor: archivo.notas_instalacion ? '#fffbeb' : '#f9f9f9',
-                        border: '1px solid ' + (archivo.notas_instalacion ? '#fef3c7' : '#eee'),
-                        borderRadius: '4px', color: '#333', minHeight: '50px'
+                        backgroundColor: archivo.notas_instalacion ? '#fffbeb' : s.inputBg,
+                        border: '1px solid ' + (archivo.notas_instalacion ? '#fef3c7' : s.border),
+                        borderRadius: '4px', color: archivo.notas_instalacion ? '#333' : s.text, minHeight: '50px'
                       }}>
                         {archivo.notas_instalacion ? (
-                          <><div style={{ fontWeight: 'bold', color: '#92400e', marginBottom: '4px', fontSize: '9px' }}>📝 INSTRUCCIONES:</div>{archivo.notas_instalacion}</>
+                          <><div style={{ display: 'flex', alignItems: 'center', fontWeight: 'bold', color: '#92400e', marginBottom: '4px', fontSize: '9px' }}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16" style={{ marginRight: '4px', flexShrink: 0 }}>
+                              <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z" />
+                              <path fillRule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z" />
+                            </svg>
+                            INSTRUCCIONES:
+                          </div><span style={{ fontWeight: 'bold' }}>{archivo.notas_instalacion}</span></>
                         ) : (
-                          <span style={{ color: '#aaa', fontStyle: 'italic' }}>No se han subido intrucciones...</span>
+                          <span style={{ color: s.textFaint, fontStyle: 'italic' }}>No se han subido intrucciones...</span>
                         )}
                         {isAdmin && (
-                          <button onClick={() => handleGuardarNota(archivo.id, archivo.notas_instalacion)} style={{ display: 'block', marginTop: '8px', backgroundColor: '#e11d48', color: 'white', border: 'none', padding: '3px 7px', fontSize: '9px', fontWeight: 'bold', borderRadius: '2px', cursor: 'pointer' }}>
+                          <button className="action-btn" onClick={() => handleGuardarNota(archivo.id, archivo.notas_instalacion)} style={{ display: 'block', marginTop: '8px', backgroundColor: '#D9241D', color: 'white', border: 'none', padding: '3px 7px', fontSize: '9px', fontWeight: 'bold', borderRadius: '2px', cursor: 'pointer' }}>
                             {archivo.notas_instalacion ? 'EDITAR MENSAJE' : '+ ESCRIBIR NOTA'}
                           </button>
                         )}
@@ -448,6 +699,7 @@ const Archivos = ({ session }) => {
                     <td style={{ ...styles.td, textAlign: 'center' }}>
                       {!isAdmin && archivo.estado === 'pendiente' ? (
                         <button
+                          className="action-btn"
                           onClick={() => handleCancelarSolicitud(archivo)}
                           style={{
                             backgroundColor: 'white',
@@ -463,7 +715,7 @@ const Archivos = ({ session }) => {
                           ❌ CANCELAR
                         </button>
                       ) : (
-                        <span style={{ color: '#ccc', fontSize: '10px' }}>---</span>
+                        <span style={{ color: s.textFaint, fontSize: '10px' }}>---</span>
                       )}
                     </td>
                   </tr>
@@ -475,7 +727,7 @@ const Archivos = ({ session }) => {
 
         {totalPaginas > 1 && (
           <div style={styles.pagination}>
-            <button onClick={() => { setPaginaActual(p => Math.max(1, p - 1)); window.scrollTo(0, 0); }} disabled={paginaActual === 1} style={{ ...styles.pageBtn(false), opacity: paginaActual === 1 ? 0.3 : 1 }}>← ANTERIOR</button>
+            <button className="page-btn" onClick={() => { setPaginaActual(p => Math.max(1, p - 1)); window.scrollTo(0, 0); }} disabled={paginaActual === 1} style={{ ...styles.pageBtn(false), opacity: paginaActual === 1 ? 0.3 : 1 }}>← ANTERIOR</button>
             {[...Array(totalPaginas).keys()].map(n => {
               const numeroPagina = n + 1;
               const rangoMaximo = 2; // Muestra un máximo de 2 páginas hacia la izquierda y derecha
@@ -488,6 +740,7 @@ const Archivos = ({ session }) => {
               ) {
                 return (
                   <button
+                    className="page-btn"
                     key={numeroPagina}
                     onClick={() => { setPaginaActual(numeroPagina); window.scrollTo(0, 0); }}
                     style={styles.pageBtn(paginaActual === numeroPagina)}
@@ -502,19 +755,19 @@ const Archivos = ({ session }) => {
                 numeroPagina === paginaActual - rangoMaximo - 1 ||
                 numeroPagina === paginaActual + rangoMaximo + 1
               ) {
-                return <span key={numeroPagina} style={{ color: '#666', padding: '0 5px', fontWeight: 'bold' }}>...</span>;
+                return <span key={numeroPagina} style={{ color: s.textMuted, padding: '0 5px', fontWeight: 'bold' }}>...</span>;
               }
 
               // Si está muy lejos, se salta el número para mantener limpia la botonera
               return null;
-            })}            <button onClick={() => { setPaginaActual(p => Math.min(totalPaginas, p + 1)); window.scrollTo(0, 0); }} disabled={paginaActual === totalPaginas} style={{ ...styles.pageBtn(false), opacity: paginaActual === totalPaginas ? 0.3 : 1 }}>SIGUIENTE →</button>
+            })}            <button className="page-btn" onClick={() => { setPaginaActual(p => Math.min(totalPaginas, p + 1)); window.scrollTo(0, 0); }} disabled={paginaActual === totalPaginas} style={{ ...styles.pageBtn(false), opacity: paginaActual === totalPaginas ? 0.3 : 1 }}>SIGUIENTE →</button>
           </div>
         )}
       </div>
 
       {archivoDetalle && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalContent}>
+        <div className="modal-overlay-anim" style={styles.modalOverlay}>
+          <div className="modal-content-anim" style={styles.modalContent}>
             <div style={styles.modalHeader}>
               <h3 style={{ margin: 0, fontSize: '13px' }}>ORDEN N° {archivoDetalle.numero_orden} - {archivoDetalle.patente}</h3>
               <button onClick={() => setArchivoDetalle(null)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>✕</button>
@@ -543,21 +796,21 @@ const Archivos = ({ session }) => {
                   ))}
                 </tbody>
               </table>
-              <div style={{ marginTop: '20px', backgroundColor: '#f9f9f9', padding: '15px', borderLeft: '4px solid #e11d48' }}>
-                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#e11d48' }}>COMMENTS:</div>
-                <p style={{ margin: 0, fontSize: '12px', fontStyle: 'italic' }}>{archivoDetalle.detalles_tecnicos?.comentarios || 'No comments provided.'}</p>
+              <div style={{ marginTop: '20px', backgroundColor: s.inputBg, padding: '15px', borderLeft: '4px solid #D9241D' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#D9241D' }}>COMMENTS:</div>
+                <p style={{ margin: 0, fontSize: '12px', fontStyle: 'italic', color: s.text }}>{archivoDetalle.detalles_tecnicos?.comentarios || 'No comments provided.'}</p>
               </div>
               {archivoDetalle.detalles_tecnicos?.codigosfalla && (
-                <div style={{ marginTop: '15px', backgroundColor: '#fff5f6', padding: '15px', borderLeft: '4px solid #e11d48' }}>
-                  <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#e11d48' }}>CÓDIGOS DE FALLA (DTC):</div>
-                  <p style={{ margin: '5px 0 0 0', fontSize: '12px', fontStyle: 'italic', color: '#333', whiteSpace: 'pre-wrap', fontWeight: '500' }}>
+                <div style={{ marginTop: '15px', backgroundColor: s.inputBg, padding: '15px', borderLeft: '4px solid #D9241D' }}>
+                  <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#D9241D' }}>CÓDIGOS DE FALLA (DTC):</div>
+                  <p style={{ margin: '5px 0 0 0', fontSize: '12px', fontStyle: 'italic', color: s.text, whiteSpace: 'pre-wrap', fontWeight: '500' }}>
                     {archivoDetalle.detalles_tecnicos.codigosfalla}
                   </p>
                 </div>
               )}
             </div>
             <div style={{ padding: '15px', textAlign: 'right' }}>
-              <button onClick={() => setArchivoDetalle(null)} style={{ backgroundColor: '#000', color: 'white', border: 'none', padding: '8px 25px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>CLOSE</button>
+              <button className="action-btn" onClick={() => setArchivoDetalle(null)} style={{ backgroundColor: '#000', color: 'white', border: 'none', padding: '8px 25px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>CLOSE</button>
             </div>
           </div>
         </div>

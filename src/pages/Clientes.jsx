@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
+import { useTheme, DARK_GRADIENT, getSurfaceTokens } from '../ThemeContext';
 
 const Clientes = ({ session }) => {
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('pendientes'); // 'pendientes' o 'activos'
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const s = getSurfaceTokens(isDark);
   
   // --- ESTADOS PARA BÚSQUEDA Y PAGINACIÓN ---
   const [searchTerm, setSearchTerm] = useState('');
@@ -80,35 +84,35 @@ const Clientes = ({ session }) => {
   const clientesPaginados = clientesFiltrados.slice(indicePrimer, indiceUltimo);
 
   const styles = {
-    container: { flex: 1, padding: '30px', backgroundColor: '#f3f4f6', minHeight: '100vh' },
+    container: { flex: 1, padding: '30px', background: isDark ? DARK_GRADIENT : '#f3f4f6', minHeight: '100vh' },
     header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' },
     tabContainer: { display: 'flex', gap: '10px', marginBottom: '20px' },
     tab: (active) => ({
-      padding: '10px 20px', cursor: 'pointer', backgroundColor: active ? '#000' : '#ddd',
-      color: active ? '#fff' : '#666', fontWeight: 'bold', fontSize: '12px', border: 'none',
+      padding: '10px 20px', cursor: 'pointer', backgroundColor: active ? '#D9241D' : s.cardBg,
+      color: active ? '#fff' : s.textMuted, fontWeight: 'bold', fontSize: '12px', border: `1px solid ${active ? '#D9241D' : s.border}`,
       borderRadius: '4px', textTransform: 'uppercase'
     }),
-    searchBar: { 
-      display: 'flex', alignItems: 'center', backgroundColor: 'white', 
-      padding: '8px 15px', borderRadius: '4px', border: '1px solid #ddd', width: '300px' 
+    searchBar: {
+      display: 'flex', alignItems: 'center', backgroundColor: s.inputBg,
+      padding: '8px 15px', borderRadius: '4px', border: `1px solid ${s.inputBorder}`, width: '300px'
     },
-    card: { backgroundColor: 'white', padding: '20px', borderRadius: '4px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' },
+    card: { backgroundColor: s.cardBg, padding: '20px', borderRadius: '4px', boxShadow: isDark ? 'none' : '0 2px 10px rgba(0,0,0,0.05)', border: `1px solid ${s.border}` },
     table: { width: '100%', borderCollapse: 'collapse' },
-    th: { textAlign: 'left', padding: '12px', borderBottom: '2px solid #eee', fontSize: '11px', color: '#888', textTransform: 'uppercase' },
-    td: { padding: '12px', borderBottom: '1px solid #eee', fontSize: '13px' },
+    th: { textAlign: 'left', padding: '12px', borderBottom: `2px solid ${s.rowBorder}`, fontSize: '11px', color: s.textMuted, textTransform: 'uppercase' },
+    td: { padding: '12px', borderBottom: `1px solid ${s.rowBorder}`, fontSize: '13px', color: s.text },
     btnApprove: { backgroundColor: '#22c55e', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px', marginRight: '5px' },
-    btnReject: { backgroundColor: '#e11d48', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' },
+    btnReject: { backgroundColor: '#D9241D', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' },
     pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '30px' },
-    pageBtn: (active) => ({ 
-      padding: '8px 16px', cursor: 'pointer', backgroundColor: active ? '#e11d48' : 'white', 
-      color: active ? 'white' : '#666', border: '1px solid #ddd', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' 
+    pageBtn: (active) => ({
+      padding: '8px 16px', cursor: 'pointer', backgroundColor: active ? '#D9241D' : s.cardBg,
+      color: active ? 'white' : s.textMuted, border: `1px solid ${s.border}`, borderRadius: '4px', fontSize: '12px', fontWeight: 'bold'
     })
   };
 
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '1px', fontSize: '20px' }}>Gestión de Clientes</h2>
+        <h2 style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '1px', fontSize: '20px', color: isDark ? '#fff' : '#000' }}>Gestión de Clientes</h2>
         
         {/* BUSCADOR */}
         <div style={styles.searchBar}>
@@ -116,7 +120,7 @@ const Clientes = ({ session }) => {
           <input 
             type="text" 
             placeholder="Buscar por nombre o empresa..." 
-            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '13px' }}
+            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '13px', backgroundColor: 'transparent', color: s.text }}
             value={searchTerm}
             onChange={(e) => { setSearchTerm(e.target.value); setPaginaActual(1); }}
           />
@@ -148,17 +152,17 @@ const Clientes = ({ session }) => {
               <tr key={c.id}>
                 <td style={styles.td}>
                   <div style={{ fontWeight: 'bold' }}>{c.full_name} {c.apellido}</div>
-                  <div style={{ fontSize: '11px', color: '#e11d48' }}>{c.company || 'PARTICULAR'}</div>
+                  <div style={{ fontSize: '11px', color: '#D9241D' }}>{c.company || 'PARTICULAR'}</div>
                 </td>
                 <td style={styles.td}>{c.email}</td>
                 <td style={styles.td}>
-                  <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
+                  <div style={{ fontSize: '16px', fontWeight: 'bold', color: s.text }}>
                     {c.credits || 0}
                   </div>
                 </td>
                 <td style={styles.td}>
                   <div>{c.country}</div>
-                  <div style={{ fontSize: '10px', color: '#999' }}>{c.rut}</div>
+                  <div style={{ fontSize: '10px', color: s.textFaint }}>{c.rut}</div>
                 </td>
                 <td style={styles.td}>
                   {tab === 'pendientes' ? (
@@ -174,8 +178,8 @@ const Clientes = ({ session }) => {
                 </td>
               </tr>
             ))}
-            {loading && <tr><td colSpan="5" style={{ textAlign: 'center', padding: '20px' }}>Cargando datos...</td></tr>}
-            {!loading && clientesPaginados.length === 0 && <tr><td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: '#999' }}>No se encontraron resultados.</td></tr>}
+            {loading && <tr><td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: s.textMuted }}>Cargando datos...</td></tr>}
+            {!loading && clientesPaginados.length === 0 && <tr><td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: s.textMuted }}>No se encontraron resultados.</td></tr>}
           </tbody>
         </table>
 

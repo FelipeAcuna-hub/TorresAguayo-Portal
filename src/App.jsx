@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
+import { ThemeProvider } from './ThemeContext';
 
-import Layout from './components/Layout'; 
+import Layout from './components/Layout';
 
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -50,7 +51,7 @@ function App() {
         justifyContent: 'center', 
         alignItems: 'center',
         color: 'white',
-        fontFamily: 'sans-serif'
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
       }}>
         CARGANDO PORTAL...
       </div>
@@ -59,10 +60,10 @@ function App() {
 
   // --- LÓGICA DE ADMINISTRADOR UNIFICADA (LOS CORREOS + ROL) ---
   const ADMIN_EMAILS = [
-    'scannerstorresaguayo@gmail.com',
+    'stockcarscl@gmail.com',
     'felipe.acuna2@mail.udp.cl',
     'stockcarscl@gmail.com',
-    'torresaguayocl@gmail.com'
+    'stockcarscl@gmail.com'
   ];
 
   const isAdmin = 
@@ -70,6 +71,7 @@ function App() {
     ADMIN_EMAILS.includes(session?.user?.email?.toLowerCase());
 
   return (
+    <ThemeProvider>
     <Router>
       <Routes>
         {/* RUTA PÚBLICA: Login */}
@@ -109,6 +111,7 @@ function App() {
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Router>
+    </ThemeProvider>
   );
 }
 
