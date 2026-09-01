@@ -350,7 +350,7 @@ const Layout = ({ session }) => {
           </div>
         </header>
 
-        <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <div style={puedeUsar ? undefined : { filter: 'grayscale(1) opacity(0.5)', pointerEvents: 'none', userSelect: 'none' }}>
             <Outlet />
           </div>
