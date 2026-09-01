@@ -55,7 +55,7 @@ const Login = () => {
 
   const styles = {
     container: {
-      height: '100vh', width: '100vw', display: 'flex', justifyContent: 'center',
+      width: '100vw', display: 'flex', justifyContent: 'center',
       alignItems: 'center', background: DARK_GRADIENT, fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
       margin: 0, padding: 0, position: 'absolute', top: 0, left: 0
     },
@@ -100,7 +100,8 @@ const Login = () => {
   };
 
   return (
-    <div style={styles.container}>
+    <div className="app-shell" style={styles.container}>
+      <style>{`.app-shell { height: 100vh; height: 100dvh; }`}</style>
       <div style={styles.loginBox}>
         
         {/* REEMPLAZAMOS EL TEXTO POR LA IMAGEN SVG */}

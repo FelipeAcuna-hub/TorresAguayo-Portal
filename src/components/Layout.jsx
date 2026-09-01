@@ -166,7 +166,7 @@ const Layout = ({ session }) => {
   }, [session]);
 
   const styles = {
-    container: { display: 'flex', height: '100vh', width: '100vw', background: isDark ? DARK_GRADIENT : '#f3f4f6', fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", margin: 0, padding: 0, position: 'fixed', top: 0, left: 0, overflow: 'hidden' },
+    container: { display: 'flex', width: '100vw', background: isDark ? DARK_GRADIENT : '#f3f4f6', fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", margin: 0, padding: 0, position: 'fixed', top: 0, left: 0, overflow: 'hidden' },
     sidebar: {
       width: '260px',
       background: 'linear-gradient(180deg, #000000 0%, #000000 50%, #150500 75%, #2e0803 100%)',
@@ -176,7 +176,6 @@ const Layout = ({ session }) => {
       shrink: 0,
       position: isMobile ? 'fixed' : 'relative',
       zIndex: 1000,
-      height: '100vh',
       transition: 'transform 0.3s ease-in-out',
       transform: isMobile && !isMenuOpen ? 'translateX(-100%)' : 'translateX(0)'
     },
@@ -193,7 +192,7 @@ const Layout = ({ session }) => {
     },
     navItem: { padding: '15px 24px', cursor: 'pointer', color: '#9ca3af', listStyle: 'none', textDecoration: 'none', display: 'flex', alignItems: 'center', fontSize: '13px', transition: 'background-color 0.2s ease, color 0.2s ease, padding-left 0.2s ease' },
     navItemActive: { padding: '15px 24px', color: 'white', background: 'linear-gradient(135deg, #D9241D 0%, #300804 100%)', listStyle: 'none', fontWeight: 'bold', display: 'flex', alignItems: 'center', fontSize: '13px', transition: 'background 0.2s ease' },
-    main: { flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%' },
+    main: { flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', minHeight: 0 },
     header: {
       background: isDark ? 'linear-gradient(90deg, #2a0d08 0%, #120401 55%, #000000 100%)' : 'white',
       padding: isMobile ? '10px 15px' : '15px 30px',
@@ -218,8 +217,10 @@ const Layout = ({ session }) => {
   };
 
   return (
-    <div style={styles.container}>
+    <div className="app-shell" style={styles.container}>
       <style>{`
+        .app-shell { height: 100vh; height: 100dvh; }
+        .app-sidebar { height: 100vh; height: 100dvh; }
         .nav-link-item { transition: transform 0.2s ease, background-color 0.2s ease; }
         .nav-link-item:hover { transform: translateX(4px); background-color: rgba(225,29,72,0.12); }
         .logout-btn { transition: background-color 0.2s ease, color 0.2s ease; }
@@ -227,7 +228,7 @@ const Layout = ({ session }) => {
         .theme-toggle-btn { transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease; }
         .theme-toggle-btn:hover { background-color: #222; color: white; border-color: #555; }
       `}</style>
-      <aside style={styles.sidebar}>
+      <aside className="app-sidebar" style={styles.sidebar}>
         {/* CORRECCIÓN: Se cambió el texto por el componente img cargando el logoScanner */}
         <Link to="/" style={styles.logoContainer} onClick={() => setIsMenuOpen(false)}>
           <img
@@ -378,8 +379,9 @@ const Layout = ({ session }) => {
 
       {isMobile && isMenuOpen && (
         <div
+          className="app-shell"
           onClick={() => setIsMenuOpen(false)}
-          style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 999 }}
+          style={{ position: 'fixed', top: 0, left: 0, width: '100vw', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 999 }}
         />
       )}
     </div>
