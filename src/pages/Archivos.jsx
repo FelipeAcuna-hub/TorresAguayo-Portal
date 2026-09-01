@@ -335,11 +335,11 @@ const Archivos = ({ session }) => {
 
   const styles = {
     mainContent: { flex: 1, display: 'flex', flexDirection: 'column', background: isDark ? DARK_GRADIENT : '#f3f4f6', width: '100%', minHeight: '100vh' },
-    tableCard: { backgroundColor: s.cardBg, margin: '10px', padding: isCompact ? '15px 10px' : '15px', borderRadius: '4px', boxShadow: isDark ? 'none' : '0 2px 10px rgba(0,0,0,0.05)', border: `1px solid ${s.border}` },
+    tableCard: { backgroundColor: s.cardBg, margin: '10px', padding: isCompact ? '10px 6px' : '15px', borderRadius: '4px', boxShadow: isDark ? 'none' : '0 2px 10px rgba(0,0,0,0.05)', border: `1px solid ${s.border}` },
     responsiveContainer: { width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch', marginBottom: '20px' },
-    table: { width: '100%', borderCollapse: 'collapse', marginTop: '20px', minWidth: isCompact ? '640px' : '800px' },
-    th: { textAlign: 'left', padding: isCompact ? '8px 6px' : '12px', borderBottom: `2px solid ${s.rowBorder}`, fontSize: isCompact ? '9px' : '10px', color: s.textMuted, textTransform: 'uppercase', fontWeight: 'bold' },
-    td: { padding: isCompact ? '8px 6px' : '12px', borderBottom: `1px solid ${s.rowBorder}`, fontSize: isCompact ? '11px' : '12px', color: s.text },
+    table: { width: '100%', borderCollapse: 'collapse', marginTop: '20px', minWidth: isCompact ? '560px' : '800px' },
+    th: { textAlign: 'left', padding: isCompact ? '6px 4px' : '12px', borderBottom: `2px solid ${s.rowBorder}`, fontSize: isCompact ? '8px' : '10px', color: s.textMuted, textTransform: 'uppercase', fontWeight: 'bold' },
+    td: { padding: isCompact ? '6px 4px' : '12px', borderBottom: `1px solid ${s.rowBorder}`, fontSize: isCompact ? '10px' : '12px', color: s.text },
     statusBadge: { padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', color: 'white', textTransform: 'uppercase', whiteSpace: 'nowrap' },
     serviceBadge: {
       display: 'inline-block',
@@ -353,7 +353,7 @@ const Archivos = ({ session }) => {
       whiteSpace: 'nowrap',
       overflow: 'hidden',
       textOverflow: 'ellipsis',
-      maxWidth: isCompact ? '140px' : '170px',
+      maxWidth: isCompact ? '105px' : '170px',
       verticalAlign: 'middle',
       letterSpacing: '0.2px'
     },
@@ -522,8 +522,8 @@ const Archivos = ({ session }) => {
                 const fechaObj = new Date(archivo.created_at);
                 return (
                   <tr className="file-row" style={{ animationDelay: `${Math.min(index, 8) * 0.04}s` }} key={archivo.id}>
-                    <td style={{ ...styles.td, minWidth: isCompact ? '92px' : '110px' }}>
-                      <div style={{ display: 'inline-block', fontWeight: 'bold', color: '#fff', backgroundColor: '#D9241D', fontSize: isCompact ? '13px' : '14px', padding: isCompact ? '2px 7px' : '3px 9px', borderRadius: '6px', marginBottom: isCompact ? '5px' : '6px' }}>#{archivo.numero_orden || '---'}</div>
+                    <td style={{ ...styles.td, minWidth: isCompact ? '75px' : '110px' }}>
+                      <div style={{ display: 'inline-block', fontWeight: 'bold', color: '#fff', backgroundColor: '#D9241D', fontSize: isCompact ? '11px' : '14px', padding: isCompact ? '2px 5px' : '3px 9px', borderRadius: '6px', marginBottom: isCompact ? '4px' : '6px' }}>#{archivo.numero_orden || '---'}</div>
                       <div style={{ whiteSpace: 'nowrap' }}>{fechaObj.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
                       {/* NUEVO: Se renderiza la hora exacta abajo de la fecha en la celda */}
                       <div style={styles.timeText}>
@@ -531,7 +531,7 @@ const Archivos = ({ session }) => {
                       </div>
                     </td>
                     {isAdmin && (
-                      <td style={{ ...styles.td, maxWidth: isCompact ? '150px' : '220px' }}>
+                      <td style={{ ...styles.td, maxWidth: isCompact ? '115px' : '220px' }}>
                         <div style={{ fontWeight: 'bold', color: '#D9241D', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={archivo.profiles?.company}>{archivo.profiles?.company || 'PARTICULAR'}</div>
                         <div style={{ fontSize: isCompact ? '10px' : '11px', color: s.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={archivo.profiles?.email}>{archivo.profiles?.email || '---'}</div>
                       </td>
@@ -568,7 +568,7 @@ const Archivos = ({ session }) => {
 
                     {/* --- COLUMNA ACCIÓN (USUARIO) --- */}
                     <td style={styles.td}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: isCompact ? '4px' : '5px', minWidth: isCompact ? '92px' : '110px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: isCompact ? '3px' : '5px', minWidth: isCompact ? '75px' : '110px' }}>
                         {archivo.file_url_id && renderDownloadBtn(archivo.file_url_id, (
                           <>
                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-journal-text" viewBox="0 0 16 16" style={{ flexShrink: 0 }}>
@@ -604,7 +604,7 @@ const Archivos = ({ session }) => {
 
                     {/* --- COLUMNA ACCIÓN ADMI (ADMINISTRADOR) --- */}
                     <td style={styles.td}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: isCompact ? '4px' : '5px', minWidth: isCompact ? '92px' : '110px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: isCompact ? '3px' : '5px', minWidth: isCompact ? '75px' : '110px' }}>
                         {archivo.mod_file_url ? (
                           renderDownloadBtn(archivo.mod_file_url, (
                             <>
@@ -675,12 +675,12 @@ const Archivos = ({ session }) => {
                       </div>
                     </td>
 
-                    <td style={{ ...styles.td, minWidth: isCompact ? '140px' : '180px' }}>
+                    <td style={{ ...styles.td, minWidth: isCompact ? '105px' : '180px' }}>
                       <div style={{
-                        fontSize: isCompact ? '10px' : '11px', padding: isCompact ? '8px' : '10px',
+                        fontSize: isCompact ? '9px' : '11px', padding: isCompact ? '6px' : '10px',
                         backgroundColor: archivo.notas_instalacion ? '#fffbeb' : s.inputBg,
                         border: '1px solid ' + (archivo.notas_instalacion ? '#fef3c7' : s.border),
-                        borderRadius: '4px', color: archivo.notas_instalacion ? '#333' : s.text, minHeight: isCompact ? '44px' : '50px'
+                        borderRadius: '4px', color: archivo.notas_instalacion ? '#333' : s.text, minHeight: isCompact ? '36px' : '50px'
                       }}>
                         {archivo.notas_instalacion ? (
                           <><div style={{ display: 'flex', alignItems: 'center', fontWeight: 'bold', color: '#92400e', marginBottom: '4px', fontSize: '9px' }}>
@@ -709,8 +709,8 @@ const Archivos = ({ session }) => {
                             backgroundColor: 'white',
                             color: '#e11d48',
                             border: '1px solid #e11d48',
-                            padding: isCompact ? '5px 8px' : '6px 10px',
-                            fontSize: isCompact ? '9px' : '10px',
+                            padding: isCompact ? '4px 6px' : '6px 10px',
+                            fontSize: isCompact ? '8px' : '10px',
                             fontWeight: 'bold',
                             cursor: 'pointer',
                             borderRadius: '4px',
