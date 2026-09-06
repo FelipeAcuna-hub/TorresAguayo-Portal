@@ -19,7 +19,7 @@ const Tickets = ({ session }) => {
   const [asunto, setAsunto] = useState('');
   const [mensajeInicial, setMensajeInicial] = useState('');
 
-  const ADMIN_EMAILS = ['stockcarscl@gmail.com', 'felipe.acuna2@mail.udp.cl', 'stockcarscl@gmail.com', 'stockcarscl@gmail.com'];
+  const ADMIN_EMAILS = ['stockcarscl@gmail.com', 'felipe.acuna2@mail.udp.cl'];
   const isAdmin = ADMIN_EMAILS.includes(session?.user?.email?.toLowerCase());
 
   useEffect(() => { fetchTickets(); }, [session]);

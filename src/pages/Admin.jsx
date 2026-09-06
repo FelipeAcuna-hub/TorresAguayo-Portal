@@ -41,9 +41,7 @@ const Admin = ({ session }) => {
   // --- CONFIGURACIÓN DE LOS ADMINISTRADORES ---
   const ADMIN_EMAILS = [
     'stockcarscl@gmail.com',
-    'felipe.acuna2@mail.udp.cl',
-    'stockcarscl@gmail.com',
-    'stockcarscl@gmail.com'
+    'felipe.acuna2@mail.udp.cl'
   ];
 
   const isAdmin =
