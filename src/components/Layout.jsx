@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { useTheme, DARK_GRADIENT } from '../ThemeContext';
+import { useTheme, DARK_GRADIENT, playTone } from '../ThemeContext';
 // Corregido: Importación sin espacios y con la ruta exacta desde src/components/
 import logoScanner from '../stockcarsconregister.png';
 
@@ -58,6 +58,9 @@ const Layout = ({ session }) => {
   // para usar un layout más compacto sin achicar la pantalla cómoda (Mac, Windows al 100%).
   const isCompact = window.innerWidth >= 768 && window.innerWidth <= 1600;
   const puedeUsar = isAdmin || isApproved;
+
+  // Mismo tick de hover que usa el simulador de precio de archivo
+  const playHoverTick = () => playTone(900, 0.05, 0.06);
 
   useEffect(() => {
     if (!session?.user?.id) return;
@@ -246,7 +249,7 @@ const Layout = ({ session }) => {
 
         <ul className="nav-list" style={{ padding: 0, margin: 0, listStyle: 'none', flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <Link to="/" style={{ textDecoration: 'none' }} onClick={() => setIsMenuOpen(false)}>
-            <li className="nav-link-item" style={location.pathname === "/" ? styles.navItemActive : styles.navItem}>
+            <li className="nav-link-item" onMouseEnter={playHoverTick} style={location.pathname === "/" ? styles.navItemActive : styles.navItem}>
               <span style={{ marginRight: '12px' }}><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-house-fill" viewBox="0 0 16 16">
                 <path d="M8.707 1.5a1 1 0 0 0-1.414 0L.646 8.146a.5.5 0 0 0 .708.708L8 2.207l6.646 6.647a.5.5 0 0 0 .708-.708L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293z" />
                 <path d="m8 3.293 6 6V13.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 13.5V9.293z" />
@@ -254,27 +257,27 @@ const Layout = ({ session }) => {
             </li>
           </Link>
           <Link to="/perfil" style={{ textDecoration: 'none' }} onClick={() => setIsMenuOpen(false)}>
-            <li className="nav-link-item" style={location.pathname === "/perfil" ? styles.navItemActive : styles.navItem}>
+            <li className="nav-link-item" onMouseEnter={playHoverTick} style={location.pathname === "/perfil" ? styles.navItemActive : styles.navItem}>
               <span style={{ marginRight: '12px' }}><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person-fill" viewBox="0 0 16 16">
                 <path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6" />
               </svg></span> PERFIL
             </li>
           </Link>
           <Link to="/historial" style={{ textDecoration: 'none' }} onClick={() => setIsMenuOpen(false)}>
-            <li className="nav-link-item" style={location.pathname === "/historial" ? styles.navItemActive : styles.navItem}>
+            <li className="nav-link-item" onMouseEnter={playHoverTick} style={location.pathname === "/historial" ? styles.navItemActive : styles.navItem}>
               <span style={{ marginRight: '12px' }}><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-credit-card-fill" viewBox="0 0 16 16">
                 <path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v1H0zm0 3v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7zm3 2h1a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-1a1 1 0 0 1 1-1" />
               </svg></span> CRÉDITOS</li>
           </Link>
           <Link to="/tickets" style={{ textDecoration: 'none' }} onClick={() => setIsMenuOpen(false)}>
-            <li className="nav-link-item" style={location.pathname === "/tickets" ? styles.navItemActive : styles.navItem}>
+            <li className="nav-link-item" onMouseEnter={playHoverTick} style={location.pathname === "/tickets" ? styles.navItemActive : styles.navItem}>
               <span style={{ marginRight: '12px' }}><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-ticket-perforated-fill" viewBox="0 0 16 16">
                 <path d="M0 4.5A1.5 1.5 0 0 1 1.5 3h13A1.5 1.5 0 0 1 16 4.5V6a.5.5 0 0 1-.5.5 1.5 1.5 0 0 0 0 3 .5.5 0 0 1 .5.5v1.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 11.5V10a.5.5 0 0 1 .5-.5 1.5 1.5 0 1 0 0-3A.5.5 0 0 1 0 6zm4-1v1h1v-1zm1 3v-1H4v1zm7 0v-1h-1v1zm-1-2h1v-1h-1zm-6 3H4v1h1zm7 1v-1h-1v1zm-7 1H4v1h1zm7 1v-1h-1v1zm-8 1v1h1v-1zm7 1h1v-1h-1z" />
               </svg></span> TICKETS
             </li>
           </Link>
           <Link to="/archivos" style={{ textDecoration: 'none' }} onClick={() => setIsMenuOpen(false)}>
-            <li className="nav-link-item" style={location.pathname === "/archivos" ? styles.navItemActive : styles.navItem}>
+            <li className="nav-link-item" onMouseEnter={playHoverTick} style={location.pathname === "/archivos" ? styles.navItemActive : styles.navItem}>
               <span style={{ marginRight: '12px' }}><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-arrow-down-fill" viewBox="0 0 16 16">
                 <path d="M12 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2M8 5a.5.5 0 0 1 .5.5v3.793l1.146-1.147a.5.5 0 0 1 .708.708l-2 2a.5.5 0 0 1-.708 0l-2-2a.5.5 0 1 1 .708-.708L7.5 9.293V5.5A.5.5 0 0 1 8 5" />
               </svg></span> ARCHIVOS
@@ -283,7 +286,7 @@ const Layout = ({ session }) => {
 
           {isAdmin && (
             <Link to="/clientes" style={{ textDecoration: 'none' }} onClick={() => setIsMenuOpen(false)}>
-              <li className="nav-link-item" style={location.pathname === "/clientes" ? styles.navItemActive : styles.navItem}>
+              <li className="nav-link-item" onMouseEnter={playHoverTick} style={location.pathname === "/clientes" ? styles.navItemActive : styles.navItem}>
                 <span style={{ marginRight: '12px' }}><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person-arms-up" viewBox="0 0 16 16">
                   <path d="M8 3a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3" />
                   <path d="m5.93 6.704-.846 8.451a.768.768 0 0 0 1.523.203l.81-4.865a.59.59 0 0 1 1.165 0l.81 4.865a.768.768 0 0 0 1.523-.203l-.845-8.451A1.5 1.5 0 0 1 10.5 5.5L13 2.284a.796.796 0 0 0-1.239-.998L9.634 3.84a.7.7 0 0 1-.33.235c-.23.074-.665.176-1.304.176-.64 0-1.074-.102-1.305-.176a.7.7 0 0 1-.329-.235L4.239 1.286a.796.796 0 0 0-1.24.998l2.5 3.216c.317.316.475.758.43 1.204Z" />
@@ -293,7 +296,7 @@ const Layout = ({ session }) => {
           )}
 
           <Link to="/simulador" style={{ textDecoration: 'none', marginTop: isCompact ? '12px' : '20px', display: 'block' }} onClick={() => setIsMenuOpen(false)}>
-            <li className="nav-link-item" style={{ ...styles.navItem, fontSize: '11px', color: '#666' }}>
+            <li className="nav-link-item" onMouseEnter={playHoverTick} style={{ ...styles.navItem, fontSize: '11px', color: '#666' }}>
               <span style={{ marginRight: '12px' }}><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-calculator-fill" viewBox="0 0 16 16">
                 <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2zm2 .5v2a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 0-.5-.5h-7a.5.5 0 0 0-.5.5m0 4v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5M4.5 9a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5zM4 12.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5M7.5 6a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5zM7 9.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5m.5 2.5a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5zM10 6.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5m.5 2.5a.5.5 0 0 0-.5.5v4a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 0-.5-.5z" />
               </svg></span> SIMULA EL PRECIO DE UN<br />ARCHIVO
@@ -302,7 +305,7 @@ const Layout = ({ session }) => {
 
           {isAdmin && (
             <Link to="/admin" style={{ textDecoration: 'none', marginTop: isCompact ? '8px' : '10px', display: 'block' }} onClick={() => setIsMenuOpen(false)}>
-              <li className="nav-link-item" style={location.pathname === "/admin" ? styles.navItemActive : styles.navItem}>
+              <li className="nav-link-item" onMouseEnter={playHoverTick} style={location.pathname === "/admin" ? styles.navItemActive : styles.navItem}>
                 <span style={{ marginRight: '12px' }}><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person-check" viewBox="0 0 16 16">
                   <path d="M12.5 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7m1.679-4.493-1.335 2.226a.75.75 0 0 1-1.174.144l-.774-.773a.5.5 0 0 1 .708-.708l.547.548 1.17-1.951a.5.5 0 1 1 .858.514M11 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0M8 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4" />
                   <path d="M8.256 14a4.5 4.5 0 0 1-.229-1.004H3c.001-.246.154-.986.832-1.664C4.484 10.68 5.711 10 8 10q.39 0 .74.025c.226-.341.496-.65.804-.918Q8.844 9.002 8 9c-5 0-6 3-6 4s1 1 1 1z" />
