@@ -4,40 +4,67 @@ import { useTheme, DARK_GRADIENT, getSurfaceTokens, playTone } from '../ThemeCon
 import logoStockcarsBlanco from '../logoSTOCKCARSBLANCO.png';
 import logoStockcarsColor from '../logo_stockcars.png';
 
-// --- GRÁFICO DE DYNO (demostrativo): curva típica escalada a los picos HP/Nm cargados ---
-const DYNO_RPM = [1000, 1700, 2400, 3100, 3800, 4500, 5200, 5900, 6600];
-const DYNO_SHAPE_POWER = [0.20, 0.47, 0.68, 0.83, 0.93, 1.00, 0.97, 0.91, 0.84];
-const DYNO_SHAPE_TORQUE = [0.38, 0.74, 0.93, 1.00, 0.98, 0.93, 0.87, 0.81, 0.75];
+// --- GRÁFICO DE DYNO: curva de torque/potencia físicamente coherente ---
+// Relación real entre potencia y torque: P [HP] = T [Nm] × rpm / 7121.
+// Por eso, dados solo el HP y el Nm pico, se puede reconstruir en qué rpm
+// ocurre cada pico y el resto de la curva sin inventar números sueltos.
+const DYNO_K_HP = 7121;
 
-const construirDynoChart = (hpStock, hpStage1, nmStock, nmStage1) => {
-  const W = 420, H = 190;
-  const padL = 36, padR = 36, padT = 10, padB = 10;
-  const plotW = W - padL - padR;
-  const plotH = H - padT - padB;
-
-  const maxPower = Math.max(hpStock, hpStage1) * 1.18;
-  const maxTorque = Math.max(nmStock, nmStage1) * 1.18;
-
-  const xAt = (i) => padL + (plotW * i) / (DYNO_RPM.length - 1);
-  const yPower = (v) => padT + plotH - (v / maxPower) * plotH;
-  const yTorque = (v) => padT + plotH - (v / maxTorque) * plotH;
-
-  const buildPts = (peak, shape, yFn) => shape.map((f, i) => ({ x: xAt(i), y: yFn(peak * f), v: peak * f }));
-
-  return {
-    W, H, padL, padR, padT, plotW, plotH, maxPower, maxTorque,
-    origPower: buildPts(hpStock, DYNO_SHAPE_POWER, yPower),
-    modPower: buildPts(hpStage1, DYNO_SHAPE_POWER, yPower),
-    origTorque: buildPts(nmStock, DYNO_SHAPE_TORQUE, yTorque),
-    modTorque: buildPts(nmStage1, DYNO_SHAPE_TORQUE, yTorque)
+const dynoHermite = (x0, y0, m0, x1, y1, m1) => {
+  const h = x1 - x0;
+  return (x) => {
+    const t = (x - x0) / h, t2 = t * t, t3 = t2 * t;
+    return (2 * t3 - 3 * t2 + 1) * y0 + (t3 - 2 * t2 + t) * h * m0
+      + (-2 * t3 + 3 * t2) * y1 + (t3 - t2) * h * m1;
   };
 };
 
-const dynoPts = (pts) => pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+const dynoRedondear50 = (v) => Math.round(v / 50) * 50;
 
-// Índice del punto más alto de cada curva (el mismo para original y modificado, ya que comparten forma)
-const DYNO_PEAK_POWER_IDX = DYNO_SHAPE_POWER.indexOf(Math.max(...DYNO_SHAPE_POWER));
-const DYNO_PEAK_TORQUE_IDX = DYNO_SHAPE_TORQUE.indexOf(Math.max(...DYNO_SHAPE_TORQUE));
+// A partir del torque y la potencia pico, deriva una geometría de rpm
+// (spool, meseta de torque, rpm de potencia máxima) siempre coherente,
+// y arma la curva completa en ambos tramos.
+const generarCurvaDyno = (torqueMax, potenciaMax) => {
+  const k = DYNO_K_HP;
+  const rpmPotencia = Math.max(2000, dynoRedondear50((potenciaMax * k / torqueMax) * 1.12));
+  const rpmTorqueIni = dynoRedondear50(rpmPotencia * 0.38);
+  const rpmTorqueFin = dynoRedondear50(rpmPotencia * 0.56);
+  const rpmMin = Math.max(700, dynoRedondear50(rpmPotencia * 0.22));
+  const rpmMax = dynoRedondear50(rpmPotencia * 1.4);
+  const torqueBajo = 0.55, potenciaFinal = 0.88;
+
+  const tBajo = torqueMax * torqueBajo;
+  const subida = dynoHermite(rpmMin, tBajo, 1.5 * (torqueMax - tBajo) / (rpmTorqueIni - rpmMin), rpmTorqueIni, torqueMax, 0);
+
+  const potenciaFinMeseta = torqueMax * rpmTorqueFin / k;
+  const m0 = Math.min(torqueMax / k, 3 * (potenciaMax - potenciaFinMeseta) / (rpmPotencia - rpmTorqueFin));
+  const hastaPeak = dynoHermite(rpmTorqueFin, potenciaFinMeseta, m0, rpmPotencia, potenciaMax, 0);
+
+  const pFinal = potenciaMax * potenciaFinal;
+  const bajada = dynoHermite(rpmPotencia, potenciaMax, 0, rpmMax, pFinal, 2 * (pFinal - potenciaMax) / (rpmMax - rpmPotencia));
+
+  const evaluar = (r) => {
+    let t, p;
+    if (r <= rpmTorqueIni) { t = subida(r); p = t * r / k; }
+    else if (r <= rpmTorqueFin) { t = torqueMax; p = t * r / k; }
+    else if (r <= rpmPotencia) { p = hastaPeak(r); t = p * k / r; }
+    else { p = bajada(r); t = p * k / r; }
+    return { rpm: r, torque: Math.max(0, t), potencia: Math.max(0, p) };
+  };
+
+  const paso = dynoRedondear50((rpmMax - rpmMin) / 8) || 50;
+  const puntos = [];
+  for (let r = rpmMin; r < rpmMax; r += paso) puntos.push(evaluar(r));
+  puntos.push(evaluar(rpmMax));
+
+  return {
+    puntos, rpmMin, rpmMax,
+    picoPotencia: { rpm: rpmPotencia, valor: potenciaMax },
+    picoTorque: { rpm: Math.round((rpmTorqueIni + rpmTorqueFin) / 2), valor: torqueMax }
+  };
+};
+
+const dynoPtsStr = (pts) => pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
 
 const Archivos = ({ session }) => {
   const [archivos, setArchivos] = useState([]);
@@ -993,30 +1020,57 @@ const Archivos = ({ session }) => {
                             const hpStage1 = Math.round(datosReales?.hpStage1 ?? 150 * 1.25);
                             const nmStock = Math.round(datosReales?.nmStock ?? 280);
                             const nmStage1 = Math.round(datosReales?.nmStage1 ?? 280 * 1.30);
-                            const dyno = construirDynoChart(hpStock, hpStage1, nmStock, nmStage1);
+                            // Curvas físicamente coherentes (torque/potencia ligados por P = T×rpm/7121),
+                            // una para el motor original y otra para el motor con la etapa cargada.
+                            const curvaOrig = generarCurvaDyno(nmStock, hpStock);
+                            const curvaMod = generarCurvaDyno(nmStage1, hpStage1);
+                            const rpmEjeMin = Math.min(curvaOrig.rpmMin, curvaMod.rpmMin);
+                            const rpmEjeMax = Math.max(curvaOrig.rpmMax, curvaMod.rpmMax);
 
-                            // Dibuja los puntos de una curva; el punto más alto queda resaltado
-                            // y muestra el valor máximo (HP o Nm) al pasar el cursor.
-                            // Los puntos se dibujan primero (en orden normal); los recuadros de los
-                            // picos se dibujan todos al final, para que ninguna curva los tape.
-                            const renderDynoDots = (pts, peakIdx, color, prefix) => pts.map((p, i) => (
+                            const dW = 420, dH = 190, dPadL = 36, dPadR = 36, dPadT = 10, dPadB = 24;
+                            const dPlotW = dW - dPadL - dPadR, dPlotH = dH - dPadT - dPadB;
+                            const maxPower = Math.max(hpStock, hpStage1) * 1.18;
+                            const maxTorque = Math.max(nmStock, nmStage1) * 1.18;
+                            const xAtRpm = (rpm) => dPadL + dPlotW * (rpm - rpmEjeMin) / (rpmEjeMax - rpmEjeMin);
+                            const yPower = (v) => dPadT + dPlotH - (v / maxPower) * dPlotH;
+                            const yTorque = (v) => dPadT + dPlotH - (v / maxTorque) * dPlotH;
+                            const curvaAPts = (curva, campo, yFn) => curva.puntos.map(p => ({ x: xAtRpm(p.rpm), y: yFn(p[campo]) }));
+                            const puntoPico = (pico, yFn) => ({ x: xAtRpm(pico.rpm), y: yFn(pico.valor), v: pico.valor });
+
+                            const dyno = {
+                              W: dW, H: dH, padL: dPadL, padR: dPadR, padT: dPadT, padB: dPadB, plotW: dPlotW, plotH: dPlotH,
+                              maxPower, maxTorque, rpmEjeMin, rpmEjeMax,
+                              origPower: curvaAPts(curvaOrig, 'potencia', yPower),
+                              modPower: curvaAPts(curvaMod, 'potencia', yPower),
+                              origTorque: curvaAPts(curvaOrig, 'torque', yTorque),
+                              modTorque: curvaAPts(curvaMod, 'torque', yTorque),
+                              peakOrigPower: puntoPico(curvaOrig.picoPotencia, yPower),
+                              peakModPower: puntoPico(curvaMod.picoPotencia, yPower),
+                              peakOrigTorque: puntoPico(curvaOrig.picoTorque, yTorque),
+                              peakModTorque: puntoPico(curvaMod.picoTorque, yTorque)
+                            };
+
+                            // Puntos normales de cada curva (el pico real se dibuja aparte, exacto en su rpm)
+                            const renderDynoDots = (pts, color, prefix) => pts.map((p, i) => (
                               <circle
                                 key={`${prefix}${i}`}
-                                className={i === peakIdx ? `dyno-dot dyno-peak-dot dyno-peak-dot-${prefix}` : 'dyno-dot'}
-                                style={{ animationDelay: `${0.25 + (i / 8) * 0.9}s` }}
-                                cx={p.x} cy={p.y} r={i === peakIdx ? '3.6' : '2.6'}
-                                fill={i === peakIdx ? color : '#000'} stroke={i === peakIdx ? '#fff' : color}
-                                strokeWidth={i === peakIdx ? '1.2' : '1.3'}
+                                className="dyno-dot"
+                                style={{ animationDelay: `${0.25 + (i / Math.max(1, pts.length - 1)) * 0.9}s` }}
+                                cx={p.x} cy={p.y} r="2.6" fill="#000" stroke={color} strokeWidth="1.3"
                               />
                             ));
 
-                            const renderDynoTooltip = (pts, peakIdx, color, unidad, prefix, etiqueta) => {
-                              const p = pts[peakIdx];
-                              const tipY = Math.max(p.y - 26, 16);
+                            // Marcador grande del pico real (en su rpm exacta, exista o no como punto muestreado)
+                            const renderDynoPeakDot = (peak, color, prefix) => (
+                              <circle key={prefix} className={`dyno-dot dyno-peak-dot dyno-peak-dot-${prefix}`} style={{ animationDelay: '0.95s' }} cx={peak.x} cy={peak.y} r="3.6" fill={color} stroke="#fff" strokeWidth="1.2" />
+                            );
+
+                            const renderDynoTooltip = (peak, color, unidad, prefix, etiqueta) => {
+                              const tipY = Math.max(peak.y - 26, 16);
                               return (
-                                <g key={prefix} className={`dyno-peak-tip dyno-peak-tip-${prefix}`} transform={`translate(${p.x}, ${tipY})`}>
+                                <g key={prefix} className={`dyno-peak-tip dyno-peak-tip-${prefix}`} transform={`translate(${peak.x}, ${tipY})`}>
                                   <rect x="-24" y="-17" width="48" height="24" rx="4" fill="#0a0a0a" stroke={color} strokeWidth="1" />
-                                  <text x="0" y="-6" textAnchor="middle" fontSize="8.5" fontWeight="800" fill="#fff">{Math.round(p.v)} {unidad}</text>
+                                  <text x="0" y="-6" textAnchor="middle" fontSize="8.5" fontWeight="800" fill="#fff">{Math.round(peak.v)} {unidad}</text>
                                   <text x="0" y="3" textAnchor="middle" fontSize="6.5" fontWeight="700" letterSpacing="0.4" fill={color}>{etiqueta}</text>
                                 </g>
                               );
@@ -1024,7 +1078,7 @@ const Archivos = ({ session }) => {
 
                             const metrics = [
                               { label: 'POWER HP', unidad: 'HP', stock: hpStock, stage1: hpStage1 },
-                              { label: 'TORQUE NM', unidad: 'Nm', stock: nmStock, stage1: nmStage1 }
+                              { label: 'TORQUE NM', unidad: 'NM', stock: nmStock, stage1: nmStage1 }
                             ];
 
                             // Eje "lindo" (0 / 50 / 100 ...) para el mini gráfico de barras de cada métrica
@@ -1166,22 +1220,31 @@ const Archivos = ({ session }) => {
                                     </text>
                                     {/* curvas + marcadores, revelados con un barrido de izquierda a derecha */}
                                     <g className="dyno-reveal">
-                                      <polyline points={dynoPts(dyno.origPower)} fill="none" stroke="#1E3A8A" strokeWidth="2" />
-                                      <polyline points={dynoPts(dyno.modPower)} fill="none" stroke="#D9241D" strokeWidth="2" />
-                                      <polyline points={dynoPts(dyno.origTorque)} fill="none" stroke="#1E3A8A" strokeWidth="2" strokeDasharray="5,4" />
-                                      <polyline points={dynoPts(dyno.modTorque)} fill="none" stroke="#D9241D" strokeWidth="2" strokeDasharray="5,4" />
-                                      {renderDynoDots(dyno.origPower, DYNO_PEAK_POWER_IDX, "#1E3A8A", "op")}
-                                      {renderDynoDots(dyno.modPower, DYNO_PEAK_POWER_IDX, "#D9241D", "mp")}
-                                      {renderDynoDots(dyno.origTorque, DYNO_PEAK_TORQUE_IDX, "#1E3A8A", "ot")}
-                                      {renderDynoDots(dyno.modTorque, DYNO_PEAK_TORQUE_IDX, "#D9241D", "mt")}
+                                      <polyline points={dynoPtsStr(dyno.origPower)} fill="none" stroke="#1E3A8A" strokeWidth="2" />
+                                      <polyline points={dynoPtsStr(dyno.modPower)} fill="none" stroke="#D9241D" strokeWidth="2" />
+                                      <polyline points={dynoPtsStr(dyno.origTorque)} fill="none" stroke="#1E3A8A" strokeWidth="2" strokeDasharray="5,4" />
+                                      <polyline points={dynoPtsStr(dyno.modTorque)} fill="none" stroke="#D9241D" strokeWidth="2" strokeDasharray="5,4" />
+                                      {renderDynoDots(dyno.origPower, "#1E3A8A", "op")}
+                                      {renderDynoDots(dyno.modPower, "#D9241D", "mp")}
+                                      {renderDynoDots(dyno.origTorque, "#1E3A8A", "ot")}
+                                      {renderDynoDots(dyno.modTorque, "#D9241D", "mt")}
+                                      {renderDynoPeakDot(dyno.peakOrigPower, "#1E3A8A", "op")}
+                                      {renderDynoPeakDot(dyno.peakModPower, "#D9241D", "mp")}
+                                      {renderDynoPeakDot(dyno.peakOrigTorque, "#1E3A8A", "ot")}
+                                      {renderDynoPeakDot(dyno.peakModTorque, "#D9241D", "mt")}
                                     </g>
                                     {/* eje X */}
+                                    {[0, 0.25, 0.5, 0.75, 1].map(f => (
+                                      <text key={f} x={dyno.padL + dyno.plotW * f} y={dyno.padT + dyno.plotH + 9} fill={aTokens.textFaint} fontSize="6.5" textAnchor="middle">
+                                        {Math.round(dyno.rpmEjeMin + (dyno.rpmEjeMax - dyno.rpmEjeMin) * f)}
+                                      </text>
+                                    ))}
                                     <text x={dyno.W / 2} y={dyno.H - 1} fill={aTokens.textMuted} fontSize="8" fontWeight="700" textAnchor="middle">RPM</text>
                                     {/* recuadros de los picos: van al final para quedar siempre por encima de todo */}
-                                    {renderDynoTooltip(dyno.origPower, DYNO_PEAK_POWER_IDX, "#1E3A8A", "HP", "op", "STOCK")}
-                                    {renderDynoTooltip(dyno.modPower, DYNO_PEAK_POWER_IDX, "#D9241D", "HP", "mp", stageTxt)}
-                                    {renderDynoTooltip(dyno.origTorque, DYNO_PEAK_TORQUE_IDX, "#1E3A8A", "Nm", "ot", "STOCK")}
-                                    {renderDynoTooltip(dyno.modTorque, DYNO_PEAK_TORQUE_IDX, "#D9241D", "Nm", "mt", stageTxt)}
+                                    {renderDynoTooltip(dyno.peakOrigPower, "#1E3A8A", "HP", "op", "STOCK")}
+                                    {renderDynoTooltip(dyno.peakModPower, "#D9241D", "HP", "mp", stageTxt)}
+                                    {renderDynoTooltip(dyno.peakOrigTorque, "#1E3A8A", "Nm", "ot", "STOCK")}
+                                    {renderDynoTooltip(dyno.peakModTorque, "#D9241D", "Nm", "mt", stageTxt)}
                                   </svg>
                                   <div style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'center', marginTop: '8px', fontSize: '13px', color: aTokens.textMuted }}>
                                     <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><span style={{ width: '16px', height: '3px', backgroundColor: '#1E3A8A', display: 'inline-block' }} />Potencia original</span>
