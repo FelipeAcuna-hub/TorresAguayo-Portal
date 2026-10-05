@@ -10,7 +10,8 @@ const Historial = ({ session }) => {
   const isDark = theme === 'dark';
   const s = getSurfaceTokens(isDark);
 
-  // --- ESTADOS DE PAGINACIÓN ---
+  // --- ESTADOS DE BÚSQUEDA Y PAGINACIÓN ---
+  const [searchTerm, setSearchTerm] = useState('');
   const [pagMovimientos, setPagMovimientos] = useState(1);
   const [pagCanjes, setPagCanjes] = useState(1);
   const itemsPorPagina = 4;
@@ -36,7 +37,7 @@ const Historial = ({ session }) => {
       // 1. CARGAR RECARGAS Y RETIROS (Tabla: movimientos)
       let queryMovs = supabase
         .from('movimientos')
-        .select('*, profiles:user_id(company, email)')
+        .select('*, profiles:user_id(company, email, full_name)')
         .order('created_at', { ascending: false });
 
       if (!isAdmin) {
@@ -49,7 +50,7 @@ const Historial = ({ session }) => {
       // 2. CARGAR CANJES (Tabla: historial_movimientos)
       let queryCanjes = supabase
         .from('historial_movimientos')
-        .select('*, profiles:perfil_id(company, email)')
+        .select('*, profiles:perfil_id(company, email, full_name)')
         .order('fecha', { ascending: false });
 
       if (!isAdmin) {
@@ -76,17 +77,37 @@ const Historial = ({ session }) => {
     }
   }, [session?.user?.id, fetchDatos]); 
 
-  // --- LÓGICA DE CÁLCULO DE PÁGINAS ---
-  const totalPagMovs = Math.ceil(movimientos.length / itemsPorPagina);
-  const movsPaginados = movimientos.slice((pagMovimientos - 1) * itemsPorPagina, pagMovimientos * itemsPorPagina);
+  // --- LÓGICA DE BÚSQUEDA (solo aplica para admin, por nombre, empresa o correo) ---
+  const searchLower = searchTerm.trim().toLowerCase();
 
-  const totalPagCanjes = Math.ceil(canjes.length / itemsPorPagina);
-  const canjesPaginados = canjes.slice((pagCanjes - 1) * itemsPorPagina, pagCanjes * itemsPorPagina);
+  const coincideBusqueda = (perfil) => {
+    if (!searchLower) return true;
+    return (
+      (perfil?.full_name?.toLowerCase().includes(searchLower)) ||
+      (perfil?.company?.toLowerCase().includes(searchLower)) ||
+      (perfil?.email?.toLowerCase().includes(searchLower))
+    );
+  };
+
+  const movimientosFiltrados = isAdmin ? movimientos.filter(m => coincideBusqueda(m.profiles)) : movimientos;
+  const canjesFiltrados = isAdmin ? canjes.filter(c => coincideBusqueda(c.profiles)) : canjes;
+
+  // --- LÓGICA DE CÁLCULO DE PÁGINAS ---
+  const totalPagMovs = Math.ceil(movimientosFiltrados.length / itemsPorPagina);
+  const movsPaginados = movimientosFiltrados.slice((pagMovimientos - 1) * itemsPorPagina, pagMovimientos * itemsPorPagina);
+
+  const totalPagCanjes = Math.ceil(canjesFiltrados.length / itemsPorPagina);
+  const canjesPaginados = canjesFiltrados.slice((pagCanjes - 1) * itemsPorPagina, pagCanjes * itemsPorPagina);
 
   const styles = {
     mainContent: { flex: 1, padding: '0', background: isDark ? DARK_GRADIENT : '#f3f4f6', minHeight: '100vh' },
     card: { backgroundColor: s.cardBg, margin: '30px', padding: '40px', borderRadius: '4px', boxShadow: isDark ? 'none' : '0 2px 10px rgba(0,0,0,0.05)', border: `1px solid ${s.border}`, minHeight: '200px' },
-    headerFlex: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', borderBottom: '2px solid #D9241D', paddingBottom: '10px' },
+    headerFlex: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', borderBottom: '2px solid #D9241D', paddingBottom: '10px', gap: '15px', flexWrap: 'wrap' },
+    headerActions: { display: 'flex', alignItems: 'center', gap: '12px' },
+    searchBar: {
+      display: 'flex', alignItems: 'center', backgroundColor: s.inputBg,
+      padding: '8px 15px', borderRadius: '4px', border: `1px solid ${s.inputBorder}`, width: '280px'
+    },
     table: { width: '100%', borderCollapse: 'collapse' },
     th: { textAlign: 'left', padding: '15px 12px', borderBottom: `2px solid ${s.rowBorder}`, fontSize: '11px', color: s.textMuted, textTransform: 'uppercase', letterSpacing: '1px' },
     td: { padding: '15px 12px', borderBottom: `1px solid ${s.rowBorder}`, fontSize: '14px', color: s.text },
@@ -174,15 +195,29 @@ const Historial = ({ session }) => {
           <h2 style={styles.tituloSeccion}>
             {isAdmin ? "Gestión Global de Recargas" : "Mi Historial de Recargas"}
           </h2>
-          <button 
-            onClick={fetchDatos} 
-            disabled={loading} 
-            style={{ ...styles.refreshBtn, opacity: loading ? 0.5 : 1 }}
-          >
-            {loading ? 'CARGANDO...' : '🔄 ACTUALIZAR'}
-          </button>
+          <div style={styles.headerActions}>
+            {isAdmin && (
+              <div style={styles.searchBar}>
+                <span style={{ marginRight: '10px' }}>🔍</span>
+                <input
+                  type="text"
+                  placeholder="Buscar por nombre, empresa o correo..."
+                  style={{ border: 'none', outline: 'none', width: '100%', fontSize: '13px', backgroundColor: 'transparent', color: s.text }}
+                  value={searchTerm}
+                  onChange={(e) => { setSearchTerm(e.target.value); setPagMovimientos(1); setPagCanjes(1); }}
+                />
+              </div>
+            )}
+            <button
+              onClick={fetchDatos}
+              disabled={loading}
+              style={{ ...styles.refreshBtn, opacity: loading ? 0.5 : 1 }}
+            >
+              {loading ? 'CARGANDO...' : '🔄 ACTUALIZAR'}
+            </button>
+          </div>
         </div>
-        
+
         <table style={styles.table}>
           <thead>
             <tr>
@@ -223,7 +258,11 @@ const Historial = ({ session }) => {
           </tbody>
         </table>
         {renderPagination(pagMovimientos, totalPagMovs, setPagMovimientos)}
-        {!loading && movimientos.length === 0 && <p style={{ textAlign: 'center', color: s.textMuted, marginTop: '20px' }}>No hay registros disponibles.</p>}
+        {!loading && movimientosFiltrados.length === 0 && (
+          <p style={{ textAlign: 'center', color: s.textMuted, marginTop: '20px' }}>
+            {searchLower ? 'Sin coincidencias para tu búsqueda.' : 'No hay registros disponibles.'}
+          </p>
+        )}
       </div>
 
       {/* --- SECCIÓN 2: CANJES --- */}
@@ -232,13 +271,27 @@ const Historial = ({ session }) => {
           <h2 style={styles.tituloSeccion}>
             {isAdmin ? "Gestión Global de Canjes" : "Mis Canjes Realizados"}
           </h2>
-          <button 
-            onClick={fetchDatos} 
-            disabled={loading} 
-            style={{ ...styles.refreshBtn, opacity: loading ? 0.5 : 1 }}
-          >
-            {loading ? 'CARGANDO...' : '🔄 ACTUALIZAR'}
-          </button>
+          <div style={styles.headerActions}>
+            {isAdmin && (
+              <div style={styles.searchBar}>
+                <span style={{ marginRight: '10px' }}>🔍</span>
+                <input
+                  type="text"
+                  placeholder="Buscar por nombre, empresa o correo..."
+                  style={{ border: 'none', outline: 'none', width: '100%', fontSize: '13px', backgroundColor: 'transparent', color: s.text }}
+                  value={searchTerm}
+                  onChange={(e) => { setSearchTerm(e.target.value); setPagMovimientos(1); setPagCanjes(1); }}
+                />
+              </div>
+            )}
+            <button
+              onClick={fetchDatos}
+              disabled={loading}
+              style={{ ...styles.refreshBtn, opacity: loading ? 0.5 : 1 }}
+            >
+              {loading ? 'CARGANDO...' : '🔄 ACTUALIZAR'}
+            </button>
+          </div>
         </div>
         
         <table style={styles.table}>
@@ -275,7 +328,11 @@ const Historial = ({ session }) => {
           </tbody>
         </table>
         {renderPagination(pagCanjes, totalPagCanjes, setPagCanjes)}
-        {!loading && canjes.length === 0 && <p style={{ textAlign: 'center', color: s.textMuted, marginTop: '20px' }}>No hay canjes registrados.</p>}
+        {!loading && canjesFiltrados.length === 0 && (
+          <p style={{ textAlign: 'center', color: s.textMuted, marginTop: '20px' }}>
+            {searchLower ? 'Sin coincidencias para tu búsqueda.' : 'No hay canjes registrados.'}
+          </p>
+        )}
       </div>
     </div>
   );

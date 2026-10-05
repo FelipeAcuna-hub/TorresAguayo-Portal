@@ -114,13 +114,38 @@ const Admin = ({ session }) => {
     }
   };
 
+  // Trae recargas/ajustes (tabla movimientos) y canjes (tabla historial_movimientos),
+  // los combina en una sola línea de tiempo y calcula el saldo que quedó después
+  // de cada movimiento, recorriendo el historial desde el más antiguo al más nuevo.
   const fetchMovimientos = async (userId) => {
-    const { data, error } = await supabase
-      .from('movimientos')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-    if (!error) setMovimientos(data || []);
+    const [movsRes, canjesRes] = await Promise.all([
+      supabase.from('movimientos').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
+      supabase.from('historial_movimientos').select('*').eq('perfil_id', userId).order('fecha', { ascending: true }),
+    ]);
+
+    const movs = (movsRes.data || []).map(m => ({
+      id: `mov-${m.id}`,
+      fecha: m.created_at,
+      descripcion: m.descripcion,
+      cantidad: m.tipo === 'gasto' ? -m.cantidad : m.cantidad,
+    }));
+
+    const canjes = (canjesRes.data || []).map(c => ({
+      id: `canje-${c.id}`,
+      fecha: c.fecha,
+      descripcion: c.descripcion,
+      cantidad: -c.cantidad,
+    }));
+
+    const combinados = [...movs, ...canjes].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+
+    let saldo = 0;
+    const conSaldo = combinados.map(item => {
+      saldo += item.cantidad;
+      return { ...item, saldoDespues: saldo };
+    });
+
+    setMovimientos(conSaldo.reverse());
   };
 
   const handleOpenDetails = (user) => {
@@ -249,7 +274,7 @@ const Admin = ({ session }) => {
     btnPlus: { backgroundColor: '#16a34a', color: 'white', border: 'none', width: '28px', height: '28px', fontWeight: '800', cursor: 'pointer', borderRadius: '9px', fontSize: '13px', marginRight: '6px' },
     btnMinus: { backgroundColor: '#D9241D', color: 'white', border: 'none', width: '28px', height: '28px', fontWeight: '800', cursor: 'pointer', borderRadius: '9px', fontSize: '13px' },
     modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' },
-    modalBox: { backgroundColor: s.cardBg, padding: '30px', borderRadius: '20px', width: '550px', maxWidth: '100%', maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 20px 50px rgba(0,0,0,0.3)' },
+    modalBox: { backgroundColor: s.cardBg, padding: '30px', borderRadius: '20px', width: '820px', maxWidth: '100%', maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 20px 50px rgba(0,0,0,0.3)' },
     pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '26px' },
     pageBtn: (active) => ({
       padding: '8px 16px', cursor: 'pointer', backgroundColor: active ? '#D9241D' : s.cardBg,
@@ -486,24 +511,40 @@ const Admin = ({ session }) => {
                 <p style={{ fontSize: '14px', margin: '5px 0 15px 0', fontWeight: 'bold', color: '#D9241D', borderBottom: '1px solid #D9241D', paddingBottom: '5px' }}>{selectedUser.credits?.toLocaleString('es-CL')}</p>
               </div>
             </div>
-            <h4 style={{ marginTop: '25px', fontSize: '12px', borderBottom: `1px solid ${s.text}`, paddingBottom: '5px', textTransform: 'uppercase', color: s.text }}>Historial de Movimientos</h4>
-            <div style={{ maxHeight: '250px', overflowY: 'auto', marginTop: '10px' }}>
-              <table style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse' }}>
+            <h4 style={{ marginTop: '25px', fontSize: '12px', borderBottom: `1px solid ${s.text}`, paddingBottom: '5px', textTransform: 'uppercase', color: s.text }}>Historial de Recargas y Canjes</h4>
+            <div style={{ maxHeight: '320px', overflowY: 'auto', overflowX: 'auto', marginTop: '10px' }}>
+              <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse', minWidth: '680px' }}>
                 <thead>
                   <tr style={{ color: s.textMuted, borderBottom: `1px solid ${s.rowBorder}` }}>
-                    <th style={{ textAlign: 'left', padding: '8px 0' }}>FECHA</th>
-                    <th style={{ textAlign: 'left' }}>DETALLE</th>
-                    <th style={{ textAlign: 'right' }}>CANTIDAD</th>
+                    <th style={{ textAlign: 'left', padding: '8px 10px 8px 0', whiteSpace: 'nowrap', width: '120px' }}>FECHA / HORA</th>
+                    <th style={{ textAlign: 'left', padding: '8px 10px' }}>DETALLE</th>
+                    <th style={{ textAlign: 'right', padding: '8px 10px', whiteSpace: 'nowrap', width: '90px' }}>CANTIDAD</th>
+                    <th style={{ textAlign: 'right', padding: '8px 0', whiteSpace: 'nowrap', width: '120px' }}>SALDO DESPUÉS</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {movimientos.map(m => (
-                    <tr key={m.id} style={{ borderBottom: `1px solid ${s.rowBorder}`, color: s.text }}>
-                      <td style={{ padding: '10px 0' }}>{new Date(m.created_at).toLocaleDateString()}</td>
-                      <td>{m.descripcion}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 'bold', color: m.tipo === 'gasto' ? '#D9241D' : '#228b22' }}>{m.tipo === 'gasto' ? '-' : '+'}{m.cantidad.toLocaleString('es-CL')}</td>
-                    </tr>
-                  ))}
+                  {movimientos.map(m => {
+                    const fechaObj = new Date(m.fecha);
+                    const esPositivo = m.cantidad >= 0;
+                    return (
+                      <tr key={m.id} style={{ borderBottom: `1px solid ${s.rowBorder}`, color: s.text }}>
+                        <td style={{ padding: '10px 10px 10px 0', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontWeight: 'bold' }}>{fechaObj.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
+                          <div style={{ color: s.textFaint, fontSize: '10px', marginTop: '2px' }}>
+                            🕐 {fechaObj.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })} hrs
+                          </div>
+                        </td>
+                        <td style={{ padding: '10px' }}>{m.descripcion}</td>
+                        <td style={{ textAlign: 'right', padding: '10px', fontWeight: 'bold', whiteSpace: 'nowrap', color: esPositivo ? '#228b22' : '#D9241D' }}>
+                          {esPositivo ? '+' : ''}{m.cantidad.toLocaleString('es-CL')}
+                        </td>
+                        <td style={{ textAlign: 'right', padding: '10px 0', fontWeight: 'bold', whiteSpace: 'nowrap', color: s.text }}>{m.saldoDespues.toLocaleString('es-CL')}</td>
+                      </tr>
+                    );
+                  })}
+                  {movimientos.length === 0 && (
+                    <tr><td colSpan="4" style={{ textAlign: 'center', padding: '16px', color: s.textMuted }}>Sin movimientos registrados.</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
