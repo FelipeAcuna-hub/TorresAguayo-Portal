@@ -82,8 +82,8 @@ const UploadFile = ({ session }) => {
 
   const [formData, setFormData] = useState({
     patente: '', marca: '', modelo: '', anio: '',
-    motor: '', hp: '', ecu: '', combustible: '',
-    tipo_modulo: '', comentarios: '', codigosfalla: '',
+    motor: '', hp: '', ecu: '', combustible: '', transmision: '',
+    tipo_modulo: '', comentarios: '', codigosfalla: '', modo_lectura: '',
   });
 
   useEffect(() => {
@@ -110,7 +110,7 @@ const UploadFile = ({ session }) => {
     }
   };
 
-  const isFormValid = formData.patente.length >= 4 && fileId && fileMapa && servicioSel;
+  const isFormValid = formData.patente.length >= 4 && fileId && fileMapa && servicioSel && formData.modo_lectura;
 
   const uploadSingleFile = async (file, prefix, folderName) => {
     if (!file) return null;
@@ -345,7 +345,7 @@ const UploadFile = ({ session }) => {
               </div>
             </div>
 
-            <div className="up-row" style={styles.row}>
+            <div className="up-row" style={{ ...styles.row, gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr' }}>
               <div><label style={styles.label}>Motor</label><input className="up-input" style={styles.input} placeholder="EA888" value={formData.motor} onChange={e => setFormData({ ...formData, motor: e.target.value.toUpperCase() })} /></div>
               <div><label style={styles.label}>HP</label><input className="up-input" style={styles.input} placeholder="200" value={formData.hp} onChange={e => setFormData({ ...formData, hp: e.target.value.toUpperCase() })} /></div>
               <div><label style={styles.label}>ECU / DCU / TCU / DSG</label><input className="up-input" style={styles.input} placeholder="Bosch/Delco/etc.." value={formData.ecu} onChange={e => setFormData({ ...formData, ecu: e.target.value.toUpperCase() })} /></div>
@@ -355,7 +355,15 @@ const UploadFile = ({ session }) => {
                   <option value="">Seleccionar</option>
                   <option value="Gasolina">Gasolina</option>
                   <option value="Diesel">Diesel</option>
-                  <option value="Diesel">Híbrido</option>
+                  <option value="Hibrido">Híbrido</option>
+                </select>
+              </div>
+              <div>
+                <label style={styles.label}>Transmisión</label>
+                <select className="up-input" style={styles.input} value={formData.transmision} onChange={e => setFormData({ ...formData, transmision: e.target.value })}>
+                  <option value="">Seleccionar</option>
+                  <option value="Manual">Manual</option>
+                  <option value="Automatico">Automático</option>
                 </select>
               </div>
             </div>
@@ -417,6 +425,18 @@ const UploadFile = ({ session }) => {
           <div className="up-section" style={{ animationDelay: '0.14s' }}>
             <h2 style={styles.sectionTitle}>📎 Adjuntar archivos</h2>
 
+            <div style={{ marginBottom: '18px', maxWidth: '260px' }}>
+              <label style={styles.label}>Modo de lectura (Obligatorio)</label>
+              <select className="up-input" style={{ ...styles.input, borderColor: formData.modo_lectura ? '#e5e5e5' : '#e11d48' }} value={formData.modo_lectura} onChange={e => setFormData({ ...formData, modo_lectura: e.target.value })}>
+                <option value="">Seleccionar</option>
+                <option value="OBD2">OBD2</option>
+                <option value="BENCH">BENCH</option>
+                <option value="BOOT">BOOT</option>
+                <option value="BOOTGLITCH">BOOTGLITCH</option>
+                <option value="KORHEK MODE">KORHEK MODE</option>
+              </select>
+            </div>
+
             <div className="up-files-grid" style={styles.gridFiles}>
               <div className="up-file-box" style={styles.fileBox(!!fileId, true)} onClick={() => document.getElementById('fileId').click()}>
                 <input type="file" id="fileId" style={{ display: 'none' }} onChange={(e) => setFileId(e.target.files[0])} />
@@ -458,10 +478,11 @@ const UploadFile = ({ session }) => {
               >
                 {loading ? 'PROCESANDO...' :
                   !formData.patente ? 'FALTA PATENTE' :
-                    !fileId ? 'FALTA ARCHIVO ID' :
-                      !fileMapa ? 'FALTA ARCHIVO MAPA' :
-                        !servicioSel ? 'SELECCIONA SERVICIO' :
-                          'CARGAR ARCHIVOS'}
+                    !formData.modo_lectura ? 'FALTA MODO DE LECTURA' :
+                      !fileId ? 'FALTA ARCHIVO ID' :
+                        !fileMapa ? 'FALTA ARCHIVO MAPA' :
+                          !servicioSel ? 'SELECCIONA SERVICIO' :
+                            'CARGAR ARCHIVOS'}
               </button>
             </div>
           </div>

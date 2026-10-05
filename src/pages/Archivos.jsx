@@ -1,6 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useTheme, DARK_GRADIENT, getSurfaceTokens, playTone } from '../ThemeContext';
+import logoStockcarsBlanco from '../logoSTOCKCARSBLANCO.png';
+import logoStockcarsColor from '../logo_stockcars.png';
+
+// --- GRÁFICO DE DYNO (demostrativo): curva típica escalada a los picos HP/Nm cargados ---
+const DYNO_RPM = [1000, 1700, 2400, 3100, 3800, 4500, 5200, 5900, 6600];
+const DYNO_SHAPE_POWER = [0.20, 0.47, 0.68, 0.83, 0.93, 1.00, 0.97, 0.91, 0.84];
+const DYNO_SHAPE_TORQUE = [0.38, 0.74, 0.93, 1.00, 0.98, 0.93, 0.87, 0.81, 0.75];
+
+const construirDynoChart = (hpStock, hpStage1, nmStock, nmStage1) => {
+  const W = 420, H = 190;
+  const padL = 36, padR = 36, padT = 10, padB = 10;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+
+  const maxPower = Math.max(hpStock, hpStage1) * 1.18;
+  const maxTorque = Math.max(nmStock, nmStage1) * 1.18;
+
+  const xAt = (i) => padL + (plotW * i) / (DYNO_RPM.length - 1);
+  const yPower = (v) => padT + plotH - (v / maxPower) * plotH;
+  const yTorque = (v) => padT + plotH - (v / maxTorque) * plotH;
+
+  const buildPts = (peak, shape, yFn) => shape.map((f, i) => ({ x: xAt(i), y: yFn(peak * f), v: peak * f }));
+
+  return {
+    W, H, padL, padR, padT, plotW, plotH, maxPower, maxTorque,
+    origPower: buildPts(hpStock, DYNO_SHAPE_POWER, yPower),
+    modPower: buildPts(hpStage1, DYNO_SHAPE_POWER, yPower),
+    origTorque: buildPts(nmStock, DYNO_SHAPE_TORQUE, yTorque),
+    modTorque: buildPts(nmStage1, DYNO_SHAPE_TORQUE, yTorque)
+  };
+};
+
+const dynoPts = (pts) => pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+
+// Índice del punto más alto de cada curva (el mismo para original y modificado, ya que comparten forma)
+const DYNO_PEAK_POWER_IDX = DYNO_SHAPE_POWER.indexOf(Math.max(...DYNO_SHAPE_POWER));
+const DYNO_PEAK_TORQUE_IDX = DYNO_SHAPE_TORQUE.indexOf(Math.max(...DYNO_SHAPE_TORQUE));
 
 const Archivos = ({ session }) => {
   const [archivos, setArchivos] = useState([]);
@@ -9,9 +46,32 @@ const Archivos = ({ session }) => {
   const [archivoDetalle, setArchivoDetalle] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [downloadProgress, setDownloadProgress] = useState({});
+  const [aumentosAbierto, setAumentosAbierto] = useState(null);
+  const [aumentosEditar, setAumentosEditar] = useState(null);
+  const [formAumentos, setFormAumentos] = useState({
+    hpStock: '', nmStock: '', hpStage1: '', nmStage1: '',
+    marca_modelo: '', patente: '', anio: '', motor: '', combustible: '', transmision: '', modo_lectura: '', ecu: ''
+  });
+  const [guardandoAumentos, setGuardandoAumentos] = useState(false);
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const s = getSurfaceTokens(isDark);
+
+  // Colores propios del panel de "Aumentos", adaptados a modo claro/oscuro
+  const aTokens = {
+    panelBg: isDark ? 'linear-gradient(135deg, #1a0000 0%, #000000 100%)' : 'linear-gradient(135deg, #fff6f6 0%, #ffffff 100%)',
+    cardBg: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(217,36,29,0.03)',
+    border: isDark ? '#2a2a2a' : '#eadcdc',
+    divider: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)',
+    grid: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)',
+    text: isDark ? '#fff' : '#1a1a1a',
+    textMuted: isDark ? '#aaa' : '#666',
+    textFaint: isDark ? '#777' : '#999',
+    unit: isDark ? '#888' : '#999',
+    original: isDark ? '#ffffff' : '#334155',
+    logo: isDark ? logoStockcarsBlanco : logoStockcarsColor,
+    logoOpacity: isDark ? 0.35 : 0.1
+  };
 
   // --- SONIDITOS MINIMALISTAS DE DESCARGA (usan la utilidad compartida, respeta el silencio) ---
   const playDownloadStartSound = () => playTone(650, 0.05, 0.1);
@@ -36,6 +96,105 @@ const Archivos = ({ session }) => {
   // Viewport "chico" en CSS px (ej: Windows con escala 125%/150%) -> tabla más compacta
   // para que quepa sin scroll horizontal, sin achicar la vista cómoda en pantallas grandes.
   const isCompact = window.innerWidth <= 1600;
+
+  // Columnas totales de la tabla, para el colSpan del panel de Aumentos
+  const totalColumnas = isAdmin ? 11 : 10;
+  const aplicaAumentos = (servicio) => !!servicio && /STAGE\s*[12]/.test(servicio.toUpperCase());
+  const etiquetaStage = (servicio) => {
+    if (!servicio) return 'STAGE 1';
+    const s = servicio.toUpperCase();
+    return s.includes('STAGE 2') ? 'STAGE 2' : 'STAGE 1';
+  };
+  const toggleAumentos = (archivoId) => {
+    playTone(800, 0.05, 0.07);
+    const seAbre = aumentosAbierto !== archivoId;
+    if (seAbre) {
+      // "Rev up" sincronizado con el barrido del gráfico de puntos (dyno)
+      playTone(320, 0.05, 0.05, 0.25);
+      playTone(480, 0.05, 0.05, 0.45);
+      playTone(680, 0.05, 0.05, 0.65);
+      playTone(950, 0.08, 0.06, 0.85);
+    }
+    setAumentosAbierto(prev => (prev === archivoId ? null : archivoId));
+  };
+
+  // Al abrir el panel de Aumentos, baja la pantalla sola para que se vea completo sin scrollear a mano
+  useEffect(() => {
+    if (!aumentosAbierto) return;
+    const t = setTimeout(() => {
+      document.getElementById(`archivo-row-${aumentosAbierto}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 60);
+    return () => clearTimeout(t);
+  }, [aumentosAbierto]);
+
+  const abrirEditorAumentos = (archivo) => {
+    const actuales = archivo.detalles_tecnicos?.aumentos || {};
+    const dt = archivo.detalles_tecnicos || {};
+    setFormAumentos({
+      hpStock: actuales.hpStock ?? dt.hp ?? '',
+      nmStock: actuales.nmStock ?? '',
+      hpStage1: actuales.hpStage1 ?? '',
+      nmStage1: actuales.nmStage1 ?? '',
+      marca_modelo: archivo.marca_modelo ?? '',
+      patente: archivo.patente ?? '',
+      anio: dt.anio ?? '',
+      motor: dt.motor ?? '',
+      combustible: dt.combustible ?? '',
+      transmision: dt.transmision ?? '',
+      modo_lectura: dt.modo_lectura ?? '',
+      ecu: dt.tipo_modulo ? `${dt.tipo_modulo} (${dt.ecu || ''})`.trim() : (dt.ecu ?? '')
+    });
+    setAumentosEditar(archivo);
+  };
+
+  const guardarAumentos = async () => {
+    if (!aumentosEditar) return;
+    const hpStock = parseFloat(formAumentos.hpStock);
+    const nmStock = parseFloat(formAumentos.nmStock);
+    const hpStage1 = parseFloat(formAumentos.hpStage1);
+    const nmStage1 = parseFloat(formAumentos.nmStage1);
+
+    if ([hpStock, nmStock, hpStage1, nmStage1].some(v => isNaN(v) || v <= 0)) {
+      alert('Completa los 4 valores con números mayores a 0.');
+      return;
+    }
+
+    try {
+      setGuardandoAumentos(true);
+      const nuevosDetalles = {
+        ...(aumentosEditar.detalles_tecnicos || {}),
+        aumentos: { hpStock, nmStock, hpStage1, nmStage1 },
+        anio: formAumentos.anio.trim(),
+        motor: formAumentos.motor.trim(),
+        combustible: formAumentos.combustible.trim(),
+        transmision: formAumentos.transmision,
+        modo_lectura: formAumentos.modo_lectura,
+        ecu: formAumentos.ecu.trim(),
+        tipo_modulo: null
+      };
+
+      const { error } = await supabase
+        .from('archivos')
+        .update({
+          detalles_tecnicos: nuevosDetalles,
+          marca_modelo: formAumentos.marca_modelo.trim(),
+          patente: formAumentos.patente.trim().toUpperCase()
+        })
+        .eq('id', aumentosEditar.id);
+
+      if (error) throw error;
+
+      playTone(750, 0.05, 0.08, 0);
+      playTone(1150, 0.07, 0.08, 0.05);
+      setAumentosEditar(null);
+      fetchArchivos();
+    } catch (error) {
+      console.error('Error guardando aumentos:', error.message);
+      alert('Error al guardar los datos de aumentos.');
+    } finally {
+      setGuardandoAumentos(false);
+    }
+  };
 
   const fetchArchivos = async () => {
     try {
@@ -440,6 +599,40 @@ const Archivos = ({ session }) => {
       <style>{`
         @keyframes rowFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         .file-row { animation: rowFadeIn 0.3s ease both; transition: background-color 0.15s ease; }
+        @keyframes aumentosSlideIn {
+          from { opacity: 0; transform: translateY(-14px) scaleY(0.92); filter: blur(6px); }
+          to { opacity: 1; transform: translateY(0) scaleY(1); filter: blur(0); }
+        }
+        .aumentos-panel { animation: aumentosSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; transform-origin: top center; }
+        @keyframes aumentosColRise {
+          from { opacity: 0; transform: translateY(14px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .aumentos-col { animation: aumentosColRise 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        @keyframes barReveal { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+        .aumentos-bar-fill { transform-origin: left; animation: barReveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        @keyframes barRise { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+        .aumentos-bar-rise { transform-box: fill-box; transform-origin: bottom; animation: barRise 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        @keyframes chevronPop { from { opacity: 0; transform: rotate(-90deg) scale(0.5); } to { opacity: 1; transform: rotate(0deg) scale(1); } }
+        .aumentos-icon-open { animation: chevronPop 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        .aumentos-toggle-btn { transform: scale(1); }
+        .aumentos-toggle-btn:active { transform: scale(0.92); }
+        @keyframes aumentosGlowPulse {
+          0% { box-shadow: 0 0 0 0 rgba(217,36,29,0.7), 0 0 0 0 rgba(217,36,29,0.4); }
+          60% { box-shadow: 0 0 0 7px rgba(217,36,29,0), 0 0 14px 4px rgba(217,36,29,0.35); }
+          100% { box-shadow: 0 0 0 7px rgba(217,36,29,0), 0 0 0 0 rgba(217,36,29,0); }
+        }
+        .aumentos-toggle-open { animation: aumentosGlowPulse 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        @keyframes dynoReveal { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0% 0 0); } }
+        .dyno-reveal { animation: dynoReveal 0.9s cubic-bezier(0.65, 0, 0.35, 1) both; animation-delay: 0.25s; }
+        @keyframes dynoDotPop { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: scale(1); } }
+        .dyno-dot { transform-box: fill-box; transform-origin: center; animation: dynoDotPop 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        .dyno-peak-dot { cursor: pointer; }
+        .dyno-peak-tip { opacity: 0; transition: opacity 0.15s ease; pointer-events: none; }
+        svg:has(.dyno-peak-dot-op:hover) .dyno-peak-tip-op { opacity: 1; }
+        svg:has(.dyno-peak-dot-mp:hover) .dyno-peak-tip-mp { opacity: 1; }
+        svg:has(.dyno-peak-dot-ot:hover) .dyno-peak-tip-ot { opacity: 1; }
+        svg:has(.dyno-peak-dot-mt:hover) .dyno-peak-tip-mt { opacity: 1; }
         .file-row:hover { background-color: ${s.rowHover}; transition: background-color 0.15s ease; }
         .action-btn { transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease; }
         .action-btn:hover { transform: translateY(-2px); filter: brightness(1.08); box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
@@ -517,7 +710,18 @@ const Archivos = ({ session }) => {
               {archivosPaginados.map((archivo, index) => {
                 const fechaObj = new Date(archivo.created_at);
                 return (
-                  <tr className="file-row" style={{ animationDelay: `${Math.min(index, 8) * 0.04}s` }} key={archivo.id}>
+                <React.Fragment key={archivo.id}>
+                  <tr
+                    className="file-row"
+                    id={`archivo-row-${archivo.id}`}
+                    style={{
+                      animationDelay: `${Math.min(index, 8) * 0.04}s`,
+                      ...(aumentosAbierto === archivo.id ? {
+                        backgroundColor: 'rgba(217,36,29,0.07)',
+                        boxShadow: 'inset 4px 0 0 0 #D9241D'
+                      } : {})
+                    }}
+                  >
                     <td style={{ ...styles.td, minWidth: isCompact ? '75px' : '110px' }}>
                       <div style={{ display: 'inline-block', fontWeight: 'bold', color: '#fff', backgroundColor: '#D9241D', fontSize: isCompact ? '11px' : '14px', padding: isCompact ? '2px 5px' : '3px 9px', borderRadius: '6px', marginBottom: isCompact ? '4px' : '6px' }}>#{archivo.numero_orden || '---'}</div>
                       <div style={{ whiteSpace: 'nowrap' }}>{fechaObj.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
@@ -540,7 +744,22 @@ const Archivos = ({ session }) => {
                     </td>
                     <td style={styles.td}>{archivo.marca_modelo}</td>
                     <td style={styles.td}>
-                      <button className="action-btn" onClick={() => setArchivoDetalle(archivo)} style={{ backgroundColor: isDark ? '#3a3a3a' : '#000', color: '#fff', border: isDark ? '1px solid #6a6a6a' : 'none', padding: '4px 8px', fontSize: '9px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px' }}>DETALLES</button>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '85px' }}>
+                        <button className="action-btn" onClick={() => setArchivoDetalle(archivo)} style={{ backgroundColor: isDark ? '#3a3a3a' : '#000', color: '#fff', border: isDark ? '1px solid #6a6a6a' : 'none', padding: '4px 8px', fontSize: '9px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px' }}>DETALLES</button>
+                        {isAdmin && aplicaAumentos(archivo.detalles_tecnicos?.servicios_solicitados) && (
+                          <button
+                            className="action-btn"
+                            onClick={() => abrirEditorAumentos(archivo)}
+                            style={{
+                              backgroundColor: archivo.detalles_tecnicos?.aumentos ? '#1a0000' : 'transparent',
+                              color: '#D9241D', border: '1px solid #D9241D', padding: '4px 8px', fontSize: '9px',
+                              fontWeight: 'bold', cursor: 'pointer', borderRadius: '2px', whiteSpace: 'nowrap'
+                            }}
+                          >
+                            ⚙️ AUMENTOS
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td style={styles.td}>
                       {isAdmin ? (
@@ -560,6 +779,36 @@ const Archivos = ({ session }) => {
                           {archivo.detalles_tecnicos.servicios_solicitados}
                         </span>
                       ) : <span style={{ color: s.textFaint, fontSize: '11px' }}>---</span>}
+
+                      {aplicaAumentos(archivo.detalles_tecnicos?.servicios_solicitados) && (
+                        <button
+                          className={`action-btn aumentos-toggle-btn${aumentosAbierto === archivo.id ? ' aumentos-toggle-open' : ''}`}
+                          onClick={() => toggleAumentos(archivo.id)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '4px',
+                            marginTop: '6px', backgroundColor: aumentosAbierto === archivo.id ? '#D9241D' : 'transparent',
+                            color: aumentosAbierto === archivo.id ? '#fff' : '#D9241D',
+                            border: '1px solid #D9241D', padding: '4px 8px', fontSize: '9px',
+                            fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer', whiteSpace: 'nowrap',
+                            transition: 'background-color 0.2s ease, color 0.2s ease'
+                          }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="currentColor" viewBox="0 0 16 16" style={{ flexShrink: 0 }}>
+                            <path d="M0 0h1v15h15v1H0zm14.817 3.113a.5.5 0 0 1 .07.704l-4.5 5.5a.5.5 0 0 1-.74.037L7.06 6.767l-3.656 5.027a.5.5 0 0 1-.808-.588l4-5.5a.5.5 0 0 1 .758-.06l2.609 2.61 4.15-5.073a.5.5 0 0 1 .704-.07" />
+                          </svg>
+                          AUMENTOS
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg" width="9" height="9" fill="currentColor" viewBox="0 0 16 16"
+                            style={{
+                              flexShrink: 0, marginLeft: '2px',
+                              transform: aumentosAbierto === archivo.id ? 'rotate(180deg)' : 'rotate(0deg)',
+                              transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+                            }}
+                          >
+                            <path fillRule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708" />
+                          </svg>
+                        </button>
+                      )}
                     </td>
 
                     {/* --- COLUMNA ACCIÓN (USUARIO) --- */}
@@ -720,6 +969,263 @@ const Archivos = ({ session }) => {
                       )}
                     </td>
                   </tr>
+
+                  {aumentosAbierto === archivo.id && (
+                    <tr className="aumentos-row" id={`aumentos-row-${archivo.id}`}>
+                      <td colSpan={totalColumnas} style={{ padding: 0, border: 'none' }}>
+                        <div className="aumentos-panel" style={{
+                          position: 'relative',
+                          overflow: 'hidden',
+                          margin: '0 8px 14px 8px',
+                          borderRadius: '0 0 10px 10px',
+                          background: aTokens.panelBg,
+                          border: '1px solid #D9241D',
+                          borderTop: 'none',
+                          padding: '24px 30px'
+                        }}>
+                          {(() => {
+                            const datosReales = archivo.detalles_tecnicos?.aumentos;
+                            const stageTxt = etiquetaStage(archivo.detalles_tecnicos?.servicios_solicitados);
+
+                            // Valores base (reales si el admin los cargó, si no unos genéricos
+                            // solo para que se vea el gráfico mientras no se cargan).
+                            const hpStock = Math.round(datosReales?.hpStock ?? 150);
+                            const hpStage1 = Math.round(datosReales?.hpStage1 ?? 150 * 1.25);
+                            const nmStock = Math.round(datosReales?.nmStock ?? 280);
+                            const nmStage1 = Math.round(datosReales?.nmStage1 ?? 280 * 1.30);
+                            const dyno = construirDynoChart(hpStock, hpStage1, nmStock, nmStage1);
+
+                            // Dibuja los puntos de una curva; el punto más alto queda resaltado
+                            // y muestra el valor máximo (HP o Nm) al pasar el cursor.
+                            // Los puntos se dibujan primero (en orden normal); los recuadros de los
+                            // picos se dibujan todos al final, para que ninguna curva los tape.
+                            const renderDynoDots = (pts, peakIdx, color, prefix) => pts.map((p, i) => (
+                              <circle
+                                key={`${prefix}${i}`}
+                                className={i === peakIdx ? `dyno-dot dyno-peak-dot dyno-peak-dot-${prefix}` : 'dyno-dot'}
+                                style={{ animationDelay: `${0.25 + (i / 8) * 0.9}s` }}
+                                cx={p.x} cy={p.y} r={i === peakIdx ? '3.6' : '2.6'}
+                                fill={i === peakIdx ? color : '#000'} stroke={i === peakIdx ? '#fff' : color}
+                                strokeWidth={i === peakIdx ? '1.2' : '1.3'}
+                              />
+                            ));
+
+                            const renderDynoTooltip = (pts, peakIdx, color, unidad, prefix, etiqueta) => {
+                              const p = pts[peakIdx];
+                              const tipY = Math.max(p.y - 26, 16);
+                              return (
+                                <g key={prefix} className={`dyno-peak-tip dyno-peak-tip-${prefix}`} transform={`translate(${p.x}, ${tipY})`}>
+                                  <rect x="-24" y="-17" width="48" height="24" rx="4" fill="#0a0a0a" stroke={color} strokeWidth="1" />
+                                  <text x="0" y="-6" textAnchor="middle" fontSize="8.5" fontWeight="800" fill="#fff">{Math.round(p.v)} {unidad}</text>
+                                  <text x="0" y="3" textAnchor="middle" fontSize="6.5" fontWeight="700" letterSpacing="0.4" fill={color}>{etiqueta}</text>
+                                </g>
+                              );
+                            };
+
+                            const metrics = [
+                              { label: 'POWER HP', unidad: 'HP', stock: hpStock, stage1: hpStage1 },
+                              { label: 'TORQUE NM', unidad: 'Nm', stock: nmStock, stage1: nmStage1 }
+                            ];
+
+                            // Eje "lindo" (0 / 50 / 100 ...) para el mini gráfico de barras de cada métrica
+                            const ejeLindo = (v) => {
+                              const raw = v * 1.25;
+                              const paso = raw > 500 ? 100 : raw > 200 ? 50 : raw > 80 ? 25 : 10;
+                              return Math.ceil(raw / paso) * paso;
+                            };
+
+                            return (
+                              <>
+                              <div style={{ position: 'relative', zIndex: 1, display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                                <div className="aumentos-col" style={{ flex: '0 1 460px', minWidth: '380px', animationDelay: '0.05s' }}>
+                                  <h4 style={{ margin: '0 0 6px 0', color: aTokens.text, fontSize: '20px', letterSpacing: '0.5px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                                      <path d="M0 0h1v15h15v1H0zm14.817 3.113a.5.5 0 0 1 .07.704l-4.5 5.5a.5.5 0 0 1-.74.037L7.06 6.767l-3.656 5.027a.5.5 0 0 1-.808-.588l4-5.5a.5.5 0 0 1 .758-.06l2.609 2.61 4.15-5.073a.5.5 0 0 1 .704-.07" />
+                                    </svg>
+                                    Aumentos {datosReales ? '' : 'estimados '}
+                                    <span style={{
+                                      display: 'inline-flex', alignItems: 'center',
+                                      background: 'linear-gradient(135deg, #D9241D 0%, #7a0f0a 100%)',
+                                      color: '#fff', fontSize: '11px', fontWeight: '800',
+                                      padding: '3px 11px', borderRadius: '999px',
+                                      letterSpacing: '0.6px', boxShadow: '0 0 10px rgba(217,36,29,0.55)'
+                                    }}>
+                                      {stageTxt}
+                                    </span>
+                                  </h4>
+                                  <p style={{ margin: '0 0 16px 0', fontSize: '15px', color: aTokens.textMuted }}>
+                                    {archivo.marca_modelo} · {archivo.patente} {datosReales ? '' : '— valores referenciales, pueden variar según el vehículo'}
+                                  </p>
+
+                                  <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
+                                    {metrics.map((m) => {
+                                      const max = ejeLindo(Math.max(m.stock, m.stage1));
+                                      const W = 170, H = 120, padL = 30, padR = 8, padT = 10, padB = 22;
+                                      const plotW = W - padL - padR, plotH = H - padT - padB;
+                                      const yAt = (v) => padT + plotH - (v / max) * plotH;
+                                      const barW = 32;
+                                      const xOrig = padL + plotW * 0.26 - barW / 2;
+                                      const xMod = padL + plotW * 0.74 - barW / 2;
+                                      const diff = m.stage1 - m.stock;
+                                      return (
+                                        <div key={m.label} style={{ flex: '1 1 190px', minWidth: '180px', backgroundColor: aTokens.cardBg, border: `1px solid ${aTokens.border}`, borderRadius: '8px', overflow: 'hidden' }}>
+                                          <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+                                            {[0, 0.25, 0.5, 0.75, 1].map(f => (
+                                              <line key={f} x1={padL} x2={W - padR} y1={padT + plotH * (1 - f)} y2={padT + plotH * (1 - f)} stroke={aTokens.grid} strokeWidth="1" />
+                                            ))}
+                                            {[0, 0.5, 1].map(f => (
+                                              <text key={f} x={padL - 5} y={padT + plotH * (1 - f) + 3} fill={aTokens.textFaint} fontSize="9" textAnchor="end">{Math.round(max * f)}</text>
+                                            ))}
+                                            <rect className="aumentos-bar-rise" x={xOrig} y={yAt(m.stock)} width={barW} height={padT + plotH - yAt(m.stock)} fill={aTokens.original} style={{ animationDelay: '0.1s' }} />
+                                            <rect className="aumentos-bar-rise" x={xMod} y={yAt(m.stage1)} width={barW} height={padT + plotH - yAt(m.stage1)} fill="#D9241D" style={{ animationDelay: '0.22s' }} />
+                                            <text x={xOrig + barW / 2} y={H - 6} fill={aTokens.textFaint} fontSize="9" textAnchor="middle">Original</text>
+                                            <text x={xMod + barW / 2} y={H - 6} fill={aTokens.textFaint} fontSize="9" textAnchor="middle">{stageTxt}</text>
+                                          </svg>
+                                          <div style={{ borderTop: `1px solid ${aTokens.border}`, padding: '10px 12px' }}>
+                                            <div style={{ fontSize: '11px', fontWeight: 'bold', color: aTokens.text, letterSpacing: '0.4px', marginBottom: '8px' }}>{m.label}</div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: aTokens.textMuted, marginBottom: '4px' }}>
+                                              <span>Original</span>
+                                              <span style={{ color: aTokens.text, fontWeight: 'bold' }}>{m.stock} <span style={{ fontWeight: 'normal', color: aTokens.unit }}>{m.unidad}</span></span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: aTokens.textMuted, marginBottom: '8px' }}>
+                                              <span>{stageTxt}</span>
+                                              <span style={{ color: '#D9241D', fontWeight: 'bold' }}>{m.stage1} <span style={{ fontWeight: 'normal', color: aTokens.unit }}>{m.unidad}</span></span>
+                                            </div>
+                                            <div style={{ borderTop: `1px solid ${aTokens.border}`, paddingTop: '7px', display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 'bold', color: aTokens.text }}>
+                                              <span>Aumentos</span>
+                                              <span style={{ color: '#D9241D' }}>+{diff} {m.unidad}</span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+
+                                  {isAdmin && (
+                                    <button
+                                      className="action-btn"
+                                      onClick={() => abrirEditorAumentos(archivo)}
+                                      style={{ marginTop: '14px', backgroundColor: 'transparent', color: aTokens.textMuted, border: `1px solid ${aTokens.border}`, padding: '6px 14px', fontSize: '13px', fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer' }}
+                                    >
+                                      ⚙️ {datosReales ? 'EDITAR VALORES' : 'CARGAR VALORES REALES'}
+                                    </button>
+                                  )}
+                                </div>
+
+                                {/* --- GRÁFICO DE DYNO (CURVA DEMOSTRATIVA) --- */}
+                                <div className="aumentos-col" style={{ position: 'relative', flex: '0 1 560px', minWidth: '460px', maxWidth: '600px', animationDelay: '0.14s' }}>
+                                  <img
+                                    src={aTokens.logo}
+                                    alt=""
+                                    style={{
+                                      position: 'absolute', top: '50%', left: '50%',
+                                      width: '85%', maxWidth: '420px',
+                                      transform: 'translate(-50%, -50%)',
+                                      opacity: aTokens.logoOpacity,
+                                      pointerEvents: 'none', userSelect: 'none'
+                                    }}
+                                  />
+                                  <p style={{ position: 'relative', margin: '0 0 6px 0', fontSize: '15px', color: aTokens.textFaint, textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                    Gráfico demostrativo
+                                  </p>
+                                  <svg viewBox={`0 0 ${dyno.W} ${dyno.H}`} style={{ position: 'relative', width: '100%', height: 'auto', display: 'block' }}>
+                                    {/* grilla horizontal */}
+                                    {[0, 0.25, 0.5, 0.75, 1].map(f => (
+                                      <line
+                                        key={f}
+                                        x1={dyno.padL} x2={dyno.W - dyno.padR}
+                                        y1={dyno.padT + dyno.plotH * (1 - f)} y2={dyno.padT + dyno.plotH * (1 - f)}
+                                        stroke={aTokens.grid} strokeWidth="1"
+                                      />
+                                    ))}
+                                    {/* eje Y izquierdo: potencia (HP) */}
+                                    {[0, 0.5, 1].map(f => (
+                                      <text key={`p${f}`} x={dyno.padL - 5} y={dyno.padT + dyno.plotH * (1 - f) + 3} fill={aTokens.textFaint} fontSize="8" textAnchor="end">
+                                        {Math.round(dyno.maxPower * f)}
+                                      </text>
+                                    ))}
+                                    <text
+                                      x="9" y={dyno.padT + dyno.plotH / 2} fill={aTokens.textMuted} fontSize="7.5" fontWeight="800"
+                                      textAnchor="middle" letterSpacing="0.5"
+                                      transform={`rotate(-90, 9, ${dyno.padT + dyno.plotH / 2})`}
+                                    >
+                                      HP
+                                    </text>
+                                    {/* eje Y derecho: torque (Nm) */}
+                                    {[0, 0.5, 1].map(f => (
+                                      <text key={`t${f}`} x={dyno.W - dyno.padR + 5} y={dyno.padT + dyno.plotH * (1 - f) + 3} fill={aTokens.textFaint} fontSize="8" textAnchor="start">
+                                        {Math.round(dyno.maxTorque * f)}
+                                      </text>
+                                    ))}
+                                    <text
+                                      x={dyno.W - 9} y={dyno.padT + dyno.plotH / 2} fill={aTokens.textMuted} fontSize="7.5" fontWeight="800"
+                                      textAnchor="middle" letterSpacing="0.5"
+                                      transform={`rotate(90, ${dyno.W - 9}, ${dyno.padT + dyno.plotH / 2})`}
+                                    >
+                                      Nm
+                                    </text>
+                                    {/* curvas + marcadores, revelados con un barrido de izquierda a derecha */}
+                                    <g className="dyno-reveal">
+                                      <polyline points={dynoPts(dyno.origPower)} fill="none" stroke="#1E3A8A" strokeWidth="2" />
+                                      <polyline points={dynoPts(dyno.modPower)} fill="none" stroke="#D9241D" strokeWidth="2" />
+                                      <polyline points={dynoPts(dyno.origTorque)} fill="none" stroke="#1E3A8A" strokeWidth="2" strokeDasharray="5,4" />
+                                      <polyline points={dynoPts(dyno.modTorque)} fill="none" stroke="#D9241D" strokeWidth="2" strokeDasharray="5,4" />
+                                      {renderDynoDots(dyno.origPower, DYNO_PEAK_POWER_IDX, "#1E3A8A", "op")}
+                                      {renderDynoDots(dyno.modPower, DYNO_PEAK_POWER_IDX, "#D9241D", "mp")}
+                                      {renderDynoDots(dyno.origTorque, DYNO_PEAK_TORQUE_IDX, "#1E3A8A", "ot")}
+                                      {renderDynoDots(dyno.modTorque, DYNO_PEAK_TORQUE_IDX, "#D9241D", "mt")}
+                                    </g>
+                                    {/* eje X */}
+                                    <text x={dyno.W / 2} y={dyno.H - 1} fill={aTokens.textMuted} fontSize="8" fontWeight="700" textAnchor="middle">RPM</text>
+                                    {/* recuadros de los picos: van al final para quedar siempre por encima de todo */}
+                                    {renderDynoTooltip(dyno.origPower, DYNO_PEAK_POWER_IDX, "#1E3A8A", "HP", "op", "STOCK")}
+                                    {renderDynoTooltip(dyno.modPower, DYNO_PEAK_POWER_IDX, "#D9241D", "HP", "mp", stageTxt)}
+                                    {renderDynoTooltip(dyno.origTorque, DYNO_PEAK_TORQUE_IDX, "#1E3A8A", "Nm", "ot", "STOCK")}
+                                    {renderDynoTooltip(dyno.modTorque, DYNO_PEAK_TORQUE_IDX, "#D9241D", "Nm", "mt", stageTxt)}
+                                  </svg>
+                                  <div style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'center', marginTop: '8px', fontSize: '13px', color: aTokens.textMuted }}>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><span style={{ width: '16px', height: '3px', backgroundColor: '#1E3A8A', display: 'inline-block' }} />Potencia original</span>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><span style={{ width: '16px', height: '3px', backgroundColor: '#D9241D', display: 'inline-block' }} />Potencia modificada</span>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><span style={{ width: '16px', height: '0', borderTop: '3px dashed #1E3A8A', display: 'inline-block' }} />Torque original</span>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><span style={{ width: '16px', height: '0', borderTop: '3px dashed #D9241D', display: 'inline-block' }} />Torque modificado</span>
+                                  </div>
+                                </div>
+
+                                {/* --- CARACTERÍSTICAS DEL VEHÍCULO --- */}
+                                <div className="aumentos-col" style={{ flex: '0 1 230px', minWidth: '200px', backgroundColor: aTokens.cardBg, border: `1px solid ${aTokens.border}`, borderRadius: '8px', padding: '14px 16px', animationDelay: '0.22s' }}>
+                                  <h5 style={{ margin: '0 0 10px 0', color: aTokens.text, fontSize: '11px', letterSpacing: '0.4px', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                                    Vehículo
+                                  </h5>
+                                  {[
+                                    ['Marca / Modelo', archivo.marca_modelo],
+                                    ['Patente', archivo.patente],
+                                    ['Año', archivo.detalles_tecnicos?.anio],
+                                    ['Motor', archivo.detalles_tecnicos?.motor],
+                                    ['Combustible', archivo.detalles_tecnicos?.combustible],
+                                    ['Transmisión', archivo.detalles_tecnicos?.transmision === 'Automatico' ? 'Automático' : archivo.detalles_tecnicos?.transmision],
+                                    ['Modo de lectura', archivo.detalles_tecnicos?.modo_lectura],
+                                    ['ECU / Módulo', archivo.detalles_tecnicos?.tipo_modulo
+                                      ? `${archivo.detalles_tecnicos.tipo_modulo} (${archivo.detalles_tecnicos?.ecu || 'N/E'})`
+                                      : archivo.detalles_tecnicos?.ecu]
+                                  ].map(([label, value]) => (
+                                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '11px', color: aTokens.textMuted, padding: '5px 0', borderBottom: `1px solid ${aTokens.divider}` }}>
+                                      <span style={{ color: aTokens.textFaint }}>{label}</span>
+                                      <span style={{ color: aTokens.text, fontWeight: 'bold', textAlign: 'right', overflowWrap: 'break-word' }}>{value || '---'}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                              <p style={{ position: 'relative', zIndex: 1, margin: '14px 0 0 0', fontSize: '10px', color: aTokens.textFaint, fontStyle: 'italic', lineHeight: 1.4 }}>
+                                Los resultados obtenidos corresponden a pruebas realizadas en un vehículo con mantenimiento al día y un motor en óptimas condiciones. Las cifras pueden variar según el estado mecánico, el combustible utilizado y la configuración de cada vehículo.
+                              </p>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
                 );
               })}
             </tbody>
@@ -777,18 +1283,20 @@ const Archivos = ({ session }) => {
               <table style={styles.infoTable}>
                 <tbody>
                   {[
-                    ['License Plate', archivoDetalle.patente],
-                    ['Brand / Model', archivoDetalle.marca_modelo],
-                    ['Year', archivoDetalle.detalles_tecnicos?.anio],
+                    ['Patente', archivoDetalle.patente],
+                    ['Marca / Modelo', archivoDetalle.marca_modelo],
+                    ['Año', archivoDetalle.detalles_tecnicos?.anio],
                     ['Motor', archivoDetalle.detalles_tecnicos?.motor],
                     ['HP', archivoDetalle.detalles_tecnicos?.hp],
-                    ['Fuel', archivoDetalle.detalles_tecnicos?.combustible],
+                    ['Combustible', archivoDetalle.detalles_tecnicos?.combustible],
+                    ['Transmisión', archivoDetalle.detalles_tecnicos?.transmision === 'Automatico' ? 'Automático' : archivoDetalle.detalles_tecnicos?.transmision],
+                    ['Modo de lectura', archivoDetalle.detalles_tecnicos?.modo_lectura],
                     ['ECU / DCU / TCU / DSG',
                       archivoDetalle.detalles_tecnicos?.tipo_modulo
                         ? `${archivoDetalle.detalles_tecnicos.tipo_modulo} (${archivoDetalle.detalles_tecnicos?.ecu || 'Sin especificar'})`
                         : archivoDetalle.detalles_tecnicos?.ecu],
-                    ['Services', archivoDetalle.detalles_tecnicos?.servicios_solicitados],
-                    ['Credits', archivoDetalle.detalles_tecnicos?.costo_creditos]
+                    ['Servicios', archivoDetalle.detalles_tecnicos?.servicios_solicitados],
+                    ['Créditos', archivoDetalle.detalles_tecnicos?.costo_creditos]
                   ].map(([label, value]) => (
                     <tr key={label}>
                       <td style={styles.infoLabel}>{label}</td>
@@ -798,8 +1306,8 @@ const Archivos = ({ session }) => {
                 </tbody>
               </table>
               <div style={{ marginTop: '20px', backgroundColor: s.inputBg, padding: '15px', borderLeft: '4px solid #D9241D' }}>
-                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#D9241D' }}>COMMENTS:</div>
-                <p style={{ margin: 0, fontSize: '12px', fontStyle: 'italic', color: s.text }}>{archivoDetalle.detalles_tecnicos?.comentarios || 'No comments provided.'}</p>
+                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#D9241D' }}>COMENTARIOS:</div>
+                <p style={{ margin: 0, fontSize: '12px', fontStyle: 'italic', color: s.text }}>{archivoDetalle.detalles_tecnicos?.comentarios || 'No se proporcionaron comentarios.'}</p>
               </div>
               {archivoDetalle.detalles_tecnicos?.codigosfalla && (
                 <div style={{ marginTop: '15px', backgroundColor: s.inputBg, padding: '15px', borderLeft: '4px solid #D9241D' }}>
@@ -811,7 +1319,121 @@ const Archivos = ({ session }) => {
               )}
             </div>
             <div style={{ padding: '15px', textAlign: 'right' }}>
-              <button className="action-btn" onClick={() => setArchivoDetalle(null)} style={{ backgroundColor: '#000', color: 'white', border: 'none', padding: '8px 25px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>CLOSE</button>
+              <button className="action-btn" onClick={() => setArchivoDetalle(null)} style={{ backgroundColor: '#000', color: 'white', border: 'none', padding: '8px 25px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>CERRAR</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {aumentosEditar && (
+        <div className="modal-overlay-anim" style={styles.modalOverlay} onClick={() => !guardandoAumentos && setAumentosEditar(null)}>
+          <div className="modal-content-anim" style={{ ...styles.modalContent, maxWidth: '420px' }} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalHeader}>
+              <h3 style={{ margin: 0, fontSize: '13px' }}>AUMENTOS — {aumentosEditar.patente}</h3>
+              <button onClick={() => setAumentosEditar(null)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>✕</button>
+            </div>
+            <div style={{ ...styles.modalBody, padding: '20px' }}>
+              <h4 style={{ margin: '0 0 10px 0', fontSize: '11px', color: '#D9241D', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Vehículo</h4>
+              {[
+                { key: 'marca_modelo', label: 'Marca / Modelo' },
+                { key: 'patente', label: 'Patente' },
+                { key: 'anio', label: 'Año' },
+                { key: 'motor', label: 'Motor' }
+              ].map(f => (
+                <div key={f.key} style={{ marginBottom: '10px' }}>
+                  <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: s.text, marginBottom: '4px', textTransform: 'uppercase' }}>{f.label}</label>
+                  <input
+                    type="text"
+                    value={formAumentos[f.key]}
+                    onChange={(e) => setFormAumentos(prev => ({ ...prev, [f.key]: e.target.value }))}
+                    style={{ width: '100%', padding: '9px 10px', fontSize: '13px', borderRadius: '4px', border: `1px solid ${s.inputBorder}`, backgroundColor: s.inputBg, color: s.text, boxSizing: 'border-box' }}
+                    placeholder="---"
+                  />
+                </div>
+              ))}
+
+              <div style={{ marginBottom: '10px' }}>
+                <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: s.text, marginBottom: '4px', textTransform: 'uppercase' }}>Combustible</label>
+                <select
+                  value={formAumentos.combustible}
+                  onChange={(e) => setFormAumentos(prev => ({ ...prev, combustible: e.target.value }))}
+                  style={{ width: '100%', padding: '9px 10px', fontSize: '13px', borderRadius: '4px', border: `1px solid ${s.inputBorder}`, backgroundColor: s.inputBg, color: s.text, boxSizing: 'border-box' }}
+                >
+                  <option value="">Seleccionar</option>
+                  <option value="Gasolina">Gasolina</option>
+                  <option value="Diesel">Diesel</option>
+                  <option value="Hibrido">Híbrido</option>
+                </select>
+              </div>
+
+              <div style={{ marginBottom: '10px' }}>
+                <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: s.text, marginBottom: '4px', textTransform: 'uppercase' }}>Transmisión</label>
+                <select
+                  value={formAumentos.transmision}
+                  onChange={(e) => setFormAumentos(prev => ({ ...prev, transmision: e.target.value }))}
+                  style={{ width: '100%', padding: '9px 10px', fontSize: '13px', borderRadius: '4px', border: `1px solid ${s.inputBorder}`, backgroundColor: s.inputBg, color: s.text, boxSizing: 'border-box' }}
+                >
+                  <option value="">Seleccionar</option>
+                  <option value="Manual">Manual</option>
+                  <option value="Automatico">Automático</option>
+                </select>
+              </div>
+
+              <div style={{ marginBottom: '10px' }}>
+                <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: s.text, marginBottom: '4px', textTransform: 'uppercase' }}>Modo de lectura</label>
+                <select
+                  value={formAumentos.modo_lectura}
+                  onChange={(e) => setFormAumentos(prev => ({ ...prev, modo_lectura: e.target.value }))}
+                  style={{ width: '100%', padding: '9px 10px', fontSize: '13px', borderRadius: '4px', border: `1px solid ${s.inputBorder}`, backgroundColor: s.inputBg, color: s.text, boxSizing: 'border-box' }}
+                >
+                  <option value="">Seleccionar</option>
+                  <option value="OBD2">OBD2</option>
+                  <option value="BENCH">BENCH</option>
+                  <option value="BOOT">BOOT</option>
+                  <option value="BOOTGLITCH">BOOTGLITCH</option>
+                  <option value="KORHEK MODE">KORHEK MODE</option>
+                </select>
+              </div>
+
+              <div style={{ marginBottom: '10px' }}>
+                <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: s.text, marginBottom: '4px', textTransform: 'uppercase' }}>ECU / Módulo</label>
+                <input
+                  type="text"
+                  value={formAumentos.ecu}
+                  onChange={(e) => setFormAumentos(prev => ({ ...prev, ecu: e.target.value }))}
+                  style={{ width: '100%', padding: '9px 10px', fontSize: '13px', borderRadius: '4px', border: `1px solid ${s.inputBorder}`, backgroundColor: s.inputBg, color: s.text, boxSizing: 'border-box' }}
+                  placeholder="---"
+                />
+              </div>
+
+              <h4 style={{ margin: '18px 0 10px 0', fontSize: '11px', color: '#D9241D', textTransform: 'uppercase', letterSpacing: '0.4px', borderTop: `1px solid ${s.border}`, paddingTop: '16px' }}>Aumentos</h4>
+              <p style={{ margin: '0 0 12px 0', fontSize: '11px', color: s.textMuted }}>
+                Valores de fábrica y con {etiquetaStage(aumentosEditar.detalles_tecnicos?.servicios_solicitados)}. Se usan para el gráfico de aumentos que ve el cliente en "Servicio".
+              </p>
+              {[
+                { key: 'hpStock', label: 'HP de fábrica (Stock)' },
+                { key: 'nmStock', label: 'Nm de fábrica (Stock)' },
+                { key: 'hpStage1', label: `HP con ${etiquetaStage(aumentosEditar.detalles_tecnicos?.servicios_solicitados)}` },
+                { key: 'nmStage1', label: `Nm con ${etiquetaStage(aumentosEditar.detalles_tecnicos?.servicios_solicitados)}` }
+              ].map(f => (
+                <div key={f.key} style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: s.text, marginBottom: '4px', textTransform: 'uppercase' }}>{f.label}</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formAumentos[f.key]}
+                    onChange={(e) => setFormAumentos(prev => ({ ...prev, [f.key]: e.target.value }))}
+                    style={{ width: '100%', padding: '9px 10px', fontSize: '13px', borderRadius: '4px', border: `1px solid ${s.inputBorder}`, backgroundColor: s.inputBg, color: s.text, boxSizing: 'border-box' }}
+                    placeholder="0"
+                  />
+                </div>
+              ))}
+            </div>
+            <div style={{ padding: '15px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button className="action-btn" onClick={() => setAumentosEditar(null)} disabled={guardandoAumentos} style={{ backgroundColor: 'transparent', color: s.textMuted, border: `1px solid ${s.border}`, padding: '8px 18px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', borderRadius: '4px' }}>CANCELAR</button>
+              <button className="action-btn" onClick={guardarAumentos} disabled={guardandoAumentos} style={{ backgroundColor: '#D9241D', color: 'white', border: 'none', padding: '8px 22px', cursor: guardandoAumentos ? 'wait' : 'pointer', fontSize: '11px', fontWeight: 'bold', borderRadius: '4px' }}>
+                {guardandoAumentos ? 'GUARDANDO...' : 'GUARDAR'}
+              </button>
             </div>
           </div>
         </div>
