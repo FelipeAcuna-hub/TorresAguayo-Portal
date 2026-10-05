@@ -1262,6 +1262,7 @@ const Archivos = ({ session }) => {
                                   {[
                                     ['Marca / Modelo', archivo.marca_modelo],
                                     ['Patente', archivo.patente],
+                                    ['VIN', archivo.detalles_tecnicos?.vin],
                                     ['Año', archivo.detalles_tecnicos?.anio],
                                     ['Motor', archivo.detalles_tecnicos?.motor],
                                     ['Combustible', archivo.detalles_tecnicos?.combustible],
@@ -1348,6 +1349,7 @@ const Archivos = ({ session }) => {
                   {[
                     ['Patente', archivoDetalle.patente],
                     ['Marca / Modelo', archivoDetalle.marca_modelo],
+                    ['VIN', archivoDetalle.detalles_tecnicos?.vin],
                     ['Año', archivoDetalle.detalles_tecnicos?.anio],
                     ['Motor', archivoDetalle.detalles_tecnicos?.motor],
                     ['HP', archivoDetalle.detalles_tecnicos?.hp],

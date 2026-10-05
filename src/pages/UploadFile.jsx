@@ -83,7 +83,7 @@ const UploadFile = ({ session }) => {
   const [formData, setFormData] = useState({
     patente: '', marca: '', modelo: '', anio: '',
     motor: '', hp: '', ecu: '', combustible: '', transmision: '',
-    tipo_modulo: '', comentarios: '', codigosfalla: '', modo_lectura: '',
+    tipo_modulo: '', comentarios: '', codigosfalla: '', modo_lectura: '', vin: '',
   });
 
   useEffect(() => {
@@ -107,6 +107,13 @@ const UploadFile = ({ session }) => {
     const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (val.length <= 6) {
       setFormData({ ...formData, patente: val });
+    }
+  };
+
+  const handleVinChange = (e) => {
+    const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (val.length <= 17) {
+      setFormData({ ...formData, vin: val });
     }
   };
 
@@ -425,7 +432,7 @@ const UploadFile = ({ session }) => {
           <div className="up-section" style={{ animationDelay: '0.14s' }}>
             <h2 style={styles.sectionTitle}>📎 Adjuntar archivos</h2>
 
-            <div style={{ marginBottom: '18px', maxWidth: '260px' }}>
+            <div style={{ maxWidth: '260px', marginBottom: '18px' }}>
               <label style={styles.label}>Modo de lectura (Obligatorio)</label>
               <select className="up-input" style={{ ...styles.input, borderColor: formData.modo_lectura ? '#e5e5e5' : '#e11d48' }} value={formData.modo_lectura} onChange={e => setFormData({ ...formData, modo_lectura: e.target.value })}>
                 <option value="">Seleccionar</option>
@@ -435,6 +442,18 @@ const UploadFile = ({ session }) => {
                 <option value="BOOTGLITCH">BOOTGLITCH</option>
                 <option value="KORHEK MODE">KORHEK MODE</option>
               </select>
+            </div>
+
+            <div style={{ maxWidth: '340px', marginBottom: '18px' }}>
+              <label style={{ ...styles.label, whiteSpace: 'nowrap' }}>VIN del Vehículo (RECOMENDADO PARA STAGE 1 Y 2)</label>
+              <input
+                className="up-input"
+                style={{ ...styles.input, textTransform: 'uppercase', letterSpacing: '0.5px' }}
+                placeholder="17 caracteres"
+                maxLength={17}
+                value={formData.vin}
+                onChange={handleVinChange}
+              />
             </div>
 
             <div className="up-files-grid" style={styles.gridFiles}>
