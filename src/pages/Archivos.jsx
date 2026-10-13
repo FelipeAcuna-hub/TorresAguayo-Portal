@@ -928,6 +928,22 @@ const Archivos = ({ session }) => {
                           </label>
                         )}
 
+                        {archivo.ori_file_url ? (
+                          renderDownloadBtn(archivo.ori_file_url, (
+                            <>
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" style={{ flexShrink: 0 }}>
+                                <path d="M12.643 15C13.979 15 15 13.845 15 12.5V5H1v7.5C1 13.845 2.021 15 3.357 15zM5.5 7h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1 0-1M.8 1a.8.8 0 0 0-.8.8V3a.8.8 0 0 0 .8.8h14.4A.8.8 0 0 0 16 3V1.8a.8.8 0 0 0-.8-.8z" />
+                              </svg>
+                              DESCARGAR ORI
+                            </>
+                          ), '#f97316')
+                        ) : isAdmin && (
+                          <label className={`action-btn upload-label${subiendoKey === `${archivo.id}_ori_file_url` ? ' uploading' : ''}`} style={{ background: 'linear-gradient(135deg, #3f2308 0%, #000000 100%)', color: '#f97316', padding: '5px', fontSize: '9px', cursor: subiendoKey === `${archivo.id}_ori_file_url` ? 'wait' : 'pointer', borderRadius: '4px', border: '1px solid #f97316', textAlign: 'center', fontWeight: 'bold' }}>
+                            {subiendoKey === `${archivo.id}_ori_file_url` ? <><span className="upload-spinner" />SUBIENDO...</> : '📤 SUBIR ORI'}
+                            <input type="file" style={{ display: 'none' }} onChange={(e) => handleUploadModificado(archivo.id, e.target.files[0], archivo.patente, archivo.profiles?.email, 'ori_file_url')} />
+                          </label>
+                        )}
+
                         {archivo.mod_file_eeprom_url ? (
                           renderDownloadBtn(archivo.mod_file_eeprom_url, (
                             <>
@@ -1456,7 +1472,7 @@ const Archivos = ({ session }) => {
                   <option value="BENCH">BENCH</option>
                   <option value="BOOT">BOOT</option>
                   <option value="BOOTGLITCH">BOOTGLITCH</option>
-                  <option value="KORHEK MODE">KORHEK MODE</option>
+                  <option value="KORHEX MODE">KORHEX MODE</option>
                 </select>
               </div>
 

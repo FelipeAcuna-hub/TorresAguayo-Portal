@@ -327,7 +327,12 @@ const UploadFile = ({ session }) => {
 
         <div style={styles.formCard}>
           <div className="up-section" style={{ animationDelay: '0s' }}>
-            <h2 style={styles.sectionTitle}>🚗 Información del vehículo</h2>
+            <h2 style={styles.sectionTitle}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M12.643 15C13.979 15 15 13.845 15 12.5V5H1v7.5C1 13.845 2.021 15 3.357 15zM5.5 7h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1 0-1M.8 1a.8.8 0 0 0-.8.8V3a.8.8 0 0 0 .8.8h14.4A.8.8 0 0 0 16 3V1.8a.8.8 0 0 0-.8-.8z" />
+              </svg>
+              Información del vehículo
+            </h2>
 
             <div className="up-row" style={styles.row}>
               <div>
@@ -379,7 +384,12 @@ const UploadFile = ({ session }) => {
           <hr style={styles.sectionDivider} />
 
           <div className="up-section" style={{ animationDelay: '0.06s' }}>
-            <h2 style={styles.sectionTitle}>💰 Simula el precio de tu archivo</h2>
+            <h2 style={styles.sectionTitle}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M12.643 15C13.979 15 15 13.845 15 12.5V5H1v7.5C1 13.845 2.021 15 3.357 15zM5.5 7h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1 0-1M.8 1a.8.8 0 0 0-.8.8V3a.8.8 0 0 0 .8.8h14.4A.8.8 0 0 0 16 3V1.8a.8.8 0 0 0-.8-.8z" />
+              </svg>
+              Seleccionar servicio
+            </h2>
 
             <div className="up-selector-grid" style={styles.selectorGrid}>
               <div>
@@ -430,17 +440,22 @@ const UploadFile = ({ session }) => {
           <hr style={styles.sectionDivider} />
 
           <div className="up-section" style={{ animationDelay: '0.14s' }}>
-            <h2 style={styles.sectionTitle}>📎 Adjuntar archivos</h2>
+            <h2 style={styles.sectionTitle}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M4.5 3a2.5 2.5 0 0 1 5 0v9a1.5 1.5 0 0 1-3 0V5a.5.5 0 0 1 1 0v7a.5.5 0 0 0 1 0V3a1.5 1.5 0 1 0-3 0v9a2.5 2.5 0 0 0 5 0V5a.5.5 0 0 1 1 0v7a3.5 3.5 0 1 1-7 0z" />
+              </svg>
+              Adjuntar archivos
+            </h2>
 
             <div style={{ maxWidth: '260px', marginBottom: '18px' }}>
               <label style={styles.label}>Modo de lectura (Obligatorio)</label>
-              <select className="up-input" style={{ ...styles.input, borderColor: formData.modo_lectura ? '#e5e5e5' : '#e11d48' }} value={formData.modo_lectura} onChange={e => setFormData({ ...formData, modo_lectura: e.target.value })}>
-                <option value="">Seleccionar</option>
-                <option value="OBD2">OBD2</option>
-                <option value="BENCH">BENCH</option>
-                <option value="BOOT">BOOT</option>
-                <option value="BOOTGLITCH">BOOTGLITCH</option>
-                <option value="KORHEK MODE">KORHEK MODE</option>
+              <select className="up-input" style={{ ...styles.input, borderColor: formData.modo_lectura ? '#e5e5e5' : '#e11d48', colorScheme: isDark ? 'dark' : 'light' }} value={formData.modo_lectura} onChange={e => setFormData({ ...formData, modo_lectura: e.target.value })}>
+                <option value="" style={{ color: s.text, backgroundColor: s.inputBg }}>Seleccionar</option>
+                <option value="OBD2" style={{ color: s.text, backgroundColor: s.inputBg }}>OBD2</option>
+                <option value="BENCH" style={{ color: s.text, backgroundColor: s.inputBg }}>BENCH</option>
+                <option value="BOOT" style={{ color: s.text, backgroundColor: s.inputBg }}>BOOT</option>
+                <option value="BOOTGLITCH" style={{ color: s.text, backgroundColor: s.inputBg }}>BOOTGLITCH</option>
+                <option value="KORHEX MODE" style={{ color: s.text, backgroundColor: s.inputBg }}>KORHEX MODE</option>
               </select>
             </div>
 
