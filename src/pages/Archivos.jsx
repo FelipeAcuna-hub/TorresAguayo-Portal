@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient';
 import { useTheme, DARK_GRADIENT, getSurfaceTokens, playTone } from '../ThemeContext';
 import logoStockcarsBlanco from '../logoSTOCKCARSBLANCO.png';
 import logoStockcarsColor from '../logo_stockcars.png';
+import { SERVICIOS_CONFIG } from './UploadFile';
 
 // --- GRÁFICO DE DYNO: curva de torque/potencia físicamente coherente ---
 // Relación real entre potencia y torque: P [HP] = T [Nm] × rpm / 7121.
@@ -110,6 +111,7 @@ const Archivos = ({ session }) => {
   const [paginaActual, setPaginaActual] = useState(1);
   const [itemsPorPagina] = useState(8);
   const [statusFilter, setStatusFilter] = useState('todos');
+  const [servicioFilter, setServicioFilter] = useState('todos');
 
   const ADMIN_EMAILS = [
     'stockcarscl@gmail.com',
@@ -612,8 +614,9 @@ const Archivos = ({ session }) => {
   
     const matchSearch = !term || matchOrden || matchPatente || matchEmail;
     const matchStatus = statusFilter === 'todos' || a.estado === statusFilter;
-  
-    return matchSearch && matchStatus;
+    const matchServicio = servicioFilter === 'todos' || a.detalles_tecnicos?.servicios_solicitados === servicioFilter;
+
+    return matchSearch && matchStatus && matchServicio;
   });
 
   const totalPaginas = Math.ceil(filteredArchivos.length / itemsPorPagina);
@@ -709,6 +712,19 @@ const Archivos = ({ session }) => {
               <option value="en revision">EN REVISIÓN</option>
               <option value="completado">COMPLETADOS</option>
             </select>
+
+            {isAdmin && (
+              <select className="status-select" style={styles.statusSelector} value={servicioFilter} onChange={(e) => { setServicioFilter(e.target.value); setPaginaActual(1); }}>
+                <option value="todos">SERVICIO (TODOS)</option>
+                {Object.entries(SERVICIOS_CONFIG).map(([categoria, servicios]) => (
+                  <optgroup key={categoria} label={categoria}>
+                    {servicios.map(svc => (
+                      <option key={svc.id} value={svc.name}>{svc.name}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            )}
             <div className="search-input-wrap" style={styles.searchBar}>
               <span style={{ fontSize: '12px', marginRight: '8px' }}>🔍</span>
               <input type="text" placeholder="Buscar..." style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', width: '150px', color: s.text }} value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setPaginaActual(1); }} />

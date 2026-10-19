@@ -4,7 +4,7 @@ import { supabase } from '../supabaseClient';
 import { useTheme, DARK_GRADIENT, getSurfaceTokens, playTone } from '../ThemeContext';
 
 // --- 1. DEFINICIÓN DE SERVICIOS DINÁMICOS ---
-const SERVICIOS_CONFIG = {
+export const SERVICIOS_CONFIG = {
   'REPRO GASOLINA': [
     { id: 'b_s1', name: 'STAGE 1 (INCLUYE VMAX OFF)', price: 14 },
     { id: 'b_s1pb', name: 'STAGE 1 + POPS AND BANGS', price: 18 },
