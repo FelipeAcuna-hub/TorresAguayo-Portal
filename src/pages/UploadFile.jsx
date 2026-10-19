@@ -449,13 +449,13 @@ const UploadFile = ({ session }) => {
 
             <div style={{ maxWidth: '260px', marginBottom: '18px' }}>
               <label style={styles.label}>Modo de lectura (Obligatorio)</label>
-              <select className="up-input" style={{ ...styles.input, borderColor: formData.modo_lectura ? '#e5e5e5' : '#e11d48', colorScheme: isDark ? 'dark' : 'light' }} value={formData.modo_lectura} onChange={e => setFormData({ ...formData, modo_lectura: e.target.value })}>
-                <option value="" style={{ color: s.text, backgroundColor: s.inputBg }}>Seleccionar</option>
-                <option value="OBD2" style={{ color: s.text, backgroundColor: s.inputBg }}>OBD2</option>
-                <option value="BENCH" style={{ color: s.text, backgroundColor: s.inputBg }}>BENCH</option>
-                <option value="BOOT" style={{ color: s.text, backgroundColor: s.inputBg }}>BOOT</option>
-                <option value="BOOTGLITCH" style={{ color: s.text, backgroundColor: s.inputBg }}>BOOTGLITCH</option>
-                <option value="KORHEX MODE" style={{ color: s.text, backgroundColor: s.inputBg }}>KORHEX MODE</option>
+              <select className="up-input" style={{ ...styles.input, borderColor: formData.modo_lectura ? '#e5e5e5' : '#e11d48' }} value={formData.modo_lectura} onChange={e => setFormData({ ...formData, modo_lectura: e.target.value })}>
+                <option value="">Seleccionar</option>
+                <option value="OBD2">OBD2</option>
+                <option value="BENCH">BENCH</option>
+                <option value="BOOT">BOOT</option>
+                <option value="BOOTGLITCH">BOOTGLITCH</option>
+                <option value="KORHEX MODE">KORHEX MODE</option>
               </select>
             </div>
 

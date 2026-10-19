@@ -39,3 +39,17 @@ html, body {
   transform: scale(1.05);
 }
 
+/* En Windows (Chrome/Edge), el popup nativo del <select> ignora el
+   background-color que le pongamos a <option> y mantiene su propio fondo
+   claro. Si el texto venía pensado para fondo oscuro (modo oscuro del
+   sitio) queda clarito sobre ese fondo claro y no se distingue nada.
+   Se fuerza el desplegable a esquema claro siempre, independiente del
+   tema del sitio: así se ve igual de bien en Mac y en Windows. */
+select {
+  color-scheme: light;
+}
+select option {
+  color: #1a1a1a;
+  background-color: #ffffff;
+}
+
