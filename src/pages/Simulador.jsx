@@ -26,30 +26,39 @@ const Simulador = () => {
       { id: 'b_s1pb', name: 'STAGE 1 + POPS AND BANGS', price: 18 },
       { id: 'b_s2', name: 'STAGE 2 (REQUIERE MODS)', price: 16 },
       { id: 'b_s2pb', name: 'STAGE 2 + POPS AND BANGS', price: 22 },
-      { id: 'b_pb', name: 'POPS AND BANGS (SOLO)', price: 6 }
+      { id: 'b_pb', name: 'POPS AND BANGS (SOLO)', price: 6 },
+      { id: 'b_sc', name: 'STAGE CUSTOM (MAPA A MEDIDA)', price: 28 },
+      { id: 'b_s3', name: 'MULTI MAP (STOCK + STAGE 1 + STAGE 2 SELECCIONABLE)', price: 32 }
     ],
     'REPRO DIÉSEL': [
-      { id: 'd_s1', name: 'STAGE 1', price: 14 },
+      { id: 'd_s1', name: 'STAGE 1 (INCLUYE VMAX OFF)', price: 14 },
       { id: 'd_s1egr', name: 'STAGE 1 + EGR OFF', price: 15 },
-      { id: 'd_s1dpf', name: 'STAGE 1 + DPF OFF + EGR OFF', price: 16 },
+      { id: 'd_s1dpf', name: 'STAGE 1 + DPF + EGR OFF', price: 16 },
       { id: 'd_s1full', name: 'STAGE 1 + DPF + EGR OFF + ADBLUE OFF', price: 19 },
-      { id: 'd_s2', name: 'STAGE 2 (POTENCIA + MODS)', price: 16 }
+      { id: 'd_s2', name: 'STAGE 2', price: 16 },
+      { id: 'd_s2full', name: 'STAGE 2 + HARDCUT', price: 20 },
+      { id: 'd_s2full_adblue', name: 'STAGE 2 + DPF + EGR o ADBLUE OFF', price: 24 },
+      { id: 'd_s3', name: 'STAGE CUSTOM (MAPA A MEDIDA)', price: 28 },
+      { id: 'd_s3full', name: 'MULTI MAP (STOCK + STAGE 1 + STAGE 2 SELECCIONABLE)', price: 32 }
     ],
     'ANULACIONES EURO': [
+      { id: 'dpf_only', name: 'DPF OFF', price: 5 },
       { id: 'dpf_egr', name: 'DPF OFF + EGR OFF', price: 6 },
       { id: 'adblue_full', name: 'ADBLUE + DPF & EGR OFF', price: 8 },
       { id: 'egr_only', name: 'EGR OFF', price: 4 },
       { id: 'adblue_only', name: 'ADBLUE OFF', price: 6 },
-      { id: 'restauracion_orig', name: 'RESTAURACIÓN ORIG', price: 6 }
+      { id: 'restauracion_orig', name: 'RESTAURACIÓN ORIG', price: 6 },
+      { id: 'checkfile', name: 'CHECK FILE', price: 2 }
     ],
     'ANULACIONES EURO (CAMIONES)': [
-    { id: 'truck_dpf_egr', name: 'DPF OFF + EGR OFF', price: 12 },
-    { id: 'truck_adblue_full', name: 'ADBLUE + DPF & EGR OFF', price: 16 },
+    { id: 'truck_dpf_egr', name: 'DPF + EGR OFF', price: 12 },
+    { id: 'truck_adblue_full', name: 'ADBLUE + DPF + EGR OFF', price: 16 },
     { id: 'truck_dpf_egr_adblue', name: 'ADBLUE + DPF & EGR OFF + DCU OFF', price: 22 },
     { id: 'truck_egr_only', name: 'EGR OFF', price: 8 },
     { id: 'truck_adbue_only', name: 'SCR ONLY OFF', price: 20 },
     { id: 'truck_dpf_only', name: 'DPF OFF', price: 12 },
-    { id: 'truck_cummins_emissions', name: 'CUMMINS EMISSIONS', price: 35 }
+    { id: 'truck_cummins_emissions', name: 'CUMMINS EMISSIONS', price: 35 },
+    { id: 'truck_checkfile', name: 'CHECK FILE', price: 6 }
   ],
    'DESACTIVACIONES': [
     { id: 'dtc', name: 'DTC OFF', price: 3 },
@@ -61,14 +70,16 @@ const Simulador = () => {
     { id: 'tva_off', name: 'TVA OFF', price: 6 },
     { id: 'flaps_swirls', name: 'FLAPS/SWIRLS', price: 6 },
     { id: 'encriptacion', name: 'ENC', price: 4},
-    { id: 'halfengine', name: 'HALF ENGINE MODE OFF', price: 12}
+    { id: 'halfengine', name: 'HALF ENGINE MODE OFF', price: 12},
+    { id: 'startstop', name: 'START/STOP OFF', price: 6}
   ],
     'SPECIAL ECU MD1 MG1 SID212-212EVO SID213-213EVO' : [
     { id: 'adblue',  name: 'ADBLUE + DPF + EGR OFF', price: 16 },
     { id: 'gpf', name: 'GPF OFF', price: 15 },
     { id: 'dpfoff_egr', name: 'DPF + EGR OFF', price: 15 },
     { id: 'stage1', name: 'STAGE 1 (INCLUYE VMAX OFF)', price: 22 },
-    { id: 'unlock_service', name: 'UNLOCK SERVICE + (ADBLUE OFF) + (DPF OFF)+ (EGR OFF) ', price: 25 }
+    { id: 'unlock_service', name: 'UNLOCK SERVICE + (ADBLUE OFF) + (DPF OFF)+ (EGR OFF) ', price: 25 },
+    { id: 'stage2', name: 'STAGE 2 (REQUIERE MODS)', price: 28 },
     ]
   };
 
