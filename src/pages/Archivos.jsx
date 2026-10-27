@@ -824,33 +824,35 @@ const Archivos = ({ session }) => {
                       ) : <span style={{ color: s.textFaint, fontSize: '11px' }}>---</span>}
 
                       {aplicaAumentos(archivo.detalles_tecnicos?.servicios_solicitados) && (
-                        <button
-                          className={`action-btn aumentos-toggle-btn${aumentosAbierto === archivo.id ? ' aumentos-toggle-open' : ''}`}
-                          onClick={() => toggleAumentos(archivo.id)}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: '4px',
-                            marginTop: '6px', backgroundColor: aumentosAbierto === archivo.id ? '#D9241D' : 'transparent',
-                            color: aumentosAbierto === archivo.id ? '#fff' : '#D9241D',
-                            border: '1px solid #D9241D', padding: '4px 8px', fontSize: '9px',
-                            fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer', whiteSpace: 'nowrap',
-                            transition: 'background-color 0.2s ease, color 0.2s ease'
-                          }}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="currentColor" viewBox="0 0 16 16" style={{ flexShrink: 0 }}>
-                            <path d="M0 0h1v15h15v1H0zm14.817 3.113a.5.5 0 0 1 .07.704l-4.5 5.5a.5.5 0 0 1-.74.037L7.06 6.767l-3.656 5.027a.5.5 0 0 1-.808-.588l4-5.5a.5.5 0 0 1 .758-.06l2.609 2.61 4.15-5.073a.5.5 0 0 1 .704-.07" />
-                          </svg>
-                          AUMENTOS
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg" width="9" height="9" fill="currentColor" viewBox="0 0 16 16"
+                        <div style={{ textAlign: 'center', marginTop: '6px' }}>
+                          <button
+                            className={`action-btn aumentos-toggle-btn${aumentosAbierto === archivo.id ? ' aumentos-toggle-open' : ''}`}
+                            onClick={() => toggleAumentos(archivo.id)}
                             style={{
-                              flexShrink: 0, marginLeft: '2px',
-                              transform: aumentosAbierto === archivo.id ? 'rotate(180deg)' : 'rotate(0deg)',
-                              transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+                              display: 'inline-flex', alignItems: 'center', gap: '4px',
+                              backgroundColor: aumentosAbierto === archivo.id ? '#D9241D' : 'transparent',
+                              color: aumentosAbierto === archivo.id ? '#fff' : '#D9241D',
+                              border: '1px solid #D9241D', padding: '4px 8px', fontSize: '9px',
+                              fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer', whiteSpace: 'nowrap',
+                              transition: 'background-color 0.2s ease, color 0.2s ease'
                             }}
                           >
-                            <path fillRule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708" />
-                          </svg>
-                        </button>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="currentColor" viewBox="0 0 16 16" style={{ flexShrink: 0 }}>
+                              <path d="M0 0h1v15h15v1H0zm14.817 3.113a.5.5 0 0 1 .07.704l-4.5 5.5a.5.5 0 0 1-.74.037L7.06 6.767l-3.656 5.027a.5.5 0 0 1-.808-.588l4-5.5a.5.5 0 0 1 .758-.06l2.609 2.61 4.15-5.073a.5.5 0 0 1 .704-.07" />
+                            </svg>
+                            AUMENTOS
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg" width="9" height="9" fill="currentColor" viewBox="0 0 16 16"
+                              style={{
+                                flexShrink: 0, marginLeft: '2px',
+                                transform: aumentosAbierto === archivo.id ? 'rotate(180deg)' : 'rotate(0deg)',
+                                transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+                              }}
+                            >
+                              <path fillRule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708" />
+                            </svg>
+                          </button>
+                        </div>
                       )}
                     </td>
 
