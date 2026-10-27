@@ -3,13 +3,13 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useTheme, DARK_GRADIENT, getSurfaceTokens } from '../ThemeContext';
 import logoStockcars from '../stockcarsconregister.png';
-import logoStageX from '../magicstagex.svg';
+import logoKorhex from '../korhex.png';
 import logoFlex from '../magicflex.svg';
 import logoMagic from '../magicmotors.svg';
 import logoDyno from '../dynomag.png';
 import logoDynoBlack from '../dynomag_black.png';
 import logoMagicWhite from '../magic_motorsport_white.png';
-import { PumpkinIcon, CobwebCorner, DanglingSpiders } from '../components/HalloweenDecor';
+import { PumpkinIcon, BigPumpkinIcon, CobwebCorner, DanglingSpiders } from '../components/HalloweenDecor';
 
 // --- PARTE 1: FUNCIÓN DE CÁLCULO DE HORARIO CHILENO (INTACTA) ---
 const checkAutoOnline = () => {
@@ -142,8 +142,8 @@ const DashboardTorresAguayo = ({ session }) => {
     // ESTILOS DE PARTNERS
     partnerSection: { margin: '10px 30px 20px 30px', textAlign: 'center' },
     partnerTitle: { fontSize: '10px', color: isDark ? '#d9a99e' : '#999', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '15px', fontWeight: 'bold' },
-    partnerRibbon: { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)', padding: '15px 20px', borderRadius: '4px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '80px', flexWrap: 'wrap', border: isDark ? '1px solid rgba(255,255,255,0.15)' : '1px solid #eee' },
-    logoStyle: { height: '130px', width: 'auto', filter: 'grayscale(1) opacity(0.6)', transition: 'filter 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)', cursor: 'pointer' }
+    partnerRibbon: { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)', padding: '15px 20px', borderRadius: '4px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '80px', flexWrap: 'wrap', border: isDark ? '1px solid rgba(255,255,255,0.15)' : '1px solid #eee', position: 'relative', overflow: 'hidden' },
+    logoStyle: { height: '130px', width: 'auto', filter: 'grayscale(1) opacity(0.6) drop-shadow(0 0 7px rgba(110,19,0,0.75))', transition: 'filter 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)', cursor: 'pointer' }
   };
 
   return (
@@ -172,6 +172,23 @@ const DashboardTorresAguayo = ({ session }) => {
         .dash-btn:hover { transform: translateY(-2px); filter: brightness(1.2); box-shadow: 0 0 6px rgba(230,70,60,1), 0 0 16px rgba(217,36,29,0.9), 0 0 32px rgba(217,36,29,0.6), 0 0 56px rgba(217,36,29,0.35); }
         .wsp-bubble { transition: transform 0.2s ease, box-shadow 0.2s ease; animation: dashFadeUp 0.4s ease both; }
         .wsp-bubble:hover { transform: scale(1.08); box-shadow: 0 6px 20px rgba(0,0,0,0.45); }
+        @keyframes partnerLogoGlow {
+          0%, 100% { filter: grayscale(1) opacity(0.6) drop-shadow(0 0 5px rgba(110,19,0,0.6)) drop-shadow(0 0 11px rgba(110,19,0,0.3)); }
+          50% { filter: grayscale(1) opacity(0.8) drop-shadow(0 0 10px rgba(217,36,29,0.9)) drop-shadow(0 0 22px rgba(110,19,0,0.6)); }
+        }
+        .partner-logo { animation: partnerLogoGlow 2.6s ease-in-out infinite; transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .partner-logo:hover {
+          filter: grayscale(0) opacity(1) drop-shadow(0 0 14px rgba(217,36,29,1)) !important;
+          transform: scale(1.15);
+          animation-play-state: paused;
+        }
+        @keyframes litPumpkinFlicker {
+          0%, 100% { filter: drop-shadow(0 0 4px rgba(255,140,0,0.75)) drop-shadow(0 0 10px rgba(255,80,0,0.5)); transform: rotate(-6deg) scale(1); }
+          20% { filter: drop-shadow(0 0 6px rgba(255,170,30,0.95)) drop-shadow(0 0 14px rgba(255,100,0,0.7)); transform: rotate(-6deg) scale(1.06); }
+          45% { filter: drop-shadow(0 0 3px rgba(255,130,0,0.6)) drop-shadow(0 0 8px rgba(255,80,0,0.4)); transform: rotate(-6deg) scale(0.98); }
+          70% { filter: drop-shadow(0 0 7px rgba(255,180,40,1)) drop-shadow(0 0 16px rgba(255,110,0,0.75)); transform: rotate(-6deg) scale(1.08); }
+          85% { filter: drop-shadow(0 0 4px rgba(255,140,0,0.75)) drop-shadow(0 0 11px rgba(255,90,0,0.5)); transform: rotate(-6deg) scale(1); }
+        }
       `}</style>
 
       <section style={styles.banner}>
@@ -260,27 +277,36 @@ const DashboardTorresAguayo = ({ session }) => {
       <div style={styles.partnerSection}>
         <div style={styles.partnerTitle}>Official Technology Partners</div>
         <div style={styles.partnerRibbon}>
+          <CobwebCorner color={isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.1)'} style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }} />
+          <CobwebCorner color={isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.1)'} style={{ position: 'absolute', top: 0, right: 0, transform: 'scaleX(-1)', pointerEvents: 'none' }} />
+          <DanglingSpiders spiders={[{ left: '15%', length: 28, opacity: 0.55, duration: '3s', delay: '0s' }, { left: '85%', length: 24, opacity: 0.5, duration: '3.4s', delay: '-1.2s' }]} />
+          <PumpkinIcon size={20} style={{ position: 'absolute', bottom: '6px', left: '10px', pointerEvents: 'none', animation: 'litPumpkinFlicker 2.2s ease-in-out infinite', animationDelay: '0s' }} />
+          <PumpkinIcon size={16} style={{ position: 'absolute', bottom: '8px', right: '14px', pointerEvents: 'none', animation: 'litPumpkinFlicker 2.2s ease-in-out infinite', animationDelay: '-0.8s' }} />
+          <PumpkinIcon size={14} style={{ position: 'absolute', top: '8px', left: '50%', pointerEvents: 'none', animation: 'litPumpkinFlicker 2.2s ease-in-out infinite', animationDelay: '-1.5s' }} />
+          <BigPumpkinIcon
+            size={82}
+            style={{ flexShrink: 0, filter: 'drop-shadow(0 0 10px rgba(255,140,0,0.55))', animation: 'litPumpkinFlicker 5s ease-in-out infinite', animationDelay: '-0.4s' }}
+          />
           {[
             { id: 2, src: isDark ? logoMagicWhite : logoMagic, name: 'Magic', height: isDark ? '34px' : '130px' },
-            { id: 3, src: logoStageX, name: 'StageX' },
+            { id: 3, src: logoKorhex, name: 'Korhex', height: '36px' },
             { id: 4, src: logoFlex, name: 'Flex' },
             { id: 5, src: isDark ? logoDyno : logoDynoBlack, name: 'DynoMag', height: '100px' }
           ].map((logo) => (
             <img
               key={logo.id}
+              className="partner-logo"
               src={logo.src}
               alt={logo.name}
               style={{ ...styles.logoStyle, height: logo.height || styles.logoStyle.height }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.filter = 'grayscale(0) opacity(1) drop-shadow(0px 0px 8px rgba(225, 29, 72, 0.3))';
-                e.currentTarget.style.transform = 'scale(1.15)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.filter = 'grayscale(1) opacity(0.6)';
-                e.currentTarget.style.transform = 'scale(1)';
-              }}
             />
           ))}
+          <div style={{ flexShrink: 0, transform: 'rotate(18deg)' }}>
+            <BigPumpkinIcon
+              size={82}
+              style={{ filter: 'drop-shadow(0 0 10px rgba(255,140,0,0.55))', animation: 'litPumpkinFlicker 5s ease-in-out infinite', animationDelay: '-1.3s' }}
+            />
+          </div>
         </div>
       </div>
 

@@ -16,6 +16,45 @@ export const PumpkinIcon = ({ size = 22, style }) => (
   </svg>
 );
 
+// Calabaza grande y más trabajada (gajos, degradado, resplandor en la cara),
+// pensada para acompañar en tamaño a un logo, no como sticker chico.
+let bigPumpkinGradientSeq = 0;
+export const BigPumpkinIcon = ({ size = 80, style }) => {
+  const gradId = React.useMemo(() => `bigPumpkinGrad${++bigPumpkinGradientSeq}`, []);
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" style={style}>
+      <defs>
+        <radialGradient id={gradId} cx="42%" cy="35%" r="70%">
+          <stop offset="0%" stopColor="#ffbd5c" />
+          <stop offset="55%" stopColor="#f97316" />
+          <stop offset="100%" stopColor="#c2410c" />
+        </radialGradient>
+      </defs>
+      {/* tallo */}
+      <path d="M47 20 Q44 8 52 6 Q59 5 57 11 Q55 17 49 22 Z" fill="#5c7a2e" stroke="#43591f" strokeWidth="0.8" />
+      {/* cuerpo: 3 gajos superpuestos para el perfil acanalado típico */}
+      <ellipse cx="33" cy="58" rx="17" ry="26" fill={`url(#${gradId})`} />
+      <ellipse cx="50" cy="57" rx="19.5" ry="28.5" fill={`url(#${gradId})`} />
+      <ellipse cx="67" cy="58" rx="17" ry="26" fill={`url(#${gradId})`} />
+      {/* líneas de gajo */}
+      <path d="M33 32 Q30 58 33 84" stroke="#c2410c" strokeWidth="1.4" fill="none" opacity="0.55" />
+      <path d="M50 29 Q50 57 50 86" stroke="#c2410c" strokeWidth="1.4" fill="none" opacity="0.55" />
+      <path d="M67 32 Q70 58 67 84" stroke="#c2410c" strokeWidth="1.4" fill="none" opacity="0.55" />
+      {/* brillo superior */}
+      <ellipse cx="38" cy="38" rx="9" ry="6" fill="#ffe3b0" opacity="0.35" />
+      {/* cara tallada, iluminada desde adentro */}
+      <polygon points="38,46 46,58 30,58" fill="#3a0f06" />
+      <polygon points="62,46 70,58 54,58" fill="#3a0f06" />
+      <polygon points="50,58 56,67 44,67" fill="#3a0f06" />
+      <path d="M28 72 Q35 82 42 73 Q50 84 58 73 Q65 82 72 72 Q65 90 50 84 Q35 90 28 72 Z" fill="#3a0f06" />
+      {/* resplandor cálido que se asoma por los cortes */}
+      <polygon points="38,49 44,58 32,58" fill="#ffd27a" opacity="0.8" />
+      <polygon points="62,49 68,58 56,58" fill="#ffd27a" opacity="0.8" />
+      <polygon points="50,60 54,66 46,66" fill="#ffd27a" opacity="0.7" />
+    </svg>
+  );
+};
+
 export const SkeletonIcon = ({ size = 26, style, color = '#f1ece3' }) => (
   <svg width={size} height={size * 1.3} viewBox="0 0 24 32" fill="none" style={style}>
     {/* cráneo */}
