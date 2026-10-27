@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import { useTheme, DARK_GRADIENT, playTone } from '../ThemeContext';
 // Corregido: Importación sin espacios y con la ruta exacta desde src/components/
 import logoScanner from '../stockcarsconregister.png';
+import { PumpkinIcon, CobwebCorner, DanglingSpiders, SkeletonIcon } from './HalloweenDecor';
 
 // --- FUNCIÓN DE CÁLCULO DE HORARIO CHILENO (INTACTA) ---
 const checkAutoOnline = () => {
@@ -37,6 +38,7 @@ const Layout = ({ session }) => {
   const [isApproved, setIsApproved] = useState(true);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [mostrarEsqueleto, setMostrarEsqueleto] = useState(false);
 
   const location = useLocation();
   const { theme, toggleTheme, soundEnabled, toggleSound } = useTheme();
@@ -65,6 +67,27 @@ const Layout = ({ session }) => {
     playTone(750, 0.05, 0.08, 0);
     playTone(1150, 0.07, 0.08, 0.05);
   };
+
+  // De vez en cuando, un esqueleto cruza corriendo por arriba del header
+  // (edición especial de Halloween). Primera aparición más rápida para que
+  // se note; las siguientes, con un intervalo irregular más largo.
+  useEffect(() => {
+    let temporizadorSiguiente;
+    let temporizadorOcultar;
+    const programarSiguiente = (esPrimera) => {
+      const espera = esPrimera ? 9000 + Math.random() * 8000 : 28000 + Math.random() * 35000;
+      temporizadorSiguiente = setTimeout(() => {
+        setMostrarEsqueleto(true);
+        temporizadorOcultar = setTimeout(() => setMostrarEsqueleto(false), 2700);
+        programarSiguiente(false);
+      }, espera);
+    };
+    programarSiguiente(true);
+    return () => {
+      clearTimeout(temporizadorSiguiente);
+      clearTimeout(temporizadorOcultar);
+    };
+  }, []);
 
   useEffect(() => {
     if (!session?.user?.id) return;
@@ -212,7 +235,9 @@ const Layout = ({ session }) => {
       justifyContent: 'space-between',
       alignItems: 'center',
       shrink: 0,
-      minHeight: '60px'
+      minHeight: '60px',
+      position: 'relative',
+      overflow: 'hidden'
     },
     topBarStatus: { backgroundColor: status.is_online ? '#228b22' : '#8B0000', color: 'white', padding: isMobile ? '8px' : '12px 20px', fontWeight: 'bold', fontSize: isMobile ? '11px' : '13px', textAlign: 'center', transition: '0.5s' },
     menuButton: {
@@ -240,10 +265,25 @@ const Layout = ({ session }) => {
         .logout-btn:hover { background-color: #D9241D; color: white; border-color: #D9241D; }
         .theme-toggle-btn { transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease; }
         .theme-toggle-btn:hover { background-color: #222; color: white; border-color: #555; }
+        @keyframes layoutSkeletonRun {
+          0% { left: -40px; opacity: 0; }
+          8% { opacity: 1; }
+          92% { opacity: 1; }
+          100% { left: 100%; opacity: 0; }
+        }
+        @keyframes layoutSkeletonBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+        .layout-skeleton-run { position: absolute; top: 50%; margin-top: -17px; animation: layoutSkeletonRun 2.6s linear; pointer-events: none; }
+        .layout-skeleton-run svg { display: block; animation: layoutSkeletonBob 0.22s ease-in-out infinite; }
       `}</style>
       <aside className="app-sidebar" style={styles.sidebar}>
         {/* CORRECCIÓN: Se cambió el texto por el componente img cargando el logoScanner */}
         <Link to="/" style={styles.logoContainer} onClick={() => { playClickSound(); setIsMenuOpen(false); }}>
+          <CobwebCorner color="rgba(255,255,255,0.14)" style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }} />
+          <CobwebCorner color="rgba(255,255,255,0.14)" style={{ position: 'absolute', top: 0, right: 0, transform: 'scaleX(-1)', pointerEvents: 'none' }} />
+          <DanglingSpiders spiders={[
+            { left: '14%', length: 36, opacity: 0.6, duration: '3.2s', delay: '0s' },
+            { left: '86%', length: 50, opacity: 0.55, duration: '2.8s', delay: '-1s' },
+          ]} />
           <img
             src={logoScanner}
             alt="TORRES AGUAYO"
@@ -318,7 +358,8 @@ const Layout = ({ session }) => {
             </Link>
           )}
         </ul>
-        <div style={{ borderTop: '1px solid #333', padding: isCompact ? '14px' : '20px', display: 'flex', flexDirection: 'column', gap: isCompact ? '8px' : '10px', flexShrink: 0 }}>
+        <div style={{ borderTop: '1px solid #333', padding: isCompact ? '14px' : '20px', display: 'flex', flexDirection: 'column', gap: isCompact ? '8px' : '10px', flexShrink: 0, position: 'relative' }}>
+          <CobwebCorner color="rgba(255,255,255,0.1)" style={{ position: 'absolute', bottom: 0, left: 0, transform: 'scaleY(-1)', pointerEvents: 'none' }} />
           <button
             className="theme-toggle-btn"
             onClick={toggleTheme}
@@ -340,11 +381,18 @@ const Layout = ({ session }) => {
       <main style={styles.main}>
         <div style={styles.topBarStatus}>{status.mensaje}</div>
         <header style={styles.header}>
+          {!isMobile && <DanglingSpiders spiders={[{ left: '50%', length: 22, opacity: 0.5, duration: '3.4s', delay: '0s' }]} />}
+          {mostrarEsqueleto && (
+            <div className="layout-skeleton-run">
+              <SkeletonIcon size={26} color={isDark ? '#f1ece3' : '#3f3f3f'} />
+            </div>
+          )}
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <button onClick={() => setIsMenuOpen(!isMenuOpen)} style={styles.menuButton}>
               {isMenuOpen ? '✕' : '☰'}
             </button>
-            <div style={{ fontSize: isMobile ? '12px' : '14px', fontWeight: 'bold', color: '#ffffff', textShadow: '0 0 4px rgba(217,36,29,0.9), 0 0 12px rgba(217,36,29,0.7), 0 0 22px rgba(217,36,29,0.5)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: isMobile ? '12px' : '14px', fontWeight: 'bold', color: '#ffffff', textShadow: '0 0 4px rgba(217,36,29,0.9), 0 0 12px rgba(217,36,29,0.7), 0 0 22px rgba(217,36,29,0.5)' }}>
+              <PumpkinIcon size={isMobile ? 16 : 18} />
               {isMobile ? 'MMS PORTAL' : 'MI PORTAL DE USUARIO'}
             </div>
           </div>

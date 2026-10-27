@@ -38,6 +38,11 @@ const Admin = ({ session }) => {
   const [paginaActual, setPaginaActual] = useState(1);
   const [itemsPorPagina] = useState(10);
 
+  // --- ESTADOS PARA LA SECCIÓN DE CLIENTES ESPECIALES (búsqueda/paginación propia) ---
+  const [especialSearch, setEspecialSearch] = useState('');
+  const [especialPagina, setEspecialPagina] = useState(1);
+  const [guardandoEspecial, setGuardandoEspecial] = useState(null);
+
   // --- CONFIGURACIÓN DE LOS ADMINISTRADORES ---
   const ADMIN_EMAILS = [
     'stockcarscl@gmail.com',
@@ -201,6 +206,28 @@ const Admin = ({ session }) => {
     }
   };
 
+  // Marca o desmarca a un cliente como "especial" (precios/bonos distintos en Créditos)
+  const handleToggleEspecial = async (userId, valorActual) => {
+    const nuevoValor = !valorActual;
+    setGuardandoEspecial(userId);
+    setUsers(prev => prev.map(u => (u.id === userId ? { ...u, cliente_especial: nuevoValor } : u)));
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ cliente_especial: nuevoValor })
+        .eq('id', userId);
+
+      if (error) throw error;
+    } catch (error) {
+      // Si falla, revierte el cambio optimista
+      setUsers(prev => prev.map(u => (u.id === userId ? { ...u, cliente_especial: valorActual } : u)));
+      alert("Error al actualizar: " + error.message);
+    } finally {
+      setGuardandoEspecial(null);
+    }
+  };
+
   // FUNCIÓN MAESTRA: Cambia el color EN EL ACTO y luego actualiza Supabase
   const cambiarEstadoInmediato = async (nuevoEstado) => {
     // 1. Actualiza la pantalla de inmediato sin esperar al servidor
@@ -233,6 +260,20 @@ const Admin = ({ session }) => {
   const indiceUltimo = paginaActual * itemsPorPagina;
   const indicePrimer = indiceUltimo - itemsPorPagina;
   const usersPaginados = usersFiltrados.slice(indicePrimer, indiceUltimo);
+
+  // --- FILTRADO Y PAGINACIÓN PROPIOS DE "CLIENTES ESPECIALES" ---
+  const usersFiltradosEspecial = users.filter(u => {
+    const searchLower = especialSearch.toLowerCase();
+    return (
+      (u.full_name?.toLowerCase().includes(searchLower)) ||
+      (u.email?.toLowerCase().includes(searchLower))
+    );
+  });
+
+  const totalPaginasEspecial = Math.ceil(usersFiltradosEspecial.length / itemsPorPagina);
+  const indiceUltimoEspecial = especialPagina * itemsPorPagina;
+  const indicePrimerEspecial = indiceUltimoEspecial - itemsPorPagina;
+  const usersPaginadosEspecial = usersFiltradosEspecial.slice(indicePrimerEspecial, indiceUltimoEspecial);
 
   const styles = {
     main: { flex: 1, display: 'flex', flexDirection: 'column', background: isDark ? DARK_GRADIENT : '#f7f7f8', minHeight: '100vh' },
@@ -279,7 +320,17 @@ const Admin = ({ session }) => {
     pageBtn: (active) => ({
       padding: '8px 16px', cursor: 'pointer', backgroundColor: active ? '#D9241D' : s.cardBg,
       color: active ? 'white' : s.textMuted, border: `1px solid ${s.border}`, borderRadius: '10px', fontSize: '12px', fontWeight: '700'
-    })
+    }),
+    toggleSwitch: (on) => ({
+      width: '42px', height: '24px', borderRadius: '999px', border: 'none', cursor: 'pointer',
+      backgroundColor: on ? '#f59e0b' : s.headerBg, position: 'relative', transition: 'background-color 0.2s ease',
+      flexShrink: 0
+    }),
+    toggleKnob: (on) => ({
+      position: 'absolute', top: '3px', left: on ? '21px' : '3px', width: '18px', height: '18px',
+      borderRadius: '50%', backgroundColor: 'white', transition: 'left 0.2s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
+    }),
+    especialBadge: { display: 'inline-block', padding: '3px 10px', borderRadius: '999px', fontSize: '10px', fontWeight: '800', backgroundColor: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.35)' }
   };
 
   if (!isAdmin) {
@@ -490,6 +541,94 @@ const Admin = ({ session }) => {
               onClick={() => { setPaginaActual(p => Math.min(totalPaginas, p + 1)); window.scrollTo(0, 0); }}
               disabled={paginaActual === totalPaginas}
               style={{ ...styles.pageBtn(false), opacity: paginaActual === totalPaginas ? 0.3 : 1 }}
+            >
+              Siguiente →
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* --- CLIENTES ESPECIALES: seleccionables para que vean otros precios/bonos en Créditos --- */}
+      <div className="admin-card" style={{ ...styles.contentCard, animationDelay: '0.08s' }}>
+        <h2 style={styles.sectionTitle}>⭐ Clientes Especiales</h2>
+        <p style={{ ...styles.cardSubtitle, marginBottom: '18px' }}>
+        </p>
+
+        <div className="search-wrap" style={styles.searchBar}>
+          <span style={{ marginRight: '10px' }}>🔍</span>
+          <input
+            type="text"
+            placeholder="Buscar por email o nombre..."
+            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '13px', background: 'transparent', color: s.text }}
+            value={especialSearch}
+            onChange={(e) => { setEspecialSearch(e.target.value); setEspecialPagina(1); }}
+          />
+        </div>
+
+        <div style={styles.tableWrap}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.th}>Email</th>
+                <th style={styles.th}>Nombre</th>
+                <th style={styles.th}>Estado</th>
+                <th style={styles.th}>Especial</th>
+              </tr>
+            </thead>
+            <tbody>
+              {usersPaginadosEspecial.map((u) => (
+                <tr className="admin-row" key={u.id}>
+                  <td style={styles.td}>{u.email}</td>
+                  <td style={styles.td}>{u.full_name || 'Sin nombre'}</td>
+                  <td style={styles.td}>
+                    {u.cliente_especial
+                      ? <span style={styles.especialBadge}>⭐ ESPECIAL</span>
+                      : <span style={{ color: s.textFaint, fontSize: '11px' }}>Normal</span>}
+                  </td>
+                  <td style={styles.td}>
+                    <button
+                      onClick={() => handleToggleEspecial(u.id, u.cliente_especial)}
+                      disabled={guardandoEspecial === u.id}
+                      style={{ ...styles.toggleSwitch(u.cliente_especial), opacity: guardandoEspecial === u.id ? 0.6 : 1 }}
+                      aria-label="Marcar como cliente especial"
+                    >
+                      <span style={styles.toggleKnob(u.cliente_especial)} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {!loading && usersPaginadosEspecial.length === 0 && (
+                <tr><td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: s.textMuted }}>No se encontraron usuarios.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {totalPaginasEspecial > 1 && (
+          <div style={styles.pagination}>
+            <button
+              className="page-btn-admin"
+              onClick={() => { setEspecialPagina(p => Math.max(1, p - 1)); }}
+              disabled={especialPagina === 1}
+              style={{ ...styles.pageBtn(false), opacity: especialPagina === 1 ? 0.3 : 1 }}
+            >
+              ← Anterior
+            </button>
+            {[...Array(totalPaginasEspecial).keys()].map(n => (
+              <button
+                className="page-btn-admin"
+                key={n + 1}
+                onClick={() => setEspecialPagina(n + 1)}
+                style={styles.pageBtn(especialPagina === n + 1)}
+              >
+                {n + 1}
+              </button>
+            ))}
+            <button
+              className="page-btn-admin"
+              onClick={() => { setEspecialPagina(p => Math.min(totalPaginasEspecial, p + 1)); }}
+              disabled={especialPagina === totalPaginasEspecial}
+              style={{ ...styles.pageBtn(false), opacity: especialPagina === totalPaginasEspecial ? 0.3 : 1 }}
             >
               Siguiente →
             </button>

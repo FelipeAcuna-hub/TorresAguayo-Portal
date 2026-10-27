@@ -59,3 +59,41 @@ select optgroup {
   font-style: normal;
 }
 
+@keyframes halloweenSpiderSway {
+  0%, 100% { transform: rotate(-6deg); }
+  50% { transform: rotate(6deg); }
+}
+.halloween-spider {
+  position: absolute;
+  top: 0;
+  pointer-events: none;
+  transform-origin: top center;
+  animation-name: halloweenSpiderSway;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes spiderBurstOut {
+  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+  10% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  40% { transform: translate(calc(-50% + var(--dx) * 0.3), calc(-50% + var(--dy) * 0.3)) rotate(calc(var(--rot) * 0.35)) scale(0.95); }
+  70% { transform: translate(calc(-50% + var(--dx) * 0.65), calc(-50% + var(--dy) * 0.65)) rotate(calc(var(--rot) * 0.7)) scale(0.88); }
+  100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(var(--rot)) scale(0.75); opacity: 0; }
+}
+@keyframes spiderWalkWobble {
+  0%, 100% { transform: rotate(-8deg); }
+  50% { transform: rotate(8deg); }
+}
+.spider-burst {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  pointer-events: none;
+  animation: spiderBurstOut 1.9s ease-in-out forwards;
+}
+.spider-burst svg {
+  display: block;
+  animation: spiderWalkWobble 0.22s ease-in-out infinite;
+  transform-origin: center;
+}
+

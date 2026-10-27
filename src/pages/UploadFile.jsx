@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useTheme, DARK_GRADIENT, getSurfaceTokens, playTone } from '../ThemeContext';
+import { PumpkinIcon, CobwebCorner, DanglingSpiders } from '../components/HalloweenDecor';
 
 // --- 1. DEFINICIÓN DE SERVICIOS DINÁMICOS ---
 export const SERVICIOS_CONFIG = {
@@ -279,10 +280,10 @@ const UploadFile = ({ session }) => {
   };
 
   const styles = {
-    main: { flex: 1, display: 'flex', flexDirection: 'column', background: isDark ? DARK_GRADIENT : '#f7f7f8', minHeight: '100vh', padding: '30px 30px 60px' },
+    main: { flex: 1, display: 'flex', flexDirection: 'column', background: isDark ? DARK_GRADIENT : '#f7f7f8', minHeight: '100vh', padding: '30px 30px 60px', position: 'relative' },
     container: { width: '100%' },
     btnBack: { color: isDark ? '#e0a89c' : '#888', textDecoration: 'none', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px', marginBottom: '20px', fontWeight: '700' },
-    formCard: { backgroundColor: s.cardBg, padding: '36px', borderRadius: '20px', border: `1px solid ${s.border}`, boxShadow: isDark ? 'none' : '0 2px 16px rgba(0,0,0,0.04)' },
+    formCard: { backgroundColor: s.cardBg, padding: '36px', borderRadius: '20px', border: `1px solid ${s.border}`, boxShadow: isDark ? 'none' : '0 2px 16px rgba(0,0,0,0.04)', position: 'relative' },
     sectionTitle: { fontSize: '15px', fontWeight: '800', margin: '0 0 20px', color: s.text, letterSpacing: '-0.2px', display: 'flex', alignItems: 'center', gap: '8px' },
     sectionDivider: { border: 'none', borderTop: `1px solid ${s.rowBorder}`, margin: '32px 0' },
     row: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '18px', marginBottom: '18px' },
@@ -332,10 +333,17 @@ const UploadFile = ({ session }) => {
         }
       `}</style>
 
-      <div style={styles.container}>
+      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
+        <CobwebCorner color={isDark ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.12)'} style={{ position: 'absolute', top: 0, left: 0 }} />
+        <CobwebCorner color={isDark ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.12)'} style={{ position: 'absolute', top: 0, right: 0, transform: 'scaleX(-1)' }} />
+        <DanglingSpiders />
+      </div>
+
+      <div style={{ ...styles.container, position: 'relative', zIndex: 1 }}>
         <Link to="/" className="back-link-up" style={styles.btnBack}>← Volver al dashboard</Link>
 
         <div style={styles.formCard}>
+          <PumpkinIcon size={26} style={{ position: 'absolute', top: '-10px', right: '20px', transform: 'rotate(10deg)', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.35))' }} />
           <div className="up-section" style={{ animationDelay: '0s' }}>
             <h2 style={styles.sectionTitle}>
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">

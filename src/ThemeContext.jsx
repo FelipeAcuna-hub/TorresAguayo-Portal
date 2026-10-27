@@ -43,6 +43,11 @@ export const ThemeProvider = ({ children }) => {
   // --- SONIDITO GENÉRICO DE CLIC, PARA CUALQUIER BOTÓN DEL SITIO ---
   useEffect(() => {
     const onClick = (e) => {
+      // El navegador exige un gesto del usuario para arrancar audio: este
+      // primer clic (cualquiera, no solo en un botón) es el que destraba
+      // la ambientación de Halloween si el sonido está activado.
+      if (soundEnabled) startHalloweenAmbience();
+
       const btn = e.target.closest('button');
       if (!btn) return;
       // Los botones que ya tienen su propio sonidito (ej. descargas) se saltan
@@ -52,10 +57,27 @@ export const ThemeProvider = ({ children }) => {
     };
     document.addEventListener('click', onClick, true);
     return () => document.removeEventListener('click', onClick, true);
-  }, []);
+  }, [soundEnabled]);
+
+  // Si se apaga el sonido, corta la ambientación (esto sí puede pasar sin
+  // gesto nuevo). Arrancarla en cambio solo pasa en manos de un clic real
+  // (ver el listener de arriba y toggleSound), porque los navegadores
+  // bloquean el audio que no viene de una interacción del usuario.
+  useEffect(() => {
+    if (!soundEnabled) stopHalloweenAmbience();
+  }, [soundEnabled]);
+
+  useEffect(() => () => stopHalloweenAmbience(), []);
 
   const toggleTheme = () => setTheme(t => (t === 'dark' ? 'light' : 'dark'));
-  const toggleSound = () => setSoundEnabled(v => !v);
+  const toggleSound = () => {
+    setSoundEnabled(v => {
+      const next = !v;
+      if (next) startHalloweenAmbience();
+      else stopHalloweenAmbience();
+      return next;
+    });
+  };
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme, soundEnabled, toggleSound }}>
@@ -107,14 +129,21 @@ export const isSoundEnabled = () => {
   }
 };
 
+// Crea (una sola vez) o reactiva el AudioContext compartido. Devuelve null
+// si el navegador no soporta Web Audio o lo bloquea.
+const getSharedAudioCtx = () => {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return null;
+  if (!sharedAudioCtx) sharedAudioCtx = new AC();
+  if (sharedAudioCtx.state === 'suspended') sharedAudioCtx.resume();
+  return sharedAudioCtx;
+};
+
 export const playTone = (freq, duration = 0.05, volume = 0.06, delay = 0) => {
   if (!isSoundEnabled()) return;
   try {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    if (!sharedAudioCtx) sharedAudioCtx = new AC();
-    if (sharedAudioCtx.state === 'suspended') sharedAudioCtx.resume();
-    const ctx = sharedAudioCtx;
+    const ctx = getSharedAudioCtx();
+    if (!ctx) return;
 
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -134,3 +163,44 @@ export const playTone = (freq, duration = 0.05, volume = 0.06, delay = 0) => {
 };
 
 export const playUiClick = () => playTone(740, 0.045, 0.05);
+
+// --- MÚSICA DE HALLOWEEN DE FONDO (edición especial de temporada) ---
+// Pista real (public/halloween-music.mp3) en loop, bien bajita para que
+// acompañe sin tapar el resto de los sonidos del sitio. Arranca recién con
+// el primer clic real del usuario, igual que el resto del audio del sitio,
+// porque los navegadores bloquean el audio que no viene de una interacción.
+let ambienceAudio = null;
+
+const getAmbienceAudio = () => {
+  if (!ambienceAudio) {
+    ambienceAudio = new Audio('/halloween-music.mp3');
+    ambienceAudio.loop = true;
+    ambienceAudio.volume = 0.35;
+  }
+  return ambienceAudio;
+};
+
+// Quien llama a esta función ya sabe si el sonido debe estar activado
+// (el listener de clics usa el estado de React, toggleSound usa el valor
+// nuevo definitivo): no vuelve a chequear localStorage acá porque todavía
+// puede no estar actualizado en el mismo instante del clic que reactiva el sonido.
+export const startHalloweenAmbience = () => {
+  try {
+    const audio = getAmbienceAudio();
+    audio.play().catch(() => {
+      // El navegador puede rechazar el primer intento si todavía no detecta
+      // el gesto del usuario; no es un error real, simplemente no suena.
+    });
+  } catch {
+    // Ignorar si el navegador bloquea audio
+  }
+};
+
+export const stopHalloweenAmbience = () => {
+  if (!ambienceAudio) return;
+  try {
+    ambienceAudio.pause();
+  } catch {
+    // No es relevante si ya estaba pausado
+  }
+};

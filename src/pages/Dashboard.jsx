@@ -9,6 +9,7 @@ import logoMagic from '../magicmotors.svg';
 import logoDyno from '../dynomag.png';
 import logoDynoBlack from '../dynomag_black.png';
 import logoMagicWhite from '../magic_motorsport_white.png';
+import { PumpkinIcon, CobwebCorner, DanglingSpiders } from '../components/HalloweenDecor';
 
 // --- PARTE 1: FUNCIÓN DE CÁLCULO DE HORARIO CHILENO (INTACTA) ---
 const checkAutoOnline = () => {
@@ -131,7 +132,7 @@ const DashboardTorresAguayo = ({ session }) => {
       minHeight: '180px' // Asegura un tamaño mínimo siempre
     },
     grid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', padding: '0 30px', marginBottom: '30px' },
-    card: { backgroundColor: s.cardBg, padding: '30px', textAlign: 'center', borderRadius: '10px', border: `1px solid ${s.border}`, borderBottom: `4px solid ${s.border}`, boxShadow: isDark ? 'none' : '0 4px 6px -1px rgba(0, 0, 0, 0.1)' },
+    card: { backgroundColor: s.cardBg, padding: '30px', textAlign: 'center', borderRadius: '10px', border: `1px solid ${s.border}`, borderBottom: `4px solid ${s.border}`, boxShadow: isDark ? 'none' : '0 4px 6px -1px rgba(0, 0, 0, 0.1)', position: 'relative' },
     button: {
       background: 'linear-gradient(135deg, #D9241D 0%, #300804 130%)',
       border: '1px solid rgba(230,80,70,0.9)',
@@ -174,6 +175,11 @@ const DashboardTorresAguayo = ({ session }) => {
       `}</style>
 
       <section style={styles.banner}>
+        {/* El banner siempre tiene fondo negro (no depende del tema del sitio),
+            así que esta decoración queda fija sin importar modo claro/oscuro. */}
+        <CobwebCorner color="rgba(255,255,255,0.16)" style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }} />
+        <CobwebCorner color="rgba(255,255,255,0.16)" style={{ position: 'absolute', top: 0, right: 0, transform: 'scaleX(-1)', pointerEvents: 'none' }} />
+        <DanglingSpiders />
         <div style={{
           animation: 'fadeInLogo 1s ease-out',
           position: 'relative',
@@ -197,7 +203,8 @@ const DashboardTorresAguayo = ({ session }) => {
         </div>
 
         <div style={{ flex: 1 }}>
-          <h1 style={{ fontSize: '36px', margin: 0, textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '900' }}>
+          <h1 style={{ fontSize: '36px', margin: 0, textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <PumpkinIcon size={32} />
             Plataforma <span style={{ color: '#D9241D' }}>Reseller</span>
           </h1>
           <h2 style={{ fontSize: '24px', color: '#D9241D', margin: '2px 0 0 0', fontStyle: 'italic', fontWeight: 'bold' }}>
@@ -211,6 +218,7 @@ const DashboardTorresAguayo = ({ session }) => {
 
       <div style={styles.grid}>
         <div className="dash-card" style={{ ...styles.card, animationDelay: '0s' }}>
+          <PumpkinIcon size={22} style={{ position: 'absolute', top: '-9px', right: '-7px', transform: 'rotate(12deg)', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.35))' }} />
           <div className="dash-icon" style={{ fontSize: '40px', marginBottom: '10px', color: isDark ? '#fff' : 'inherit' }}>
             {isDark ? (
               <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" className="bi bi-file-earmark-arrow-up" viewBox="0 0 16 16">
@@ -228,6 +236,7 @@ const DashboardTorresAguayo = ({ session }) => {
           <Link to="/upload"><button className="dash-btn" style={styles.button}>SUBIR EL ARCHIVO</button></Link>
         </div>
         <div className="dash-card" style={{ ...styles.card, animationDelay: '0.08s' }}>
+          <PumpkinIcon size={22} style={{ position: 'absolute', top: '-9px', right: '-7px', transform: 'rotate(12deg)', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.35))' }} />
           <div className="dash-icon" style={{ fontSize: '40px', marginBottom: '10px', color: isDark ? '#fff' : 'inherit' }}><svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" class="bi bi-currency-exchange" viewBox="0 0 16 16">
             <path d="M0 5a5 5 0 0 0 4.027 4.905 6.5 6.5 0 0 1 .544-2.073C3.695 7.536 3.132 6.864 3 5.91h-.5v-.426h.466V5.05q-.001-.07.004-.135H2.5v-.427h.511C3.236 3.24 4.213 2.5 5.681 2.5c.316 0 .59.031.819.085v.733a3.5 3.5 0 0 0-.815-.082c-.919 0-1.538.466-1.734 1.252h1.917v.427h-1.98q-.004.07-.003.147v.422h1.983v.427H3.93c.118.602.468 1.03 1.005 1.229a6.5 6.5 0 0 1 4.97-3.113A5.002 5.002 0 0 0 0 5m16 5.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0m-7.75 1.322c.069.835.746 1.485 1.964 1.562V14h.54v-.62c1.259-.086 1.996-.74 1.996-1.69 0-.865-.563-1.31-1.57-1.54l-.426-.1V8.374c.54.06.884.347.966.745h.948c-.07-.804-.779-1.433-1.914-1.502V7h-.54v.629c-1.076.103-1.808.732-1.808 1.622 0 .787.544 1.288 1.45 1.493l.358.085v1.78c-.554-.08-.92-.376-1.003-.787zm1.96-1.895c-.532-.12-.82-.364-.82-.732 0-.41.311-.719.824-.809v1.54h-.005zm.622 1.044c.645.145.943.38.943.796 0 .474-.37.8-1.02.86v-1.674z" />
           </svg></div>
@@ -236,6 +245,7 @@ const DashboardTorresAguayo = ({ session }) => {
           <Link to="/creditos"><button className="dash-btn" style={styles.button}>COMPRAR CRÉDITOS</button></Link>
         </div>
         <div className="dash-card" style={{ ...styles.card, animationDelay: '0.16s' }}>
+          <PumpkinIcon size={22} style={{ position: 'absolute', top: '-9px', right: '-7px', transform: 'rotate(12deg)', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.35))' }} />
           <div className="dash-icon" style={{ fontSize: '40px', marginBottom: '10px', color: isDark ? '#fff' : 'inherit' }}><svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" class="bi bi-send-check-fill" viewBox="0 0 16 16">
             <path d="M15.964.686a.5.5 0 0 0-.65-.65L.767 5.855H.766l-.452.18a.5.5 0 0 0-.082.887l.41.26.001.002 4.995 3.178 1.59 2.498C8 14 8 13 8 12.5a4.5 4.5 0 0 1 5.026-4.47zm-1.833 1.89L6.637 10.07l-.215-.338a.5.5 0 0 0-.154-.154l-.338-.215 7.494-7.494 1.178-.471z" />
             <path d="M16 12.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0m-1.993-1.679a.5.5 0 0 0-.686.172l-1.17 1.95-.547-.547a.5.5 0 0 0-.708.708l.774.773a.75.75 0 0 0 1.174-.144l1.335-2.226a.5.5 0 0 0-.172-.686" />
