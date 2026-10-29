@@ -487,22 +487,32 @@ const Archivos = ({ session }) => {
           : `🔍 Archivo en Revisión - Patente ${patente}`;
 
         const emailHtml = `
-          <div style="font-family: 'Helvetica', Arial, sans-serif; background-color: #f9f9f9; padding: 40px 0;">
-            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
-              <div style="background-color: #000000; padding: 20px; text-align: center;">
-                <h1 style="color: #e11d48; margin: 0; font-size: 24px; letter-spacing: 2px;">TORRES AGUAYO MMS</h1>
+          <div style="font-family: -apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #1a0500; padding: 40px 16px;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 14px; overflow: hidden; box-shadow: 0 12px 32px rgba(0,0,0,0.4);">
+
+              <div style="background: linear-gradient(135deg, #1a0500 0%, #000000 100%); padding: 30px 20px 26px 20px; text-align: center; border-bottom: 3px solid #D9241D;">
+                <img src="https://torresaguayomms.cl/logo-email.png" alt="Stock Cars" style="height: 48px; display: block; margin: 0 auto 16px auto;" />
+                <span style="display: inline-block; background-color: #D9241D; color: #ffffff; font-size: 11px; font-weight: 800; letter-spacing: 2px; padding: 7px 16px; border-radius: 999px; text-transform: uppercase;">Actualización de Solicitud</span>
               </div>
-              <div style="padding: 30px; line-height: 1.6; color: #333;">
-                <h2 style="color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px;">Actualización de Requerimiento</h2>
-                <p>Hola,</p>
-                <p>Te informamos que el archivo para el vehículo con patente <strong>${patente}</strong> ha cambiado su estado a:</p>
-                <div style="background-color: #f3f4f6; padding: 15px; border-left: 4px solid ${nuevoEstado === 'completado' ? '#22c55e' : '#facc15'}; margin: 20px 0; font-weight: bold; font-size: 18px; text-align: center; text-transform: uppercase; color: ${nuevoEstado === 'completado' ? '#166534' : '#854d0e'};">
+
+              <div style="padding: 32px 28px; text-align: center;">
+                <p style="margin: 0 0 6px 0; font-size: 14px; color: #555;">Hola, el archivo para el vehículo con patente</p>
+                <p style="margin: 0 0 20px 0; font-size: 20px; font-weight: 800; color: #111; letter-spacing: 0.5px;">${patente}</p>
+                <p style="margin: 0 0 18px 0; font-size: 13px; color: #888;">cambió su estado a:</p>
+
+                <div style="display: inline-block; background-color: ${nuevoEstado === 'completado' ? '#dcfce7' : '#fef9c3'}; padding: 12px 28px; border-radius: 999px; font-weight: 800; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px; color: ${nuevoEstado === 'completado' ? '#166534' : '#854d0e'};">
                   ${nuevoEstado === 'completado' ? '✅ ' + nuevoEstado : '🔍 ' + nuevoEstado}
                 </div>
-                <p>${nuevoEstado === 'completado' ? 'Ya puedes descargar tu archivo modificado desde el portal oficial.' : 'Nuestro equipo técnico ya está trabajando en tu solicitud.'}</p>
-                <div style="text-align: center; margin-top: 30px;">
-                  <a href="https://torresaguayomms.cl/archivos" style="background-color: #e11d48; color: white; padding: 12px 25px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">IR AL PORTAL</a>
+
+                <p style="margin: 22px 0 0 0; font-size: 13px; color: #555; line-height: 1.5;">${nuevoEstado === 'completado' ? 'Ya puedes descargar tu archivo modificado desde el portal oficial.' : 'Nuestro equipo técnico ya está trabajando en tu solicitud.'}</p>
+
+                <div style="text-align: center; margin-top: 28px;">
+                  <a href="https://torresaguayomms.cl/archivos" style="background-color: #D9241D; color: white; padding: 13px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 13px; letter-spacing: 0.3px; display: inline-block;">IR AL PORTAL</a>
                 </div>
+              </div>
+
+              <div style="background-color: #0d0603; padding: 16px; text-align: center;">
+                <p style="margin: 0; color: #8a7570; font-size: 10px; letter-spacing: 1.5px;">STOCK CARS — PORTAL DISTRIBUIDORES</p>
               </div>
             </div>
           </div>

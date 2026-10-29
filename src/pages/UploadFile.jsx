@@ -128,7 +128,12 @@ const UploadFile = ({ session }) => {
     }
   };
 
-  const isFormValid = formData.patente.length >= 4 && fileId && fileMapa && servicioSel && formData.modo_lectura;
+  // Para cualquier Stage (bencina o diésel) el VIN deja de ser opcional.
+  const requiereVin = (categoriaSel === 'REPRO GASOLINA' || categoriaSel === 'REPRO DIÉSEL')
+    && !!servicioSel?.name?.toUpperCase().includes('STAGE');
+
+  const isFormValid = formData.patente.length >= 4 && fileId && fileMapa && servicioSel && formData.modo_lectura
+    && (!requiereVin || formData.vin.length > 0);
 
   const uploadSingleFile = async (file, prefix, folderName) => {
     if (!file) return null;
@@ -218,37 +223,59 @@ const UploadFile = ({ session }) => {
       if (fileMapa) archivosLista.push("MAPA");
       if (filePass) archivosLista.push("PASSWORD");
 
+      const filaDato = (label, valor, destacado = false) => `
+        <tr>
+          <td style="padding: 10px 6px; color: #8a7570; font-size: 12px; border-bottom: 1px solid #f0f0f0; white-space: nowrap;">${label}</td>
+          <td style="padding: 10px 6px; color: ${destacado ? '#D9241D' : '#111'}; font-size: 13px; font-weight: 700; border-bottom: 1px solid #f0f0f0; text-align: right;">${valor || '—'}</td>
+        </tr>`;
+
       const emailHtmlNuevo = `
-        <div style="font-family: 'Helvetica', Arial, sans-serif; background-color: #f9f9f9; padding: 40px 0;">
-          <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
-            <div style="background-color: #000000; padding: 20px; text-align: center;">
-              <h1 style="color: #e11d48; margin: 0; font-size: 24px; letter-spacing: 2px;">NUEVA SOLICITUD</h1>
+        <div style="font-family: -apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #1a0500; padding: 40px 16px;">
+          <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 14px; overflow: hidden; box-shadow: 0 12px 32px rgba(0,0,0,0.4);">
+
+            <div style="background: linear-gradient(135deg, #1a0500 0%, #000000 100%); padding: 30px 20px 26px 20px; text-align: center; border-bottom: 3px solid #D9241D;">
+              <img src="https://torresaguayomms.cl/logo-email.png" alt="Stock Cars" style="height: 48px; display: block; margin: 0 auto 16px auto;" />
+              <span style="display: inline-block; background-color: #D9241D; color: #ffffff; font-size: 11px; font-weight: 800; letter-spacing: 2px; padding: 7px 16px; border-radius: 999px; text-transform: uppercase;">🚀 Nueva Solicitud</span>
             </div>
-            <div style="padding: 30px; line-height: 1.6; color: #333;">
-              <h2 style="color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px;">Datos del Requerimiento</h2>
-              <p>Se ha recibido un nuevo archivo para procesar:</p>
+
+            <div style="padding: 32px 28px;">
+              <p style="margin: 0 0 20px 0; font-size: 14px; color: #555;">Se recibió un nuevo archivo para procesar, con estos datos:</p>
 
               <table style="width: 100%; border-collapse: collapse;">
-                <tr><td style="padding: 5px 0;"><strong>Cliente:</strong></td><td>${session.user.email}</td></tr>
-                <tr><td style="padding: 5px 0;"><strong>Patente:</strong></td><td>${formData.patente}</td></tr>
-                <tr><td style="padding: 5px 0;"><strong>Vehículo:</strong></td><td>${formData.marca} ${formData.modelo}</td></tr>
-                <tr><td style="padding: 5px 0;"><strong>Servicio:</strong></td><td>${servicioSel?.name || 'No especificado'}</td></tr>
-                <tr><td style="padding: 5px 0;"><strong>Archivos:</strong></td><td>${archivosLista.join(', ')}</td></tr>
+                ${filaDato('Cliente', session.user.email)}
+                ${filaDato('Patente', formData.patente, true)}
+                ${filaDato('Vehículo', `${formData.marca} ${formData.modelo}`.trim())}
+                ${filaDato('Año', formData.anio)}
+                ${filaDato('VIN', formData.vin)}
+                ${filaDato('Motor', formData.motor)}
+                ${filaDato('HP', formData.hp)}
+                ${filaDato('Combustible', formData.combustible)}
+                ${filaDato('Transmisión', formData.transmision)}
+                ${filaDato('ECU / Módulo', [formData.tipo_modulo, formData.ecu].filter(Boolean).join(' - '))}
+                ${filaDato('Modo de lectura', formData.modo_lectura)}
+                ${filaDato('Servicio', servicioSel?.name || 'No especificado', true)}
+                ${filaDato('Archivos adjuntos', archivosLista.join(', '))}
               </table>
 
-              <div style="background-color: #fff5f6; padding: 15px; border-left: 4px solid #e11d48; margin: 20px 0;">
-                <strong>Comentarios:</strong><br/>
-                ${formData.comentarios || 'Sin comentarios adicionales.'}
-              </div>
+              ${formData.comentarios ? `
+              <div style="background-color: #fff5f6; padding: 14px 16px; border-radius: 10px; border-left: 4px solid #D9241D; margin: 22px 0 0 0;">
+                <strong style="color: #D9241D; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Comentarios</strong>
+                <p style="margin: 6px 0 0 0; color: #333; font-size: 13px; line-height: 1.5;">${formData.comentarios}</p>
+              </div>` : ''}
 
-              <div style="background-color: #fff5f6; padding: 15px; border-left: 4px solid #e11d48; margin: 20px 0;">
-                <strong>Codigos de Falla:</strong><br/>
-                ${formData.codigosfalla || 'Sin codigos adicionales.'}
-              </div>
+              ${formData.codigosfalla ? `
+              <div style="background-color: #fff5f6; padding: 14px 16px; border-radius: 10px; border-left: 4px solid #D9241D; margin: 16px 0 0 0;">
+                <strong style="color: #D9241D; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Códigos de falla</strong>
+                <p style="margin: 6px 0 0 0; color: #333; font-size: 13px; line-height: 1.5;">${formData.codigosfalla}</p>
+              </div>` : ''}
 
               <div style="text-align: center; margin-top: 30px;">
-                <a href="https://torresaguayomms.cl/archivos" style="background-color: #e11d48; color: white; padding: 12px 25px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">VER EN EL PORTAL DE ADMIN</a>
+                <a href="https://torresaguayomms.cl/archivos" style="background-color: #D9241D; color: white; padding: 13px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 13px; letter-spacing: 0.3px; display: inline-block;">VER EN EL PORTAL DE ADMIN</a>
               </div>
+            </div>
+
+            <div style="background-color: #0d0603; padding: 16px; text-align: center;">
+              <p style="margin: 0; color: #8a7570; font-size: 10px; letter-spacing: 1.5px;">STOCK CARS — PORTAL DISTRIBUIDORES</p>
             </div>
           </div>
         </div>
@@ -478,10 +505,12 @@ const UploadFile = ({ session }) => {
             </div>
 
             <div style={{ maxWidth: '340px', marginBottom: '18px' }}>
-              <label style={{ ...styles.label, whiteSpace: 'nowrap' }}>VIN del Vehículo (RECOMENDADO PARA STAGE 1 Y 2)</label>
+              <label style={{ ...styles.label, whiteSpace: 'nowrap' }}>
+                VIN del Vehículo {requiereVin ? '(OBLIGATORIO PARA STAGE)' : '(RECOMENDADO PARA STAGE 1 Y 2)'}
+              </label>
               <input
                 className="up-input"
-                style={{ ...styles.input, textTransform: 'uppercase', letterSpacing: '0.5px' }}
+                style={{ ...styles.input, textTransform: 'uppercase', letterSpacing: '0.5px', borderColor: requiereVin && !formData.vin ? '#e11d48' : s.inputBorder }}
                 placeholder="17 caracteres"
                 maxLength={17}
                 value={formData.vin}
@@ -534,7 +563,8 @@ const UploadFile = ({ session }) => {
                       !fileId ? 'FALTA ARCHIVO ID' :
                         !fileMapa ? 'FALTA ARCHIVO MAPA' :
                           !servicioSel ? 'SELECCIONA SERVICIO' :
-                            'CARGAR ARCHIVOS'}
+                            (requiereVin && !formData.vin) ? 'FALTA VIN (OBLIGATORIO PARA STAGE)' :
+                              'CARGAR ARCHIVOS'}
               </button>
             </div>
           </div>
